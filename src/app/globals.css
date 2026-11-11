@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --rawmet-navy: #0a2458;
+  --rawmet-navy-deep: #06183d;
+  --rawmet-blue: #1652b8;
+  --rawmet-ice: #eef4ff;
+  --rawmet-orange: #f97316;
+  --rawmet-orange-dark: #ea580c;
+  --rawmet-bg: #f6f8fc;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--rawmet-bg);
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Smooth industrial reveal utilities */
+.reveal-base {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-base.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-slide-left {
+  opacity: 0;
+  transform: translateX(-18px);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-slide-left.reveal-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal-base,
+  .reveal-slide-left {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Diagonal orange accent matching reference card bottom-right ribbon */
+.card-orange-accent {
+  background: linear-gradient(135deg, #ffffff 0%, #eff5ff 68%, #dbeafe 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-orange-accent::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: linear-gradient(90deg, transparent 0%, #f97316 55%, #ea580c 100%);
+  opacity: 0.9;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
