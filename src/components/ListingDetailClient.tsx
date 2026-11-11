@@ -80,10 +80,14 @@ export function ListingDetailClient({
 
   return (
     <div className="space-y-6">
-      {/* Gallery Viewer */}
-      <div className="rounded-3xl bg-white border border-slate-200 p-4 shadow-sm">
-        <div className="aspect-[16/10] rounded-2xl overflow-hidden bg-slate-100">
-          <img src={activeImg} alt={listingTitle} className="h-full w-full object-cover" />
+      {/* Grand Gallery Viewer */}
+      <div className="rounded-3xl bg-white border border-blue-100 p-4 shadow-lg">
+        <div className="aspect-[16/10] rounded-2xl overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 shadow-inner">
+          <img
+            src={activeImg}
+            alt={listingTitle}
+            className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+          />
         </div>
         {galleryUrls.length > 1 && (
           <div className="mt-3 flex gap-2.5 overflow-x-auto pb-1">

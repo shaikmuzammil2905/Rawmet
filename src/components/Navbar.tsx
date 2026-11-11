@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   Phone,
-  ShieldCheck,
   ShoppingCart,
   Store,
   Tag,
@@ -136,11 +135,6 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <Link href="/login" className="hover:text-white transition-colors">
                 Login
               </Link>
-              <span className="text-white/25">|</span>
-              <Link href="/admin/login" className="text-blue-200 hover:text-white transition-colors flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3" />
-                Admin Login
-              </Link>
             </div>
           </div>
         </div>
@@ -152,14 +146,14 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <Link
               href="/"
               className="flex flex-col items-start shrink-0 py-1 pr-2 group focus:outline-none"
-              aria-label="RAWMET.com Home"
+              aria-label="RAWMET MART Home"
             >
               <img
                 src="/images/rawmet-logo.png"
-                alt="RAWMET.com - Online Real-time Business Portal"
-                className="h-10 sm:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
+                alt="RAWMET MART - Online Real-time Business Portal"
+                className="h-9 sm:h-11 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
-              <span className="text-[10.5px] sm:text-[11.5px] font-bold tracking-wide text-[#0a2458] pl-11 sm:pl-14 -mt-1">
+              <span className="text-[10.5px] sm:text-[11.5px] font-bold tracking-wide text-[#0a2458] pl-10 sm:pl-12 mt-0.5">
                 Mob: {mobileNumber.replace(/^\+91\s*/, "")}
               </span>
             </Link>
@@ -337,10 +331,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <MobileNavGroup title="Services" items={SERVICE_LINKS} />
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-semibold text-[#0a2458]">
-                  <ShieldCheck className="h-4 w-4" />
-                  Admin Login
-                </Link>
+                <span className="font-semibold text-[#0a2458]">Verified GST Business Portal</span>
                 <a href={`tel:${mobileNumber.replace(/\s+/g, "")}`} className="font-semibold text-[#f97316]">
                   Support: {mobileNumber}
                 </a>

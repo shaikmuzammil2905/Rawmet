@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { getCmsMap } from "@/lib/data";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { Reveal } from "@/components/Reveal";
+import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 
 export const dynamic = "force-dynamic";
 
@@ -85,23 +86,15 @@ export default function AboutPage() {
       {/* Paid Customer Business Support */}
       <section className="rounded-3xl bg-white border border-slate-200 p-7 sm:p-10 shadow-sm">
         <h2 className="text-2xl font-extrabold text-[#0a2458]">Paid Subscriber Business Support Services</h2>
-        <p className="text-sm text-slate-600 mt-1">
+        <p className="text-sm text-slate-600 mt-1 mb-6">
           Offered as business support initiatives for eligible paid subscribers.{" "}
           <strong>{contactSettings.conditionsApplyNote}</strong>
         </p>
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
-          {businessSupport.map((b) => (
-            <div key={b.id} className="rounded-2xl bg-[#f8faff] border border-blue-100 p-5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#f97316]">
-                <CheckCircle2 className="h-4 w-4" />
-                {b.badge}
-              </div>
-              <h3 className="mt-2 text-lg font-extrabold text-[#0a2458]">{b.title}</h3>
-              <p className="mt-1.5 text-sm text-slate-600">{b.description}</p>
-              <p className="mt-3 text-xs font-bold text-slate-500">{b.conditions}</p>
-            </div>
-          ))}
-        </div>
+        <BusinessSupportCards
+          items={businessSupport}
+          mobile={contactSettings.mobile}
+          whatsapp={contactSettings.whatsapp}
+        />
       </section>
 
       {/* Contact Us */}

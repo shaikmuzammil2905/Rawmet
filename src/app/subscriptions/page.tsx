@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles, Tag } from "lucide-react";
 import { getCmsMap, getSubscriptionPlans } from "@/lib/data";
+import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 
 export const dynamic = "force-dynamic";
 
@@ -119,17 +120,12 @@ export default function SubscriptionsPage() {
         <h2 className="text-xl font-extrabold text-[#0a2458]">
           Included Business Support Services (*Conditions Apply)
         </h2>
-        <p className="text-sm text-slate-600 mt-1">{contactSettings.conditionsApplyNote}</p>
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {businessSupport.map((b) => (
-            <div key={b.id} className="rounded-2xl bg-[#f8faff] border border-blue-100 p-4">
-              <h3 className="font-bold text-[#0a2458]">{b.title}</h3>
-              <p className="text-xs text-[#1652b8] font-semibold mt-0.5">{b.subtitle}</p>
-              <p className="text-xs text-slate-600 mt-2">{b.description}</p>
-              <p className="text-[11px] font-bold text-[#f97316] mt-2">{b.conditions}</p>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm text-slate-600 mt-1 mb-5">{contactSettings.conditionsApplyNote}</p>
+        <BusinessSupportCards
+          items={businessSupport}
+          mobile={contactSettings.mobile}
+          whatsapp={contactSettings.whatsapp}
+        />
       </section>
     </div>
   );

@@ -33,6 +33,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { Reveal } from "@/components/Reveal";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { ListingCard } from "@/components/ListingCard";
+import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 
 export const dynamic = "force-dynamic";
 
@@ -365,25 +366,37 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {serviceCategories.map((svc, idx) => (
-              <Reveal key={svc.id} delayMs={(idx % 4) * 50}>
+              <Reveal key={svc.id} delayMs={(idx % 4) * 55}>
                 <Link
                   href={`/services/${svc.slug}`}
-                  className="group rounded-2xl border border-slate-200 bg-[#f8faff] hover:bg-white p-5 hover:shadow-lg hover:border-blue-200 transition-all flex flex-col justify-between h-full"
+                  className="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-200 transition-all duration-300 flex flex-col justify-between h-full"
                 >
                   <div>
-                    <div className="h-10 w-10 rounded-xl bg-[#0a2458] text-white flex items-center justify-center mb-3 group-hover:bg-[#f97316] transition-colors">
-                      <Briefcase className="h-5 w-5" />
+                    <div className="relative h-40 w-full bg-slate-100 overflow-hidden">
+                      <img
+                        src={svc.image_url || "/images/cat-services.png"}
+                        alt={svc.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a2458]/60 via-transparent to-transparent" />
+                      <span className="absolute bottom-2.5 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[10.5px] font-extrabold text-[#0a2458] shadow-sm">
+                        <Briefcase className="h-3 w-3 text-[#f97316]" />
+                        Verified Service
+                      </span>
                     </div>
-                    <h3 className="text-base font-bold text-[#0a2458] group-hover:text-[#1652b8]">
-                      {svc.name}
-                    </h3>
-                    <p className="mt-1.5 text-xs text-slate-600 leading-relaxed line-clamp-3">
-                      {svc.description}
-                    </p>
+                    <div className="p-4 sm:p-5">
+                      <h3 className="text-base font-extrabold text-[#0a2458] group-hover:text-[#1652b8] transition-colors">
+                        {svc.name}
+                      </h3>
+                      <p className="mt-1.5 text-xs text-slate-600 leading-relaxed line-clamp-3">
+                        {svc.description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-[#f97316]">
+                  <div className="px-4 sm:px-5 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#f97316]">
                     <span>View &amp; Enquire</span>
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                   </div>
@@ -420,32 +433,13 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {cms.businessSupport.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-2xl bg-white border border-blue-100 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <span className="inline-block rounded-full bg-orange-50 text-[#ea580c] border border-orange-200 px-2.5 py-0.5 text-[11px] font-bold">
-                    {item.badge}
-                  </span>
-                  <h3 className="mt-3 text-lg font-extrabold text-[#0a2458]">{item.title}</h3>
-                  <p className="text-xs font-semibold text-[#1652b8] mt-0.5">{item.subtitle}</p>
-                  <p className="mt-3 text-sm text-slate-600 leading-relaxed">{item.description}</p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-500">{item.conditions}</span>
-                  <a
-                    href={`tel:${cms.contactSettings.mobile.replace(/\s+/g, "")}`}
-                    className="font-bold text-[#0a2458] hover:text-[#f97316]"
-                  >
-                    Call Support
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Reveal>
+            <BusinessSupportCards
+              items={cms.businessSupport}
+              mobile={cms.contactSettings.mobile}
+              whatsapp={cms.contactSettings.whatsapp}
+            />
+          </Reveal>
         </div>
       </section>
 
@@ -464,7 +458,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {plans.map((plan) => {
+          {plans.map((plan, idx) => {
             const isLaunch = plan.bonus_months > 0;
             let features: string[] = [];
             try {
@@ -474,14 +468,14 @@ export default function HomePage() {
             }
 
             return (
-              <div
-                key={plan.id}
-                className={`rounded-2xl p-6 flex flex-col justify-between transition-all ${
-                  isLaunch
-                    ? "bg-gradient-to-b from-[#0a2458] to-[#06183d] text-white border-2 border-[#f97316] shadow-xl relative"
-                    : "bg-white border border-slate-200 shadow-sm hover:shadow-lg"
-                }`}
-              >
+              <Reveal key={plan.id} delayMs={idx * 65}>
+                <div
+                  className={`h-full rounded-2xl p-6 flex flex-col justify-between transition-all ${
+                    isLaunch
+                      ? "bg-gradient-to-b from-[#0a2458] to-[#06183d] text-white border-2 border-[#f97316] shadow-xl relative"
+                      : "bg-white border border-slate-200 shadow-sm hover:shadow-lg"
+                  }`}
+                >
                 <div>
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide ${
@@ -518,18 +512,19 @@ export default function HomePage() {
                   </ul>
                 </div>
 
-                <Link
-                  href={`/checkout?planId=${plan.id}`}
-                  className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 px-4 text-sm font-bold transition-all ${
-                    isLaunch
-                      ? "bg-[#f97316] hover:bg-[#ea580c] text-white shadow"
-                      : "bg-[#0a2458] hover:bg-[#06183d] text-white"
-                  }`}
-                >
-                  <span>Subscribe Now</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
+                  <Link
+                    href={`/checkout?planId=${plan.id}`}
+                    className={`mt-6 w-full inline-flex items-center justify-center gap-2 rounded-full py-2.5 px-4 text-sm font-bold transition-all ${
+                      isLaunch
+                        ? "bg-[#f97316] hover:bg-[#ea580c] text-white shadow"
+                        : "bg-[#0a2458] hover:bg-[#06183d] text-white"
+                    }`}
+                  >
+                    <span>Subscribe Now</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </Reveal>
             );
           })}
         </div>

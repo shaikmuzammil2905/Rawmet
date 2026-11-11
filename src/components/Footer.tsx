@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, MessageCircle, Phone } from "lucide-react";
 
 export function Footer({
   mobile = "+91 7382177653",
@@ -44,13 +44,13 @@ export function Footer({
       {/* Main Footer Grid */}
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8">
         <div className="lg:col-span-2 space-y-4">
-          <div className="inline-block rounded-xl bg-white p-2.5 shadow-sm">
+          <Link href="/" className="inline-block">
             <img
-              src="/images/rawmet-logo.png"
-              alt="RAWMET.com"
-              className="h-10 w-auto object-contain"
+              src="/images/rawmet-logo-footer.png"
+              alt="RAWMET MART - Online Real-time Business Portal"
+              className="h-11 sm:h-12 w-auto object-contain"
             />
-          </div>
+          </Link>
           <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
             <strong className="text-white">RAWMET.com — Online Real-time Business Portal</strong> operated by{" "}
             <strong className="text-white">Sriñidhi Enterprises</strong>. Connecting verified Indian manufacturers,
@@ -145,12 +145,7 @@ export function Footer({
             </li>
             <li><Link href="/vendor/register" className="hover:text-orange-400 transition-colors">Vendor Registration</Link></li>
             <li><Link href="/login" className="hover:text-orange-400 transition-colors">Login</Link></li>
-            <li>
-              <Link href="/admin/login" className="inline-flex items-center gap-1 text-blue-200 hover:text-orange-400 transition-colors">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Admin Login
-              </Link>
-            </li>
+            <li><Link href="/subscriptions" className="hover:text-orange-400 transition-colors">Subscription Plans</Link></li>
           </ul>
           <p className="mt-4 text-xs text-slate-400">
             Email: <a href={`mailto:${email}`} className="text-slate-200 hover:underline">{email}</a>

@@ -52,11 +52,42 @@ body {
     scroll-behavior: auto;
   }
   .reveal-base,
-  .reveal-slide-left {
+  .reveal-slide-left,
+  .animate-fadeIn,
+  .animate-popIn {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;
+    animation: none !important;
   }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+.animate-popIn {
+  animation: popIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Diagonal orange accent matching reference card bottom-right ribbon */

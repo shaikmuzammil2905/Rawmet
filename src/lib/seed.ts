@@ -8,6 +8,7 @@ export function ensureSeeded(): void {
 
   const existingAdmin = db.prepare(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`).get();
   if (existingAdmin) {
+    syncUpdatedMedia(db);
     globalThis.__rawmetSeeded = true;
     return;
   }
@@ -135,14 +136,14 @@ export function ensureSeeded(): void {
     const cMachVehicle = insertCat.run("machinery", "Vehicle – Fabrication – Bodybuilders", "vehicle-fabrication", "Tipper bodies, tanker fabrication, insulated containers, trailers, and hydraulic tail-lifts.", "/images/cat-machineries.png", 5);
 
     // Services (8)
-    insertCat.run("service", "Manpower Services", "manpower-services", "Skilled plant operators, certified welders, safety officers, and factory floor workforce.", "/images/cat-services.png", 1);
-    insertCat.run("service", "AMC", "amc", "Annual Maintenance Contracts for boilers, compressors, HVAC, molding lines, and utilities.", "/images/cat-services.png", 2);
-    insertCat.run("service", "Maintenance Services", "maintenance-services", "Preventive & breakdown industrial maintenance, alignment, calibration, and shutdown support.", "/images/cat-services.png", 3);
-    insertCat.run("service", "Mechanical Services", "mechanical-services", "Heavy structural erection, pipeline fabrication, lathe machining, and gearbox overhauls.", "/images/cat-services.png", 4);
-    insertCat.run("service", "Logistics Services", "logistics-services", "FTL/PTL industrial freight, ODC heavy machinery transport, and container movement Pan-India.", "/images/cat-services.png", 5);
-    insertCat.run("service", "Loans Services", "loans-services", "MSME working capital, machinery term loans, bill discounting, and project finance advisory.", "/images/cat-services.png", 6);
-    insertCat.run("service", "Business Registrations", "business-registrations", "GST registration, Udyam MSME, Factory License, Pollution Board NOC, and ISO certifications.", "/images/cat-services.png", 7);
-    insertCat.run("service", "Website / App Services", "website-app-services", "Custom B2B industrial portals, ERP integrations, inventory mobile apps, and digital branding.", "/images/cat-services.png", 8);
+    insertCat.run("service", "Manpower Services", "manpower-services", "Skilled plant operators, certified welders, safety officers, and factory floor workforce.", "/images/service-manpower.png", 1);
+    insertCat.run("service", "AMC", "amc", "Annual Maintenance Contracts for boilers, compressors, HVAC, molding lines, and utilities.", "/images/service-amc.png", 2);
+    insertCat.run("service", "Maintenance Services", "maintenance-services", "Preventive & breakdown industrial maintenance, alignment, calibration, and shutdown support.", "/images/service-maintenance.png", 3);
+    insertCat.run("service", "Mechanical Services", "mechanical-services", "Heavy structural erection, pipeline fabrication, lathe machining, and gearbox overhauls.", "/images/service-mechanical.png", 4);
+    insertCat.run("service", "Logistics Services", "logistics-services", "FTL/PTL industrial freight, ODC heavy machinery transport, and container movement Pan-India.", "/images/service-logistics.png", 5);
+    insertCat.run("service", "Loans Services", "loans-services", "MSME working capital, machinery term loans, bill discounting, and project finance advisory.", "/images/service-loans.png", 6);
+    insertCat.run("service", "Business Registrations", "business-registrations", "GST registration, Udyam MSME, Factory License, Pollution Board NOC, and ISO certifications.", "/images/service-registrations.svg", 7);
+    insertCat.run("service", "Website / App Services", "website-app-services", "Custom B2B industrial portals, ERP integrations, inventory mobile apps, and digital branding.", "/images/service-webapp.svg", 8);
 
     // 4. Seed Subcategories
     const insertSub = db.prepare(`INSERT INTO subcategories (category_id, name, slug, description) VALUES (?, ?, ?, ?)`);
@@ -278,7 +279,7 @@ export function ensureSeeded(): void {
       "High-precision proportional hydraulic system with nitrided bi-metallic screw & barrel, European linear transducers, and 10-inch touchscreen PLC controller with 200-mold recipe memory.",
       JSON.stringify({ "Clamping Force": "250 Tons", "Shot Weight": "620 Grams (PS)", "Tie Bar Space": "560 x 560 mm", "Power Saving": "45%–55% Servo Motor", "Controller": "KEBA / Techmation PLC" }),
       "Ahmedabad, Gujarat", "₹22,75,000 + GST", "Ready for Inspection",
-      "/images/cat-machineries.png", JSON.stringify(["/images/cat-machineries.png", "/images/plastic-granules.png"]), 1, 310
+      "/images/machinery-injection-250t.png", JSON.stringify(["/images/machinery-injection-250t.png", "/images/plastic-granules.png", "/images/cat-machineries.png"]), 1, 310
     );
 
     insertListing.run(
@@ -316,21 +317,21 @@ export function ensureSeeded(): void {
 
     // Services (All 8!)
     const servicesSeed = [
-      ["manpower-services", "Industrial Skilled Manpower & Plant Staffing Services", "industrial-skilled-manpower-services", "Certified plant operators, TIG/MIG welders, electricians, fitters, and HSE safety officers deployed Pan-India.", "Complete statutory compliance (PF, ESIC, Labor License) with verified trade-tested industrial technicians for factories, refineries, and fabrication yards.", { "Deployment Time": "7 – 14 Days", "Compliance": "100% PF, ESIC & Safety PPE", "Categories": "Operators, Welders, Engineers, Helpers", "Coverage": "All Industrial Clusters in India" }, "Custom Contract", 1],
-      ["amc", "Comprehensive Industrial Plant & Utility AMC Services", "comprehensive-plant-amc-services", "Scheduled preventive & predictive Annual Maintenance Contracts for boilers, chillers, compressors, and molding lines.", "Zero-downtime industrial AMC packages including vibration analysis, thermography, OEM spare management, and 24/7 emergency breakdown callout SLAs.", { "Response SLA": "4 – 12 Hours On-Site", "Coverage": "Mechanical, Electrical & PLC", "Reporting": "Monthly Reliability Audit", "Contract Tenure": "1 – 5 Years" }, "From ₹1,20,000 / Year", 1],
-      ["maintenance-services", "Shutdown & Breakdown Industrial Maintenance Services", "shutdown-breakdown-maintenance-services", "Rapid plant turnaround, boiler descaling, hydraulic cylinder reconditioning, and alignment services.", "Experienced millwright teams equipped with laser shaft alignment, torque wrenching, and NDT inspection tools to cut unplanned plant stoppages.", { "Availability": "24/7 Emergency Mobilization", "Specialties": "Hydraulics, Pneumatics, Boilers", "Team Size": "4 to 40 Technicians", "Safety": "ISO 45001 Permit-to-Work" }, "Project / Per-Visit", 0],
-      ["mechanical-services", "Heavy Mechanical Fabrication, Piping & Erection", "heavy-mechanical-fabrication-piping", "IBR/Non-IBR process piping, structural steel sheds, storage tanks, and heavy machine erection.", "End-to-end mechanical execution from isometric drafting to hydro-testing and commissioning for chemical, polymer, and metal plants.", { "Standards": "ASME B31.3 / IBR / AWS D1.1", "Testing": "X-Ray, DP, Ultrasonic, Hydro", "Tonnage Capacity": "Up to 500 MT/Month", "Location": "On-Site & Workshop" }, "Request BoQ Quote", 1],
-      ["logistics-services", "Industrial Bulk Freight, Tanker & ODC Logistics", "industrial-bulk-odc-logistics", "GPS-tracked FTL trailers, chemical tankers, and ODC hydraulic axles for heavy machinery & raw materials.", "Pan-India industrial transport connecting MIDC, GIDC, Jeedimetla, Peenya, and port terminals with transit insurance support.", { "Fleet Types": "32ft MXL, Flatbeds, SS Tankers, ODC", "Tracking": "Live GPS + E-Way Bill Support", "Routes": "All India Industrial Corridors", "Dispatch": "Same-Day Vehicle Placement" }, "Per-Trip / Contract", 0],
-      ["loans-services", "MSME Machinery Loans, Working Capital & Project Finance", "msme-machinery-loans-project-finance", "Facilitating term loans, CGTMSE collateral-free MSME credit, CC/OD limits, and invoice discounting.", "Dedicated industrial finance advisory connecting verified factories with leading PSU/private banks and NBFCs for rapid capex & working capital approvals.", { "Ticket Size": "₹10 Lakhs – ₹25 Crores", "Schemes": "CGTMSE, PMEGP, Machinery Term Loan", "Processing": "7 – 15 Working Days", "Conditions": "Conditions Apply • Check Customer Care" }, "Advisory / Zero Upfront", 0],
-      ["business-registrations", "Industrial Business Registrations, GST & Factory Licensing", "business-registrations-gst-licensing", "Complete compliance setup: GST, Udyam MSME, Factory Plan Approval, PCB Consent, IEC, and ISO.", "One-stop regulatory desk for new plants and growing suppliers covering state & central industrial statutory registrations.", { "Turnaround": "3 – 21 Working Days", "Scope": "GST, MSME, PCB CFE/CFO, ISO, Trademark", "Support": "Dedicated Compliance Officer", "Conditions": "Conditions Apply" }, "Package Pricing", 0],
-      ["website-app-services", "Industrial B2B Website, Catalog & Mobile App Development", "industrial-website-app-services", "Custom high-converting industrial websites, dealer portals, and inventory apps built for manufacturers.", "Modern responsive web & mobile engineering tailored for raw material suppliers and machinery OEMs with WhatsApp lead integration.", { "Deliverables": "Custom Web + Admin CMS + SEO", "Timeline": "2 – 4 Weeks", "Integrations": "WhatsApp, ERP, Payment Gateway", "Support": "1 Year Managed Hosting Option" }, "From ₹24,999", 0]
+      ["manpower-services", "Industrial Skilled Manpower & Plant Staffing Services", "industrial-skilled-manpower-services", "Certified plant operators, TIG/MIG welders, electricians, fitters, and HSE safety officers deployed Pan-India.", "Complete statutory compliance (PF, ESIC, Labor License) with verified trade-tested industrial technicians for factories, refineries, and fabrication yards.", { "Deployment Time": "7 – 14 Days", "Compliance": "100% PF, ESIC & Safety PPE", "Categories": "Operators, Welders, Engineers, Helpers", "Coverage": "All Industrial Clusters in India" }, "Custom Contract", 1, "/images/service-manpower.png"],
+      ["amc", "Comprehensive Industrial Plant & Utility AMC Services", "comprehensive-plant-amc-services", "Scheduled preventive & predictive Annual Maintenance Contracts for boilers, chillers, compressors, and molding lines.", "Zero-downtime industrial AMC packages including vibration analysis, thermography, OEM spare management, and 24/7 emergency breakdown callout SLAs.", { "Response SLA": "4 – 12 Hours On-Site", "Coverage": "Mechanical, Electrical & PLC", "Reporting": "Monthly Reliability Audit", "Contract Tenure": "1 – 5 Years" }, "From ₹1,20,000 / Year", 1, "/images/service-amc.png"],
+      ["maintenance-services", "Shutdown & Breakdown Industrial Maintenance Services", "shutdown-breakdown-maintenance-services", "Rapid plant turnaround, boiler descaling, hydraulic cylinder reconditioning, and alignment services.", "Experienced millwright teams equipped with laser shaft alignment, torque wrenching, and NDT inspection tools to cut unplanned plant stoppages.", { "Availability": "24/7 Emergency Mobilization", "Specialties": "Hydraulics, Pneumatics, Boilers", "Team Size": "4 to 40 Technicians", "Safety": "ISO 45001 Permit-to-Work" }, "Project / Per-Visit", 0, "/images/service-maintenance.png"],
+      ["mechanical-services", "Heavy Mechanical Fabrication, Piping & Erection", "heavy-mechanical-fabrication-piping", "IBR/Non-IBR process piping, structural steel sheds, storage tanks, and heavy machine erection.", "End-to-end mechanical execution from isometric drafting to hydro-testing and commissioning for chemical, polymer, and metal plants.", { "Standards": "ASME B31.3 / IBR / AWS D1.1", "Testing": "X-Ray, DP, Ultrasonic, Hydro", "Tonnage Capacity": "Up to 500 MT/Month", "Location": "On-Site & Workshop" }, "Request BoQ Quote", 1, "/images/service-mechanical.png"],
+      ["logistics-services", "Industrial Bulk Freight, Tanker & ODC Logistics", "industrial-bulk-odc-logistics", "GPS-tracked FTL trailers, chemical tankers, and ODC hydraulic axles for heavy machinery & raw materials.", "Pan-India industrial transport connecting MIDC, GIDC, Jeedimetla, Peenya, and port terminals with transit insurance support.", { "Fleet Types": "32ft MXL, Flatbeds, SS Tankers, ODC", "Tracking": "Live GPS + E-Way Bill Support", "Routes": "All India Industrial Corridors", "Dispatch": "Same-Day Vehicle Placement" }, "Per-Trip / Contract", 0, "/images/service-logistics.png"],
+      ["loans-services", "MSME Machinery Loans, Working Capital & Project Finance", "msme-machinery-loans-project-finance", "Facilitating term loans, CGTMSE collateral-free MSME credit, CC/OD limits, and invoice discounting.", "Dedicated industrial finance advisory connecting verified factories with leading PSU/private banks and NBFCs for rapid capex & working capital approvals.", { "Ticket Size": "₹10 Lakhs – ₹25 Crores", "Schemes": "CGTMSE, PMEGP, Machinery Term Loan", "Processing": "7 – 15 Working Days", "Conditions": "Conditions Apply • Check Customer Care" }, "Advisory / Zero Upfront", 0, "/images/service-loans.png"],
+      ["business-registrations", "Industrial Business Registrations, GST & Factory Licensing", "business-registrations-gst-licensing", "Complete compliance setup: GST, Udyam MSME, Factory Plan Approval, PCB Consent, IEC, and ISO.", "One-stop regulatory desk for new plants and growing suppliers covering state & central industrial statutory registrations.", { "Turnaround": "3 – 21 Working Days", "Scope": "GST, MSME, PCB CFE/CFO, ISO, Trademark", "Support": "Dedicated Compliance Officer", "Conditions": "Conditions Apply" }, "Package Pricing", 0, "/images/service-registrations.svg"],
+      ["website-app-services", "Industrial B2B Website, Catalog & Mobile App Development", "industrial-website-app-services", "Custom high-converting industrial websites, dealer portals, and inventory apps built for manufacturers.", "Modern responsive web & mobile engineering tailored for raw material suppliers and machinery OEMs with WhatsApp lead integration.", { "Deliverables": "Custom Web + Admin CMS + SEO", "Timeline": "2 – 4 Weeks", "Integrations": "WhatsApp, ERP, Payment Gateway", "Support": "1 Year Managed Hosting Option" }, "From ₹24,999", 0, "/images/service-webapp.svg"]
     ] as const;
 
     for (const s of servicesSeed) {
       insertListing.run(
         v4.lastInsertRowid, "service", s[0], "", s[1], s[2], s[3], s[4],
         JSON.stringify(s[5]), "Pan India (HQ: Hyderabad)", s[6], "Available Immediately",
-        "/images/cat-services.png", JSON.stringify(["/images/cat-services.png"]), s[7], 130
+        s[8], JSON.stringify([s[8]]), s[7], 130
       );
     }
 
@@ -577,6 +578,46 @@ export function ensureSeeded(): void {
   } catch (err) {
     db.exec("ROLLBACK");
     throw err;
+  }
+}
+
+function syncUpdatedMedia(db: ReturnType<typeof getDb>): void {
+  const listingUpdates: Array<[string, string, string[]]> = [
+    ["heavy-mechanical-fabrication-piping", "/images/service-mechanical.png", ["/images/service-mechanical.png"]],
+    ["comprehensive-plant-amc-services", "/images/service-amc.png", ["/images/service-amc.png"]],
+    ["industrial-skilled-manpower-services", "/images/service-manpower.png", ["/images/service-manpower.png"]],
+    ["shutdown-breakdown-maintenance-services", "/images/service-maintenance.png", ["/images/service-maintenance.png"]],
+    ["industrial-bulk-odc-logistics", "/images/service-logistics.png", ["/images/service-logistics.png"]],
+    ["msme-machinery-loans-project-finance", "/images/service-loans.png", ["/images/service-loans.png"]],
+    ["business-registrations-gst-licensing", "/images/service-registrations.svg", ["/images/service-registrations.svg"]],
+    ["industrial-website-app-services", "/images/service-webapp.svg", ["/images/service-webapp.svg"]],
+    [
+      "250t-servo-plastic-injection-molding",
+      "/images/machinery-injection-250t.png",
+      ["/images/machinery-injection-250t.png", "/images/plastic-granules.png", "/images/cat-machineries.png"],
+    ],
+  ];
+
+  const stmtListing = db.prepare(`UPDATE listings SET image_url = ?, gallery_urls = ? WHERE slug = ?`);
+  for (const [slug, img, gallery] of listingUpdates) {
+    stmtListing.run(img, JSON.stringify(gallery), slug);
+  }
+
+  const catUpdates: Array<[string, string]> = [
+    ["manpower-services", "/images/service-manpower.png"],
+    ["amc", "/images/service-amc.png"],
+    ["maintenance-services", "/images/service-maintenance.png"],
+    ["mechanical-services", "/images/service-mechanical.png"],
+    ["logistics-services", "/images/service-logistics.png"],
+    ["loans-services", "/images/service-loans.png"],
+    ["business-registrations", "/images/service-registrations.svg"],
+    ["website-app-services", "/images/service-webapp.svg"],
+    ["plastic-machineries", "/images/machinery-injection-250t.png"],
+  ];
+
+  const stmtCat = db.prepare(`UPDATE categories SET image_url = ? WHERE slug = ?`);
+  for (const [slug, img] of catUpdates) {
+    stmtCat.run(img, slug);
   }
 }
 
