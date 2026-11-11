@@ -36,4 +36,5 @@ Multi-vendor B2B industrial business marketplace and real-time trade portal oper
    npm start
    ```
 
-> Database: Uses Node.js built-in SQLite (`node:sqlite` on Node 22.5+ / Node 24) persisted at `data/rawmet.db` and automatically seeded on first launch.
+> Database: Uses `node-sqlite3-wasm` (WebAssembly SQLite, compatible with Node 20/22/24 and Vercel Serverless) persisted at `data/rawmet.db` locally or `/tmp/rawmet-data/rawmet.db` in serverless environments, and automatically seeded on first launch.
+

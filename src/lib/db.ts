@@ -1,20 +1,105 @@
-import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { Database } from "node-sqlite3-wasm";
+
+type SqlValue = string | number | bigint | Uint8Array | null;
+
+export interface PreparedStatement {
+  run: (...params: unknown[]) => { changes: number; lastInsertRowid: number | bigint };
+  get: (...params: unknown[]) => Record<string, unknown> | undefined;
+  all: (...params: unknown[]) => Record<string, unknown>[];
+}
+
+export interface DbClient {
+  exec: (sql: string) => void;
+  prepare: (sql: string) => PreparedStatement;
+}
 
 declare global {
   // eslint-disable-next-line no-var
-  var __rawmetDb: DatabaseSync | undefined;
+  var __rawmetDb: DbClient | undefined;
   // eslint-disable-next-line no-var
   var __rawmetSeeded: boolean | undefined;
 }
 
-const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "rawmet.db");
+function normalizeParams(params: unknown[]): SqlValue[] {
+  return params.map((p) => {
+    if (p === undefined || p === null) return null;
+    if (typeof p === "boolean") return p ? 1 : 0;
+    if (typeof p === "string" || typeof p === "number" || typeof p === "bigint" || p instanceof Uint8Array) {
+      return p;
+    }
+    return String(p);
+  });
+}
 
-function initializeSchema(db: DatabaseSync): void {
+function wrapWasmDb(rawDb: Database): DbClient {
+  return {
+    exec(sql: string) {
+      rawDb.exec(sql);
+    },
+    prepare(sql: string): PreparedStatement {
+      return {
+        run(...params: unknown[]) {
+          const stmt = rawDb.prepare(sql);
+          try {
+            const bound = normalizeParams(params);
+            const res = bound.length > 0 ? stmt.run(bound) : stmt.run();
+            return {
+              changes: Number(res.changes ?? 0),
+              lastInsertRowid: Number(res.lastInsertRowid ?? 0),
+            };
+          } finally {
+            stmt.finalize();
+          }
+        },
+        get(...params: unknown[]) {
+          const stmt = rawDb.prepare(sql);
+          try {
+            const bound = normalizeParams(params);
+            const row = bound.length > 0 ? stmt.get(bound) : stmt.get();
+            return row ? { ...(row as Record<string, unknown>) } : undefined;
+          } finally {
+            stmt.finalize();
+          }
+        },
+        all(...params: unknown[]) {
+          const stmt = rawDb.prepare(sql);
+          try {
+            const bound = normalizeParams(params);
+            const rows = bound.length > 0 ? stmt.all(bound) : stmt.all();
+            return rows.map((r) => ({ ...(r as Record<string, unknown>) }));
+          } finally {
+            stmt.finalize();
+          }
+        },
+      };
+    },
+  };
+}
+
+function resolveWritableDbPath(): string {
+  const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const candidateDir = isReadOnlyEnv ? path.join(os.tmpdir(), "rawmet-data") : path.join(process.cwd(), "data");
+  try {
+    if (!fs.existsSync(candidateDir)) {
+      fs.mkdirSync(candidateDir, { recursive: true });
+    }
+    const dbFile = path.join(candidateDir, "rawmet.db");
+    // Clean stale lock folder if a previous serverless invocation exited unexpectedly
+    const lockDir = `${dbFile}.lock`;
+    if (isReadOnlyEnv && fs.existsSync(lockDir)) {
+      fs.rmSync(lockDir, { recursive: true, force: true });
+    }
+    return dbFile;
+  } catch {
+    return ":memory:";
+  }
+}
+
+function initializeSchema(db: DbClient): void {
   db.exec(`
-    PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS users (
@@ -226,15 +311,18 @@ function initializeSchema(db: DatabaseSync): void {
   `);
 }
 
-export function getDb(): DatabaseSync {
+export function getDb(): DbClient {
   if (!globalThis.__rawmetDb) {
-    if (!fs.existsSync(DB_DIR)) {
-      fs.mkdirSync(DB_DIR, { recursive: true });
+    const dbPath = resolveWritableDbPath();
+    let rawDb: Database;
+    try {
+      rawDb = new Database(dbPath);
+    } catch {
+      rawDb = new Database(":memory:");
     }
-    const db = new DatabaseSync(DB_PATH);
-    initializeSchema(db);
-    globalThis.__rawmetDb = db;
+    const client = wrapWasmDb(rawDb);
+    initializeSchema(client);
+    globalThis.__rawmetDb = client;
   }
   return globalThis.__rawmetDb;
 }
-
