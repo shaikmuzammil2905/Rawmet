@@ -123,10 +123,10 @@ export function ensureSeeded(): void {
     `);
 
     // Products (4)
-    const cProdRubber = insertCat.run("product", "Rubber", "rubber", "Natural, synthetic, EPDM, silicone sheets, conveyor rolls, and industrial rubber compounds.", "/images/cat-products.png", 1);
-    const cProdPlastic = insertCat.run("product", "Plastic", "plastic", "Virgin & recycled HDPE, PP, LDPE, PVC polymer granules, resins, and masterbatches.", "/images/plastic-granules.png", 2);
-    const cProdMetals = insertCat.run("product", "Metals", "metals", "Stainless steel pipes, HR/CR coils, structural steel, aluminum billets, and non-ferrous alloys.", "/images/metal-pipes.png", 3);
-    const cProdBpc = insertCat.run("product", "Bio Petro Chemical", "bio-petro-chemical", "Industrial solvents, bio-fuels, base oils, petrochemicals, bitumen, and specialty chemicals.", "/images/refinery-plant.png", 4);
+    const cProdRubber = insertCat.run("product", "Rubber", "rubber", "Natural, synthetic, EPDM, silicone sheets, conveyor rolls, and industrial rubber compounds.", "/images/cat-thumb-rubber.png", 1);
+    const cProdPlastic = insertCat.run("product", "Plastic", "plastic", "Virgin & recycled HDPE, PP, LDPE, PVC polymer granules, resins, and masterbatches.", "/images/cat-thumb-plastic.png", 2);
+    const cProdMetals = insertCat.run("product", "Metals", "metals", "Stainless steel pipes, HR/CR coils, structural steel, aluminum billets, and non-ferrous alloys.", "/images/cat-thumb-metals.png", 3);
+    const cProdBpc = insertCat.run("product", "Bio Petro Chemical", "bio-petro-chemical", "Industrial solvents, bio-fuels, base oils, petrochemicals, bitumen, and specialty chemicals.", "/images/cat-thumb-bpc.png", 4);
 
     // Machineries (5)
     const cMachRubber = insertCat.run("machinery", "Rubber Machineries", "rubber-machineries", "Kneaders, two-roll mixing mills, hydraulic vulcanizing presses, and tire retreading lines.", "/images/cat-machineries.png", 1);
@@ -604,6 +604,10 @@ function syncUpdatedMedia(db: ReturnType<typeof getDb>): void {
   }
 
   const catUpdates: Array<[string, string]> = [
+    ["rubber", "/images/cat-thumb-rubber.png"],
+    ["plastic", "/images/cat-thumb-plastic.png"],
+    ["metals", "/images/cat-thumb-metals.png"],
+    ["bio-petro-chemical", "/images/cat-thumb-bpc.png"],
     ["manpower-services", "/images/service-manpower.png"],
     ["amc", "/images/service-amc.png"],
     ["maintenance-services", "/images/service-maintenance.png"],

@@ -336,7 +336,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {displayListings.map((listing, idx) => (
             <Reveal key={listing.id} delayMs={(idx % 3) * 70}>
               <ListingCard listing={listing} />

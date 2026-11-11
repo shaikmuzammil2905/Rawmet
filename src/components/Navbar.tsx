@@ -11,7 +11,7 @@ import {
   LogOut,
   Menu,
   Phone,
-  ShoppingCart,
+  ShoppingBag,
   Store,
   Tag,
   User,
@@ -372,8 +372,8 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 : "text-blue-100/80"
             }`}
           >
-            <ShoppingCart className="h-5 w-5" />
-            <span>Buy</span>
+            <ShoppingBag className="h-5 w-5" />
+            <span>Shop</span>
             {(pathname.startsWith("/products") || pathname.startsWith("/machineries")) && (
               <span className="absolute bottom-0 left-3 right-3 h-1 rounded-t bg-[#f97316]" />
             )}
