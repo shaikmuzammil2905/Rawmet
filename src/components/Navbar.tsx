@@ -145,17 +145,14 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             {/* Brand Logo */}
             <Link
               href="/"
-              className="flex flex-col items-start shrink-0 py-1 pr-2 group focus:outline-none"
+              className="flex items-center shrink-0 py-1 pr-2 group focus:outline-none"
               aria-label="RAWMET MART Home"
             >
               <img
                 src="/images/rawmet-logo.png"
                 alt="RAWMET MART - Online Real-time Business Portal"
-                className="h-9 sm:h-11 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
+                className="h-10 sm:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
-              <span className="text-[10.5px] sm:text-[11.5px] font-bold tracking-wide text-[#0a2458] pl-10 sm:pl-12 mt-0.5">
-                Mob: {mobileNumber.replace(/^\+91\s*/, "")}
-              </span>
             </Link>
 
             {/* Desktop Center Nav */}
