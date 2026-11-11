@@ -90,6 +90,14 @@ body {
   animation: popIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Diagonal orange accent matching reference card bottom-right ribbon */
 .card-orange-accent {
   background: linear-gradient(135deg, #ffffff 0%, #eff5ff 68%, #dbeafe 100%);

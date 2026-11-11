@@ -367,14 +367,18 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
           <Link
             href="/products"
             className={`relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold border-l border-white/15 ${
-              pathname.startsWith("/products") || pathname.startsWith("/machineries")
+              pathname.startsWith("/products") ||
+              pathname.startsWith("/machineries") ||
+              pathname.startsWith("/services")
                 ? "text-white"
                 : "text-blue-100/80"
             }`}
           >
             <ShoppingBag className="h-5 w-5" />
             <span>Shop</span>
-            {(pathname.startsWith("/products") || pathname.startsWith("/machineries")) && (
+            {(pathname.startsWith("/products") ||
+              pathname.startsWith("/machineries") ||
+              pathname.startsWith("/services")) && (
               <span className="absolute bottom-0 left-3 right-3 h-1 rounded-t bg-[#f97316]" />
             )}
           </Link>

@@ -3,7 +3,16 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronRight,
+  Cog,
+  Handshake,
+  Package,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { CategoryRecord, ListingRecord, SubcategoryRecord } from "@/lib/types";
 import { ListingCard } from "./ListingCard";
 
@@ -18,6 +27,12 @@ interface CatalogBrowserProps {
   initialTotal: number;
   basePath: string;
 }
+
+const SHOP_SECTIONS = [
+  { key: "product" as const, label: "Products", href: "/products", icon: Package },
+  { key: "machinery" as const, label: "Machinery", href: "/machineries", icon: Cog },
+  { key: "service" as const, label: "Services", href: "/services", icon: Handshake },
+];
 
 export function CatalogBrowser({
   type,
@@ -104,75 +119,103 @@ export function CatalogBrowser({
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-      {/* 1. Top Clean Search Bar (No giant hero banner!) */}
+    <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
+      {/* 1. Top Clean Search Bar */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           fetchFiltered(category, subcategory, q, sort, 0, false);
         }}
-        className="flex items-center rounded-2xl bg-white border border-slate-200 p-1.5 shadow-sm focus-within:border-[#1652b8] focus-within:shadow-md transition-all"
+        className="flex items-center rounded-full bg-white border border-slate-200 p-1.5 shadow-sm focus-within:border-[#1652b8] focus-within:shadow-md transition-all"
       >
         <Search className="h-5 w-5 text-slate-400 ml-3 shrink-0" />
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={`Search ${type === "product" ? "rubber, plastic, metals, bio petro chemicals" : type === "machinery" ? "machineries & industrial plants" : "industrial services"}...`}
+          placeholder="Search for products, machinery or services..."
           aria-label="Search catalog"
-          className="w-full min-w-0 bg-transparent px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+          className="w-full min-w-0 bg-transparent px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
         />
         <button
           type="submit"
-          className="rounded-xl bg-[#0a2458] hover:bg-[#f97316] text-white px-4 sm:px-6 py-2 text-xs sm:text-sm font-bold transition-colors shrink-0"
+          className="rounded-full bg-[#0a2458] hover:bg-[#f97316] text-white px-5 sm:px-7 py-2 text-xs sm:text-sm font-bold transition-colors shrink-0"
         >
           Search
         </button>
       </form>
 
-      {/* 2. Visual Square-Card Category Grid (Reference: image copy 16.png) */}
+      {/* 2. Below Search Box: Products | Machinery | Services Switcher Pill Bar (Reference: image copy 21.png) */}
+      <nav
+        aria-label="Shop sections"
+        className="rounded-full bg-white border border-slate-200 p-1 shadow-xs grid grid-cols-3 items-center max-w-2xl mx-auto"
+      >
+        {SHOP_SECTIONS.map((sec, idx) => {
+          const Icon = sec.icon;
+          const isActive = type === sec.key;
+          return (
+            <Link
+              key={sec.key}
+              href={sec.href}
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-full py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-extrabold transition-all ${
+                isActive
+                  ? "bg-[#0a2458] text-white shadow-sm"
+                  : `text-[#0a2458] hover:bg-blue-50/70 ${idx > 0 ? "border-l border-slate-100" : ""}`
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span>{sec.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* 3. Visual Category Cards Row (Reference: image copy 21.png) */}
       <section aria-label="Categories">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="h-5 w-1 rounded-full bg-[#f97316]" />
-            <h1 className="text-lg sm:text-2xl font-extrabold text-[#0a2458]">{title}</h1>
+            <h1 className="text-base sm:text-2xl font-extrabold text-[#0a2458]">
+              {activeCategoryObj ? activeCategoryObj.name : title}
+            </h1>
           </div>
           <Link
-            href="/requirements#post"
-            className="text-xs font-bold text-[#f97316] hover:underline shrink-0"
+            href={basePath}
+            className="inline-flex items-center gap-0.5 text-xs font-bold text-[#f97316] hover:underline shrink-0"
           >
-            + Post Requirement
+            <span>+ View All</span>
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2.5 sm:gap-4">
+        <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 sm:grid sm:grid-cols-5 lg:grid-cols-6 sm:gap-4 sm:overflow-visible">
           {categories.map((cat) => {
             const isSelected = category === cat.slug;
             return (
               <Link
                 key={cat.id}
                 href={`${basePath}/${cat.slug}`}
-                className={`group rounded-2xl bg-white p-2.5 sm:p-3.5 border transition-all flex flex-col items-center text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+                className={`group shrink-0 w-[88px] sm:w-auto rounded-2xl bg-white p-2 sm:p-3.5 border transition-all flex flex-col items-center text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
                   isSelected
                     ? "border-[#f97316] ring-2 ring-[#f97316]/25 bg-orange-50/30"
                     : "border-slate-100 hover:border-blue-200"
                 }`}
               >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs mb-2">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs mb-1.5 sm:mb-2">
                   <img
                     src={cat.image_url || "/images/cat-products.png"}
                     alt={cat.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-                <span className="text-[10.5px] sm:text-xs font-extrabold uppercase tracking-tight text-[#0a2458] group-hover:text-[#1652b8] line-clamp-2 leading-tight">
+                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-tight text-[#0a2458] group-hover:text-[#1652b8] line-clamp-2 leading-tight">
                   {cat.name}
                 </span>
               </Link>
             );
           })}
 
-          {/* MORE / ALL Card matching reference */}
+          {/* MORE / ALL Card */}
           <Link
             href={basePath}
             onClick={(e) => {
@@ -181,23 +224,23 @@ export function CatalogBrowser({
                 handleReset();
               }
             }}
-            className={`group rounded-2xl p-2.5 sm:p-3.5 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
+            className={`group shrink-0 w-[88px] sm:w-auto rounded-2xl p-2 sm:p-3.5 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
               !category
                 ? "bg-[#eef4ff] border-[#1652b8]/30"
                 : "bg-slate-50 border-slate-200 hover:bg-[#eef4ff]"
             }`}
           >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#0a2458] group-hover:bg-[#f97316] text-white flex items-center justify-center shadow-sm mb-2 transition-colors">
-              <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-0.5" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#0a2458] group-hover:bg-[#f97316] text-white flex items-center justify-center shadow-sm mb-1.5 sm:mb-2 transition-colors">
+              <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:translate-x-0.5" />
             </div>
-            <span className="text-[10.5px] sm:text-xs font-extrabold uppercase tracking-wide text-[#0a2458]">
+            <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wide text-[#0a2458]">
               More
             </span>
           </Link>
         </div>
       </section>
 
-      {/* 3. Dropdown Filter Bar (No City/State field!) */}
+      {/* 4. Dropdown Filter Bar */}
       <div className="rounded-2xl bg-white border border-slate-200 p-3 sm:p-4 shadow-xs grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center">
         <div className="col-span-2 sm:col-span-4">
           <select
@@ -271,9 +314,12 @@ export function CatalogBrowser({
           <SlidersHorizontal className="h-4 w-4 text-[#1652b8]" />
           Showing <strong>{items.length}</strong> of <strong>{total}</strong> verified listings
         </p>
+        <Link href="/requirements#post" className="text-xs font-bold text-[#f97316] hover:underline">
+          + Post Custom Requirement
+        </Link>
       </div>
 
-      {/* 4. Responsive 2-Column Mobile / Multi-Column Desktop Listings Grid */}
+      {/* 5. Responsive 2-Column Mobile / Multi-Column Desktop Listings Grid */}
       {loading && items.length === 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
           {[1, 2, 3, 4].map((n) => (
