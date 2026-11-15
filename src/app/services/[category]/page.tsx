@@ -11,7 +11,10 @@ export async function generateMetadata({
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
   const { category } = await params;
-  const cat = getCategories("service").find((c) => c.slug === category);
+  const categories = getCategories("service");
+  const cat =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "amc" && c.slug === "amc-services");
   return {
     title: cat ? cat.name : "Services",
     description: cat?.description || "Industrial services on RAWMET.com",
@@ -25,11 +28,13 @@ export default async function ServiceCategoryPage({
 }) {
   const { category } = await params;
   const categories = getCategories("service");
-  const active = categories.find((c) => c.slug === category);
+  const active =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "amc" && c.slug === "amc-services");
   if (!active) notFound();
 
   const subcategories = getSubcategories();
-  const { items, total } = queryListings({ type: "service", category, limit: 12 });
+  const { items, total } = queryListings({ type: "service", category: active.slug, limit: 12 });
 
   return (
     <CatalogBrowser
@@ -38,7 +43,7 @@ export default async function ServiceCategoryPage({
       subtitle={active.description}
       categories={categories}
       subcategories={subcategories}
-      initialCategory={category}
+      initialCategory={active.slug}
       initialItems={items}
       initialTotal={total}
       basePath="/services"

@@ -11,7 +11,10 @@ export async function generateMetadata({
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
   const { category } = await params;
-  const cat = getCategories("product").find((c) => c.slug === category);
+  const categories = getCategories("product");
+  const cat =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "bio-petro-chemical" && c.slug === "bio");
   return {
     title: cat ? `${cat.name} Industrial Products` : "Products",
     description: cat?.description || "Industrial raw materials marketplace on RAWMET.com",
@@ -25,11 +28,13 @@ export default async function ProductCategoryPage({
 }) {
   const { category } = await params;
   const categories = getCategories("product");
-  const active = categories.find((c) => c.slug === category);
+  const active =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "bio-petro-chemical" && c.slug === "bio");
   if (!active) notFound();
 
   const subcategories = getSubcategories();
-  const { items, total } = queryListings({ type: "product", category, limit: 12 });
+  const { items, total } = queryListings({ type: "product", category: active.slug, limit: 12 });
 
   return (
     <CatalogBrowser
@@ -38,7 +43,7 @@ export default async function ProductCategoryPage({
       subtitle={active.description}
       categories={categories}
       subcategories={subcategories}
-      initialCategory={category}
+      initialCategory={active.slug}
       initialItems={items}
       initialTotal={total}
       basePath="/products"

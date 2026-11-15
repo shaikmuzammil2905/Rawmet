@@ -29,28 +29,37 @@ const PRODUCT_LINKS = [
   { label: "Rubber", href: "/products/rubber" },
   { label: "Plastic", href: "/products/plastic" },
   { label: "Metals", href: "/products/metals" },
-  { label: "Bio Petro Chemical", href: "/products/bio-petro-chemical" },
+  { label: "Bio", href: "/products/bio" },
+  { label: "Petrolium", href: "/products/petrolium" },
+  { label: "Chemical", href: "/products/chemical" },
+  { label: "Coco pet", href: "/products/coco-pet" },
 ];
 
 const MACHINERY_LINKS = [
   { label: "All Machineries", href: "/machineries" },
-  { label: "Rubber Machineries", href: "/machineries/rubber-machineries" },
-  { label: "Plastic Machineries", href: "/machineries/plastic-machineries" },
+  { label: "Rubber", href: "/machineries/rubber-machineries" },
+  { label: "Plastic", href: "/machineries/plastic-machineries" },
   { label: "Metals – Plants", href: "/machineries/metals-plants" },
-  { label: "BPC – Plants", href: "/machineries/bpc-plants" },
-  { label: "Vehicle – Fabrication – Bodybuilders", href: "/machineries/vehicle-fabrication" },
+  { label: "Bio plant", href: "/machineries/bio-plant" },
+  { label: "Petrolium Plant", href: "/machineries/petrolium-plant" },
+  { label: "Chemical – Plants", href: "/machineries/chemical-plants" },
+  { label: "Coconut Process -mechineary", href: "/machineries/coconut-process-machinery" },
 ];
 
 const SERVICE_LINKS = [
   { label: "All Services", href: "/services" },
   { label: "Manpower Services", href: "/services/manpower-services" },
-  { label: "AMC", href: "/services/amc" },
+  { label: "AMC Services", href: "/services/amc-services" },
   { label: "Maintenance Services", href: "/services/maintenance-services" },
   { label: "Mechanical Services", href: "/services/mechanical-services" },
   { label: "Logistics Services", href: "/services/logistics-services" },
   { label: "Loans Services", href: "/services/loans-services" },
-  { label: "Business Registrations", href: "/services/business-registrations" },
-  { label: "Website / App Services", href: "/services/website-app-services" },
+  { label: "Registrations - GST, Partner Ship, Pvt Ltd", href: "/services/business-registrations" },
+  { label: "Website/ App Services", href: "/services/website-app-services" },
+  { label: "Import & Export Services", href: "/services/import-export-services" },
+  { label: "Vehicle -Fabrication -Services", href: "/services/vehicle-fabrication-services" },
+  { label: "Insurance - Services", href: "/services/insurance-services" },
+  { label: "Consultant - Services", href: "/services/consultant-services" },
 ];
 
 const ABOUT_LINKS = [

@@ -188,27 +188,28 @@ export function CatalogBrowser({
           </Link>
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 sm:grid sm:grid-cols-5 lg:grid-cols-6 sm:gap-4 sm:overflow-visible">
+        {/* 4-per-row Category Grid: strictly 4 columns per row without horizontal side-scrolling (Reference: image copy 22.png) */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-3.5">
           {categories.map((cat) => {
             const isSelected = category === cat.slug;
             return (
               <Link
                 key={cat.id}
                 href={`${basePath}/${cat.slug}`}
-                className={`group shrink-0 w-[88px] sm:w-auto rounded-2xl bg-white p-2 sm:p-3.5 border transition-all flex flex-col items-center text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+                className={`group w-full rounded-xl sm:rounded-2xl bg-white p-2 sm:p-3 border transition-all flex flex-col items-center text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
                   isSelected
                     ? "border-[#f97316] ring-2 ring-[#f97316]/25 bg-orange-50/30"
                     : "border-slate-100 hover:border-blue-200"
                 }`}
               >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs mb-1.5 sm:mb-2">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-lg sm:rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs mb-1 sm:mb-2 shrink-0">
                   <img
                     src={cat.image_url || "/images/cat-products.png"}
                     alt={cat.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-tight text-[#0a2458] group-hover:text-[#1652b8] line-clamp-2 leading-tight">
+                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-tight text-[#0a2458] group-hover:text-[#1652b8] line-clamp-2 leading-tight text-center">
                   {cat.name}
                 </span>
               </Link>
@@ -224,14 +225,14 @@ export function CatalogBrowser({
                 handleReset();
               }
             }}
-            className={`group shrink-0 w-[88px] sm:w-auto rounded-2xl p-2 sm:p-3.5 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
+            className={`group w-full rounded-xl sm:rounded-2xl p-2 sm:p-3 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
               !category
                 ? "bg-[#eef4ff] border-[#1652b8]/30"
                 : "bg-slate-50 border-slate-200 hover:bg-[#eef4ff]"
             }`}
           >
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#0a2458] group-hover:bg-[#f97316] text-white flex items-center justify-center shadow-sm mb-1.5 sm:mb-2 transition-colors">
-              <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover:translate-x-0.5" />
+            <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-[#0a2458] group-hover:bg-[#f97316] text-white flex items-center justify-center shadow-sm mb-1 sm:mb-2 transition-colors shrink-0">
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 transition-transform group-hover:translate-x-0.5" />
             </div>
             <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wide text-[#0a2458]">
               More

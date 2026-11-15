@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, MessageCircle, Phone } from "lucide-react";
+import {
+  ArrowRight,
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+  Phone,
+  Twitter,
+  Youtube,
+} from "lucide-react";
 
 export function Footer({
   mobile = "+91 7382177653",
@@ -10,6 +19,15 @@ export function Footer({
   whatsapp?: string;
   email?: string;
 }) {
+  const SOCIAL_LINKS = [
+    { name: "LinkedIn", href: "https://linkedin.com/company/rawmet-enterprises", icon: Linkedin, color: "hover:bg-[#0077b5] hover:text-white" },
+    { name: "Twitter / X", href: "https://twitter.com/rawmet_b2b", icon: Twitter, color: "hover:bg-[#1da1f2] hover:text-white" },
+    { name: "Facebook", href: "https://facebook.com/rawmet.india", icon: Facebook, color: "hover:bg-[#1877f2] hover:text-white" },
+    { name: "Instagram", href: "https://instagram.com/rawmet_official", icon: Instagram, color: "hover:bg-gradient-to-tr hover:from-[#f09433] hover:via-[#dc2743] hover:to-[#bc1888] hover:text-white" },
+    { name: "YouTube", href: "https://youtube.com/@rawmet-industrial", icon: Youtube, color: "hover:bg-[#ff0000] hover:text-white" },
+    { name: "WhatsApp", href: `https://wa.me/${whatsapp.replace(/\D/g, "")}`, icon: MessageCircle, color: "hover:bg-[#25d366] hover:text-white" },
+  ];
+
   return (
     <footer className="bg-[#06183d] text-slate-200 pb-20 lg:pb-0 no-print">
       {/* Promote Us CTA Banner */}
@@ -74,6 +92,31 @@ export function Footer({
               WhatsApp Support
             </a>
           </div>
+
+          {/* Social Media Links */}
+          <div className="pt-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+              Connect With Us Online
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              {SOCIAL_LINKS.map((soc) => {
+                const Icon = soc.icon;
+                return (
+                  <a
+                    key={soc.name}
+                    href={soc.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Follow Rawmet on ${soc.name}`}
+                    title={soc.name}
+                    className={`h-9 w-9 rounded-full bg-white/10 text-slate-200 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-sm ${soc.color}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Company */}
@@ -96,60 +139,44 @@ export function Footer({
             <li><Link href="/products/rubber" className="hover:text-orange-400 transition-colors">Rubber</Link></li>
             <li><Link href="/products/plastic" className="hover:text-orange-400 transition-colors">Plastic</Link></li>
             <li><Link href="/products/metals" className="hover:text-orange-400 transition-colors">Metals</Link></li>
-            <li><Link href="/products/bio-petro-chemical" className="hover:text-orange-400 transition-colors">Bio Petro Chemical</Link></li>
+            <li><Link href="/products/bio" className="hover:text-orange-400 transition-colors">Bio</Link></li>
+            <li><Link href="/products/petrolium" className="hover:text-orange-400 transition-colors">Petrolium</Link></li>
+            <li><Link href="/products/chemical" className="hover:text-orange-400 transition-colors">Chemical</Link></li>
+            <li><Link href="/products/coco-pet" className="hover:text-orange-400 transition-colors">Coco pet</Link></li>
           </ul>
+        </div>
 
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider mt-6 mb-3">Machineries</h4>
+        {/* Machineries */}
+        <div>
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Machineries</h4>
           <ul className="space-y-2 text-sm text-slate-300">
             <li><Link href="/machineries/rubber-machineries" className="hover:text-orange-400 transition-colors">Rubber</Link></li>
             <li><Link href="/machineries/plastic-machineries" className="hover:text-orange-400 transition-colors">Plastic</Link></li>
-            <li><Link href="/machineries/metals-plants" className="hover:text-orange-400 transition-colors">Metals Plants</Link></li>
-            <li><Link href="/machineries/bpc-plants" className="hover:text-orange-400 transition-colors">BPC Plants</Link></li>
-            <li><Link href="/machineries/vehicle-fabrication" className="hover:text-orange-400 transition-colors">Vehicle Fabrication</Link></li>
+            <li><Link href="/machineries/metals-plants" className="hover:text-orange-400 transition-colors">Metals - Plants</Link></li>
+            <li><Link href="/machineries/bio-plant" className="hover:text-orange-400 transition-colors">Bio plant</Link></li>
+            <li><Link href="/machineries/petrolium-plant" className="hover:text-orange-400 transition-colors">Petrolium Plant</Link></li>
+            <li><Link href="/machineries/chemical-plants" className="hover:text-orange-400 transition-colors">Chemical - Plants</Link></li>
+            <li><Link href="/machineries/coconut-process-machinery" className="hover:text-orange-400 transition-colors">Coconut Process -mechineary</Link></li>
           </ul>
         </div>
 
         {/* Services */}
         <div>
           <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Services</h4>
-          <ul className="space-y-2 text-sm text-slate-300">
-            <li><Link href="/services/manpower-services" className="hover:text-orange-400 transition-colors">Manpower</Link></li>
-            <li><Link href="/services/amc" className="hover:text-orange-400 transition-colors">AMC</Link></li>
-            <li><Link href="/services/maintenance-services" className="hover:text-orange-400 transition-colors">Maintenance</Link></li>
-            <li><Link href="/services/mechanical-services" className="hover:text-orange-400 transition-colors">Mechanical</Link></li>
-            <li><Link href="/services/logistics-services" className="hover:text-orange-400 transition-colors">Logistics</Link></li>
-            <li><Link href="/services/loans-services" className="hover:text-orange-400 transition-colors">Loans</Link></li>
-            <li><Link href="/services/business-registrations" className="hover:text-orange-400 transition-colors">Business Registrations</Link></li>
-            <li><Link href="/services/website-app-services" className="hover:text-orange-400 transition-colors">Website / App Services</Link></li>
+          <ul className="space-y-1.5 text-xs text-slate-300">
+            <li><Link href="/services/manpower-services" className="hover:text-orange-400 transition-colors">Manpower Services</Link></li>
+            <li><Link href="/services/amc-services" className="hover:text-orange-400 transition-colors">AMC Services</Link></li>
+            <li><Link href="/services/maintenance-services" className="hover:text-orange-400 transition-colors">Maintenance Services</Link></li>
+            <li><Link href="/services/mechanical-services" className="hover:text-orange-400 transition-colors">Mechanical Services</Link></li>
+            <li><Link href="/services/logistics-services" className="hover:text-orange-400 transition-colors">Logistics Services</Link></li>
+            <li><Link href="/services/loans-services" className="hover:text-orange-400 transition-colors">Loans Services</Link></li>
+            <li><Link href="/services/business-registrations" className="hover:text-orange-400 transition-colors">Registrations - GST, Partnership, Pvt Ltd</Link></li>
+            <li><Link href="/services/website-app-services" className="hover:text-orange-400 transition-colors">Website/ App Services</Link></li>
+            <li><Link href="/services/import-export-services" className="hover:text-orange-400 transition-colors">Import & Export Services</Link></li>
+            <li><Link href="/services/vehicle-fabrication-services" className="hover:text-orange-400 transition-colors">Vehicle -Fabrication -Services</Link></li>
+            <li><Link href="/services/insurance-services" className="hover:text-orange-400 transition-colors">Insurance - Services</Link></li>
+            <li><Link href="/services/consultant-services" className="hover:text-orange-400 transition-colors">Consultant - Services</Link></li>
           </ul>
-        </div>
-
-        {/* Support */}
-        <div>
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Support</h4>
-          <ul className="space-y-2 text-sm text-slate-300">
-            <li>
-              <a href={`tel:${mobile.replace(/\s+/g, "")}`} className="hover:text-orange-400 transition-colors">
-                Customer Support
-              </a>
-            </li>
-            <li>
-              <a
-                href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-orange-400 transition-colors"
-              >
-                WhatsApp
-              </a>
-            </li>
-            <li><Link href="/vendor/register" className="hover:text-orange-400 transition-colors">Vendor Registration</Link></li>
-            <li><Link href="/login" className="hover:text-orange-400 transition-colors">Login</Link></li>
-            <li><Link href="/subscriptions" className="hover:text-orange-400 transition-colors">Subscription Plans</Link></li>
-          </ul>
-          <p className="mt-4 text-xs text-slate-400">
-            Email: <a href={`mailto:${email}`} className="text-slate-200 hover:underline">{email}</a>
-          </p>
         </div>
       </div>
 

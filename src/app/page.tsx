@@ -82,8 +82,110 @@ export default function HomePage() {
       {/* 1. Hero Section with Carousel + Search */}
       <HeroSection slides={cms.heroSlides} />
 
-      {/* 2. Three Main Category Cards (overlapping hero cleanly on desktop) */}
-      <section className="relative z-20 mx-auto max-w-[1400px] px-4 sm:px-6 -mt-6 md:-mt-8">
+      {/* 2. Policy & Special Launching Offer Banner (Reference: image copy 24.png -> image copy 25.png) */}
+      <section className="relative z-20 mx-auto max-w-[1400px] px-3 sm:px-6 -mt-3 md:-mt-4 mb-4">
+        <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#06183d] via-[#0a2458] to-[#0d3478] text-white p-3.5 sm:p-5 shadow-xl border border-blue-900/40">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 items-stretch">
+            {/* Card 1: Free Vendor Listings */}
+            <div className="rounded-xl sm:rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 p-3.5 sm:p-4 flex flex-col justify-between transition-all backdrop-blur-xs">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shrink-0">
+                  <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                    Free Listing
+                  </span>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                    Free - Vendors Listings in Website
+                  </h3>
+                  <p className="mt-1 text-xs text-blue-100 font-medium leading-relaxed">
+                    With GST number or any authentic ID - Proof.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+                <Link
+                  href="/vendor/register"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-300 hover:text-white transition-colors"
+                >
+                  <span>Register Free Vendor</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <span className="text-[10.5px] text-emerald-300 font-semibold">100% Free</span>
+              </div>
+            </div>
+
+            {/* Card 2: Vendor Login with Paid Subscription */}
+            <div className="rounded-xl sm:rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 p-3.5 sm:p-4 flex flex-col justify-between transition-all backdrop-blur-xs">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-blue-500/20 border border-blue-400/40 text-blue-300 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                    Vendor Portal
+                  </span>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                    Login Vendor- on - Paid Subscription
+                  </h3>
+                  <p className="mt-1 text-xs text-blue-100 font-medium leading-relaxed">
+                    With Id-Password to access real-time B2B buyers &amp; direct RFQs.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-300 hover:text-white transition-colors"
+                >
+                  <span>Login with ID / Password</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <span className="text-[10.5px] text-blue-200 font-semibold">Instant Access</span>
+              </div>
+            </div>
+
+            {/* Card 3: Special Discount & CA Support */}
+            <div className="rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#f97316]/20 via-[#ea580c]/15 to-transparent border border-orange-400/35 p-3.5 sm:p-4 flex flex-col justify-between transition-all">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-orange-500/25 border border-orange-400/50 text-orange-300 flex items-center justify-center shrink-0">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-orange-500/30 text-orange-300 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+                    Launching Offer
+                  </span>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                    Spl Discount for Paid Customers- Launching offer -
+                  </h3>
+                  <p className="mt-1 text-xs text-orange-100 font-medium leading-relaxed">
+                    Chartered Accountant advice on call for Business improvement. Business GST Monthly Return Filing &amp; Annual IT Returns Filing , (Condition apply) (Check with Customer Care )
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-orange-400/20 flex items-center justify-between flex-wrap gap-2">
+                <a
+                  href="tel:7382177653"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-orange-200 transition-colors"
+                >
+                  <Phone className="h-3.5 w-3.5 text-orange-400" />
+                  <span>Call Customer Care: <strong>7382177653</strong></span>
+                </a>
+                <Link
+                  href="/subscriptions"
+                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] px-3 py-1 text-[11px] font-bold text-white transition-colors shadow"
+                >
+                  View Offers
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Three Main Category Cards (Products, Machineries, Services) */}
+      <section className="relative z-20 mx-auto max-w-[1400px] px-4 sm:px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {mainPillars.map((card, i) => {
             const Icon = card.icon;
@@ -120,6 +222,42 @@ export default function HomePage() {
               </Reveal>
             );
           })}
+        </div>
+      </section>
+
+      {/* 4. Grand Action Buttons: Post Requirements & Find Requirements (Reference: image copy 23.png) */}
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pt-5 pb-2">
+        <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200 p-4 sm:p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center md:text-left">
+            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-[#f97316]">
+              <Sparkles className="h-3.5 w-3.5" />
+              Real-Time Industrial Requirement Desk
+            </span>
+            <h3 className="text-lg sm:text-2xl font-extrabold text-[#0a2458]">
+              Looking to Buy or Sell Industrial Goods &amp; Services?
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+              Connect verified manufacturers, suppliers, and service contractors across India with instant WhatsApp notifications.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full md:w-auto shrink-0">
+            <Link
+              href="/requirements#post"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f97316] to-[#ea580c] hover:from-[#ea580c] hover:to-[#c2410c] text-white px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-extrabold shadow-md hover:shadow-lg transition-all duration-200 active:scale-98"
+            >
+              <span>Post requirements</span>
+              <ArrowRight className="h-4 w-4 shrink-0" />
+            </Link>
+
+            <Link
+              href="/requirements"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0a2458] to-[#06183d] hover:bg-[#06183d] text-white px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-extrabold shadow-md hover:shadow-lg transition-all duration-200 active:scale-98 border border-white/20"
+            >
+              <span>Find requirements</span>
+              <ArrowRight className="h-4 w-4 shrink-0" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -361,12 +499,12 @@ export default function HomePage() {
               href="/services"
               className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1652b8] hover:text-[#0a2458]"
             >
-              <span>Explore All 8 Services</span>
+              <span>Explore All 12 Services</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-5">
             {serviceCategories.map((svc, idx) => (
               <Reveal key={svc.id} delayMs={(idx % 4) * 55}>
                 <Link

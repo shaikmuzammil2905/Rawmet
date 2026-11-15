@@ -11,7 +11,11 @@ export async function generateMetadata({
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
   const { category } = await params;
-  const cat = getCategories("machinery").find((c) => c.slug === category);
+  const categories = getCategories("machinery");
+  const cat =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "bpc-plants" && c.slug === "bio-plant") ||
+    categories.find((c) => category === "vehicle-fabrication" && c.slug === "coconut-process-machinery");
   return {
     title: cat ? `${cat.name}` : "Machineries",
     description: cat?.description || "Industrial machineries on RAWMET.com",
@@ -25,11 +29,14 @@ export default async function MachineryCategoryPage({
 }) {
   const { category } = await params;
   const categories = getCategories("machinery");
-  const active = categories.find((c) => c.slug === category);
+  const active =
+    categories.find((c) => c.slug === category) ||
+    categories.find((c) => category === "bpc-plants" && c.slug === "bio-plant") ||
+    categories.find((c) => category === "vehicle-fabrication" && c.slug === "coconut-process-machinery");
   if (!active) notFound();
 
   const subcategories = getSubcategories();
-  const { items, total } = queryListings({ type: "machinery", category, limit: 12 });
+  const { items, total } = queryListings({ type: "machinery", category: active.slug, limit: 12 });
 
   return (
     <CatalogBrowser
@@ -38,7 +45,7 @@ export default async function MachineryCategoryPage({
       subtitle={active.description}
       categories={categories}
       subcategories={subcategories}
-      initialCategory={category}
+      initialCategory={active.slug}
       initialItems={items}
       initialTotal={total}
       basePath="/machineries"
