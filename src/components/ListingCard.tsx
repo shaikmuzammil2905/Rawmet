@@ -5,7 +5,7 @@ import type { ListingRecord } from "@/lib/types";
 export function ListingCard({ listing }: { listing: ListingRecord }) {
   const cleanWa = (listing.vendor_whatsapp || listing.vendor_mobile || "917382177653").replace(/\D/g, "");
   const waHref = `https://wa.me/${cleanWa.length === 10 ? `91${cleanWa}` : cleanWa}?text=${encodeURIComponent(
-    `Hello, I am interested in "${listing.title}" listed on RAWMET MART.`
+    `Hello, I am interested in "${listing.title}" listed on RAWMAT MART.`
   )}`;
 
   return (
@@ -49,7 +49,7 @@ export function ListingCard({ listing }: { listing: ListingRecord }) {
 
           <p className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-[#1652b8] mt-1 truncate">
             <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            {listing.vendor_name || "Verified RAWMET Vendor"}
+            {listing.vendor_name || "Verified RAWMAT MART Vendor"}
           </p>
 
           <Link

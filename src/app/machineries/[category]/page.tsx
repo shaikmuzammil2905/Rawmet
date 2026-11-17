@@ -18,7 +18,7 @@ export async function generateMetadata({
     categories.find((c) => category === "vehicle-fabrication" && c.slug === "coconut-process-machinery");
   return {
     title: cat ? `${cat.name}` : "Machineries",
-    description: cat?.description || "Industrial machineries on RAWMET.com",
+    description: cat?.description || "Industrial machineries on RAWMAT MART",
   };
 }
 

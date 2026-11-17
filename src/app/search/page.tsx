@@ -3,7 +3,7 @@ import { GlobalSearchClient } from "@/components/GlobalSearchClient";
 
 export const metadata: Metadata = {
   title: "Search Marketplace",
-  description: "Search across industrial products, machineries, services, vendors, and live requirements on RAWMET.com.",
+  description: "Search across industrial products, machineries, services, vendors, and live requirements on RAWMAT MART.",
 };
 
 export default async function SearchPage({

@@ -17,7 +17,7 @@ export async function generateMetadata({
     categories.find((c) => category === "bio-petro-chemical" && c.slug === "bio");
   return {
     title: cat ? `${cat.name} Industrial Products` : "Products",
-    description: cat?.description || "Industrial raw materials marketplace on RAWMET.com",
+    description: cat?.description || "Industrial raw materials marketplace on RAWMAT MART",
   };
 }
 

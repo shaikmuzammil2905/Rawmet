@@ -128,7 +128,7 @@ function LoginContent() {
         showToast(data.error || "Registration failed", "error");
         return;
       }
-      showToast("Account created! Welcome to RAWMET.com.", "success");
+      showToast("Account created! Welcome to RAWMAT MART.", "success");
       router.push(nextUrl || "/dashboard");
       router.refresh();
     } finally {
@@ -140,7 +140,7 @@ function LoginContent() {
     <div className="mx-auto max-w-lg px-4 py-12">
       <div className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-xl">
         <div className="text-center mb-6">
-          <img src="/images/rawmet-logo.png" alt="RAWMET.com" className="h-11 mx-auto mb-2 object-contain" />
+          <img src="/images/rawmet-logo.png" alt="RAWMAT MART" className="h-11 mx-auto mb-2 object-contain" />
           <h1 className="text-2xl font-extrabold text-[#0a2458]">Customer &amp; Vendor Login</h1>
           <p className="text-xs text-slate-500 mt-1">
             Secure access via Mobile OTP or Password

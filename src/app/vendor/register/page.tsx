@@ -105,7 +105,7 @@ export default function VendorRegisterPage() {
         </span>
         <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Vendor Business Registration</h1>
         <p className="mt-1 text-sm text-blue-100">
-          Submit your GST Number / Authentic ID proof. Once Admin approves your verification, your free listings go live across RAWMET.com.
+          Submit your GST Number / Authentic ID proof. Once Admin approves your verification, your free listings go live across RAWMAT MART.
         </p>
       </div>
 

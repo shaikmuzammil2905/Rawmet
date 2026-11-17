@@ -61,7 +61,7 @@ export function dispatchWhatsAppOpportunity(requirement: RequirementRecord): Wha
   for (const vendor of matched) {
     const cleanPhone = vendor.whatsapp.replace(/[^0-9]/g, "");
     const phoneWithCc = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const messagePreview = `New Business Opportunity Available on RAWMET.com!\n\nCategory: ${requirement.category_slug.toUpperCase()}\nRequirement: ${requirement.title}\nQuantity: ${requirement.quantity || "As specified"}\nLocation: ${requirement.location || "Pan India"}\nCustomer: ${requirement.business_name || requirement.name}\n\nLog in to your Vendor Dashboard or contact customer directly via RAWMET Real-Time Portal.`;
+    const messagePreview = `New Business Opportunity Available on RAWMAT MART!\n\nCategory: ${requirement.category_slug.toUpperCase()}\nRequirement: ${requirement.title}\nQuantity: ${requirement.quantity || "As specified"}\nLocation: ${requirement.location || "Pan India"}\nCustomer: ${requirement.business_name || requirement.name}\n\nLog in to your Vendor Dashboard or contact customer directly via RAWMAT MART Real-Time Portal.`;
     insertStmt.run(
       requirement.id,
       vendor.id,

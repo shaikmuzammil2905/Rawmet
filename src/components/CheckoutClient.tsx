@@ -186,7 +186,7 @@ export function CheckoutClient({
             <div className="rounded-2xl border border-slate-200 p-6 bg-slate-50/70 space-y-3 text-sm">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div>
-                  <p className="font-extrabold text-[#0a2458]">RAWMET.com — Sriñidhi Enterprises</p>
+                  <p className="font-extrabold text-[#0a2458]">RAWMAT MART — Sriñidhi Enterprises</p>
                   <p className="text-xs text-slate-500">GST Tax Invoice / Subscription Receipt</p>
                 </div>
                 <span className="font-extrabold text-[#f97316]">{paymentResult.invoiceNumber}</span>

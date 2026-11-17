@@ -35,7 +35,7 @@ const SERVICE_POPUP_DETAILS: Record<
 > = {
   "ca-advice": {
     icon: "scale",
-    eligibility: "Available for active RAWMET.com paid subscription holders (6M, 12M, 2Y & 3Y+1Y Plans).",
+    eligibility: "Available for active RAWMAT MART paid subscription holders (6M, 12M, 2Y & 3Y+1Y Plans).",
     highlights: [
       "Scheduled telephonic consultation with experienced Chartered Accountants",
       "Working capital optimization & MSME credit readiness guidance",
@@ -287,7 +287,7 @@ export function BusinessSupportCards({
                   </a>
                   <a
                     href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(
-                      `Hello RAWMET Customer Care, I want details about "${activeItem.title}" (Conditions Apply).`
+                      `Hello RAWMAT MART Customer Care, I want details about "${activeItem.title}" (Conditions Apply).`
                     )}`}
                     target="_blank"
                     rel="noreferrer"

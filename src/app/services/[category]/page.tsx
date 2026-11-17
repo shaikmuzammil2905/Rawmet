@@ -17,7 +17,7 @@ export async function generateMetadata({
     categories.find((c) => category === "amc" && c.slug === "amc-services");
   return {
     title: cat ? cat.name : "Services",
-    description: cat?.description || "Industrial services on RAWMET.com",
+    description: cat?.description || "Industrial services on RAWMAT MART",
   };
 }
 

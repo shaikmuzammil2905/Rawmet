@@ -9,9 +9,9 @@ import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "About RAWMET / Sriñidhi Enterprises",
+  title: "About RAWMAT MART / Sriñidhi Enterprises",
   description:
-    "Learn about RAWMET.com operated by Sriñidhi Enterprises — India's multi-vendor B2B industrial marketplace and real-time business portal.",
+    "Learn about RAWMAT MART operated by Sriñidhi Enterprises — India's multi-vendor B2B industrial marketplace and real-time business portal.",
 };
 
 export default function AboutPage() {
@@ -23,7 +23,7 @@ export default function AboutPage() {
       <section className="rounded-3xl bg-gradient-to-br from-[#0a2458] via-[#103274] to-[#06183d] p-7 sm:p-12 text-white shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         <div className="lg:col-span-7 space-y-4">
           <span className="inline-block rounded-full bg-orange-500/20 border border-orange-400/40 px-3 py-1 text-xs font-bold text-orange-300 uppercase tracking-wider">
-            RAWMET.com • Sriñidhi Enterprises
+            RAWMAT MART • Sriñidhi Enterprises
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold leading-tight">
             {aboutContent.headline}
@@ -50,7 +50,7 @@ export default function AboutPage() {
           <div className="rounded-2xl overflow-hidden border border-white/20 shadow-2xl aspect-[16/10]">
             <img
               src={aboutContent.imageUrl || "/images/refinery-plant.png"}
-              alt="RAWMET Industrial Ecosystem"
+              alt="RAWMAT MART Industrial Ecosystem"
               className="h-full w-full object-cover"
             />
           </div>

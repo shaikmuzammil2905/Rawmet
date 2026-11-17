@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Subscription Plans & Launching Offer",
   description:
-    "Subscribe to RAWMET.com Business Portal. 6 Months ₹6,000, 12 Months ₹11,000, 2 Years ₹20,000, and 3 Years ₹35,000 + 4th Year FREE Launch Offer (Incl. 18% GST).",
+    "Subscribe to RAWMAT MART Business Portal. 6 Months ₹6,000, 12 Months ₹11,000, 2 Years ₹20,000, and 3 Years ₹35,000 + 4th Year FREE Launch Offer (Incl. 18% GST).",
 };
 
 export default function SubscriptionsPage() {

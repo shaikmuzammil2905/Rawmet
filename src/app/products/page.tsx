@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Industrial Products Marketplace",
-  description: "Browse GST-verified Rubber, Plastic, Metals, and Bio Petro Chemical raw material suppliers on RAWMET.com.",
+  description: "Browse GST-verified Rubber, Plastic, Metals, and Bio Petro Chemical raw material suppliers on RAWMAT MART.",
 };
 
 export default function ProductsPage() {

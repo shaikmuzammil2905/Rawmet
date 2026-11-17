@@ -53,7 +53,7 @@ export default async function ListingDetailPage({
 
   const cleanWa = (vendor.whatsapp || vendor.mobile || "917382177653").replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${cleanWa.length === 10 ? `91${cleanWa}` : cleanWa}?text=${encodeURIComponent(
-    `Hello ${vendor.business_name}, I found "${listing.title}" on RAWMET.com and would like a quotation.`
+    `Hello ${vendor.business_name}, I found "${listing.title}" on RAWMAT MART and would like a quotation.`
   )}`;
 
   const parentPath =

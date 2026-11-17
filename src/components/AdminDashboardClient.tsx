@@ -218,7 +218,7 @@ export function AdminDashboardClient() {
   }
 
   if (loading || !data) {
-    return <div className="p-12 text-center text-sm text-slate-500">Loading RAWMET Admin Panel...</div>;
+    return <div className="p-12 text-center text-sm text-slate-500">Loading RAWMAT MART Admin Panel...</div>;
   }
 
   const listingTypeFilter =
@@ -232,7 +232,7 @@ export function AdminDashboardClient() {
           <div className="flex items-center gap-2.5 px-2 pb-4 border-b border-white/10">
             <ShieldCheck className="h-6 w-6 text-[#f97316]" />
             <div>
-              <p className="font-extrabold text-sm">RAWMET Admin</p>
+              <p className="font-extrabold text-sm">RAWMAT MART Admin</p>
               <p className="text-[11px] text-blue-200">Control &amp; CMS</p>
             </div>
           </div>

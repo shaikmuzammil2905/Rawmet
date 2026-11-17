@@ -133,7 +133,7 @@ export function ListingDetailClient({
       <div id="enquiry" className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
         <h3 className="text-lg font-extrabold text-[#0a2458]">Send Direct Business Enquiry</h3>
         <p className="text-xs text-slate-500 mt-0.5">
-          Your enquiry goes directly to the verified vendor&apos;s RAWMET dashboard.
+          Your enquiry goes directly to the verified vendor&apos;s RAWMAT MART dashboard.
         </p>
 
         {sent ? (

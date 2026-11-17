@@ -24,7 +24,7 @@ export function ensureSeeded(): void {
       VALUES (?, ?, ?, ?, ?, ?, 'active')
     `);
 
-    insertUser.run("RAWMET Admin", adminEmail, "7382177653", "917382177653", hashPassword(adminPassword), "admin");
+    insertUser.run("RAWMAT MART Admin", adminEmail, "7382177653", "917382177653", hashPassword(adminPassword), "admin");
 
     const v1User = insertUser.run("Rajesh Kulkarni", "sales@bharatrubber.in", "9820112233", "919820112233", hashPassword("Vendor@123"), "vendor");
     const v2User = insertUser.run("Anand Mehta", "info@shreepolymers.in", "9845098765", "919845098765", hashPassword("Vendor@123"), "vendor");
@@ -436,9 +436,9 @@ export function ensureSeeded(): void {
       INSERT INTO whatsapp_notifications (requirement_id, vendor_id, vendor_name, vendor_whatsapp, category_slug, message_preview, status)
       VALUES (?, ?, ?, ?, ?, ?, 'sent')
     `);
-    insertWa.run(1, v1.lastInsertRowid, "Bharat Elastomers & Rubber Co.", "919820112233", "rubber", "New Business Opportunity Available: A relevant Rubber requirement (8 MT EPDM Sheets - Faridabad) has been posted on RAWMET.com.", );
-    insertWa.run(2, v2.lastInsertRowid, "Shree Sai Polymers & Granules", "919845098765", "plastic", "New Business Opportunity Available: A relevant Plastic requirement (15 MT HDPE PE100 - Indore) has been posted on RAWMET.com.");
-    insertWa.run(3, v4.lastInsertRowid, "Sriñidhi Industrial Engineering & Services", "919848011223", "bpc-plants", "New Business Opportunity Available: A relevant BPC Plant requirement (15 TPD Bio-Diesel Unit - Vijayawada) has been posted on RAWMET.com.");
+    insertWa.run(1, v1.lastInsertRowid, "Bharat Elastomers & Rubber Co.", "919820112233", "rubber", "New Business Opportunity Available: A relevant Rubber requirement (8 MT EPDM Sheets - Faridabad) has been posted on RAWMAT MART.", );
+    insertWa.run(2, v2.lastInsertRowid, "Shree Sai Polymers & Granules", "919845098765", "plastic", "New Business Opportunity Available: A relevant Plastic requirement (15 MT HDPE PE100 - Indore) has been posted on RAWMAT MART.");
+    insertWa.run(3, v4.lastInsertRowid, "Sriñidhi Industrial Engineering & Services", "919848011223", "bpc-plants", "New Business Opportunity Available: A relevant BPC Plant requirement (15 TPD Bio-Diesel Unit - Vijayawada) has been posted on RAWMAT MART.");
 
     // 9. Seed Gallery Items
     const insertGallery = db.prepare(`
@@ -502,11 +502,11 @@ export function ensureSeeded(): void {
 
     const aboutContent: AboutContent = {
       headline: "About Sriñidhi Enterprises",
-      subheadline: "Connecting Industrial India through RAWMET.com — Online Real-time Business Portal",
+      subheadline: "Connecting Industrial India through RAWMAT MART — Online Real-time Business Portal",
       summary:
         "A leading multi-vendor platform for Rubber, Plastic, Metals and Bio Petro Chemical industries. We connect businesses with trusted vendors and provide real-time business opportunities.",
       fullStory:
-        "Operated by Sriñidhi Enterprises, RAWMET.com is built specifically for India's industrial manufacturing ecosystem. From raw polymers, natural & synthetic rubber, stainless steel alloys, and bio-petrochemicals to turnkey industrial plants and essential plant services, our portal eliminates middlemen friction by verifying every supplier via GST / authentic business ID and matching real-time buyer requirements directly to eligible vendors via instant WhatsApp and dashboard alerts.",
+        "Operated by Sriñidhi Enterprises, RAWMAT MART is built specifically for India's industrial manufacturing ecosystem. From raw polymers, natural & synthetic rubber, stainless steel alloys, and bio-petrochemicals to turnkey industrial plants and essential plant services, our portal eliminates middlemen friction by verifying every supplier via GST / authentic business ID and matching real-time buyer requirements directly to eligible vendors via instant WhatsApp and dashboard alerts.",
       mission:
         "To empower MSMEs, manufacturers, fabricators, and industrial buyers across India with transparent, GST-verified sourcing, free verified listings, and real-time trade matchmaking.",
       vision:
@@ -536,7 +536,7 @@ export function ensureSeeded(): void {
 
     const contactSettings: ContactSettings = {
       companyName: "Sriñidhi Enterprises",
-      portalName: "RAWMET.com",
+      portalName: "RAWMAT MART",
       mobile: "+91 7382177653",
       whatsapp: "917382177653",
       email: "support@rawmet.com",

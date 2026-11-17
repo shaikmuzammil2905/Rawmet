@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Subscription Checkout",
-  description: "Complete your RAWMET.com subscription payment with GST invoice.",
+  description: "Complete your RAWMAT MART subscription payment with GST invoice.",
 };
 
 export default async function CheckoutPage({
@@ -25,7 +25,7 @@ export default async function CheckoutPage({
   return (
     <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-8">
       <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0a2458] mb-6">
-        Complete Your RAWMET Subscription
+        Complete Your RAWMAT MART Subscription
       </h1>
       <CheckoutClient plan={plan} user={session?.user || null} />
     </div>

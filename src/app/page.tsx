@@ -456,7 +456,7 @@ export default function HomePage() {
                 Advisory &amp; Statutory Filing Support
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Value-added business compliance assistance promoted through RAWMET.com.{" "}
+                Value-added business compliance assistance promoted through RAWMAT MART.{" "}
                 <strong className="text-[#0a2458]">Conditions Apply • Check with Customer Care ({cms.contactSettings.mobile}).</strong>
               </p>
             </div>

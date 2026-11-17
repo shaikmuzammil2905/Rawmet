@@ -53,7 +53,7 @@ export function PromoteClient({ rewardRule }: { rewardRule: string }) {
           <ul className="mt-5 space-y-3 text-sm">
             {[
               "Submit your partner profile and referred vendor/buyer details.",
-              "Receive your unique RAWMET Partner Referral Code immediately.",
+              "Receive your unique RAWMAT MART Partner Referral Code immediately.",
               "Connect with our partner desk on WhatsApp in one click.",
               "When a referred vendor purchases a paid subscription, eligible rewards/discounts apply per admin-configured rules.",
             ].map((step, i) => (
@@ -71,7 +71,7 @@ export function PromoteClient({ rewardRule }: { rewardRule: string }) {
       <div className="lg:col-span-7 rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm">
         <h2 className="text-xl font-extrabold text-[#0a2458]">Submit Partner / Referral Details</h2>
         <p className="text-sm text-slate-600 mt-1">
-          Connected directly to our RAWMET partner workflow &amp; WhatsApp desk.
+          Connected directly to our RAWMAT MART partner workflow &amp; WhatsApp desk.
         </p>
 
         {result ? (

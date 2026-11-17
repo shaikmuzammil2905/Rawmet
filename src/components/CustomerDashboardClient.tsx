@@ -76,7 +76,7 @@ export function CustomerDashboardClient() {
       <div className="rounded-3xl bg-gradient-to-r from-[#0a2458] to-[#123983] p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-orange-300">
-            RAWMET.com Customer Portal
+            RAWMAT MART Customer Portal
           </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">Welcome, {data.user.name}</h1>
           <p className="text-xs sm:text-sm text-blue-100 mt-1">
@@ -252,7 +252,7 @@ export function CustomerDashboardClient() {
                   <span className="text-[#0a2458]">{e.listing_title || "General Enquiry"}</span>
                   <span className="uppercase text-[#f97316]">{e.status}</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">Vendor: {e.vendor_name || "RAWMET Desk"}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Vendor: {e.vendor_name || "RAWMAT MART Desk"}</p>
                 <p className="text-sm text-slate-700 mt-2">{e.message}</p>
               </div>
             ))
@@ -319,7 +319,7 @@ export function CustomerDashboardClient() {
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center border-b pb-3">
               <div>
-                <h3 className="font-extrabold text-[#0a2458]">RAWMET.com GST Tax Invoice</h3>
+                <h3 className="font-extrabold text-[#0a2458]">RAWMAT MART GST Tax Invoice</h3>
                 <p className="text-xs text-slate-500">{invoicePayment.invoice_number}</p>
               </div>
               <button type="button" onClick={() => window.print()} className="rounded-full bg-[#0a2458] text-white px-4 py-1.5 text-xs font-bold">

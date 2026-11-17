@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
         showToast(data.error || "Admin authentication failed.", "error");
         return;
       }
-      showToast("Authenticated to RAWMET Admin Control Panel.", "success");
+      showToast("Authenticated to RAWMAT MART Admin Control Panel.", "success");
       router.push("/admin");
       router.refresh();
     } finally {
@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
           </div>
           <h1 className="text-2xl font-extrabold">Admin Portal Authentication</h1>
           <p className="text-xs text-blue-200 mt-1">
-            Restricted access for authorized RAWMET.com administrators
+            Restricted access for authorized RAWMAT MART administrators
           </p>
         </div>
 

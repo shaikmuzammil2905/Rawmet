@@ -158,7 +158,7 @@ export function RequirementsClient({
             items.map((req) => {
               const cleanWa = (req.whatsapp || req.mobile || "").replace(/\D/g, "");
               const waUrl = `https://wa.me/${cleanWa.length === 10 ? `91${cleanWa}` : cleanWa}?text=${encodeURIComponent(
-                `Hello ${req.name}, I saw your requirement "${req.title}" on RAWMET.com and would like to submit a quote.`
+                `Hello ${req.name}, I saw your requirement "${req.title}" on RAWMAT MART and would like to submit a quote.`
               )}`;
               return (
                 <article

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Industrial & Business Services",
   description:
-    "Manpower Services, AMC, Maintenance, Mechanical, Logistics, Loans, Business Registrations, and Website / App Services on RAWMET.com.",
+    "Manpower Services, AMC, Maintenance, Mechanical, Logistics, Loans, Business Registrations, and Website / App Services on RAWMAT MART.",
 };
 
 export default function ServicesPage() {

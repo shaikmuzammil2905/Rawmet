@@ -35,7 +35,7 @@ export function Footer({
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-orange-400">
-              RAWMET.com — Online Real-time Business Portal
+              RAWMAT MART — Online Real-time Business Portal
             </p>
             <h3 className="text-lg sm:text-xl font-bold text-white mt-0.5">
               Promote Us • Grow With Us — Earn Rewards Referring Verified Industrial Vendors
@@ -65,12 +65,12 @@ export function Footer({
           <Link href="/" className="inline-block">
             <img
               src="/images/rawmet-logo-footer.png"
-              alt="RAWMET MART - Online Real-time Business Portal"
+              alt="RAWMAT MART - Online Real-time Business Portal"
               className="h-11 sm:h-12 w-auto object-contain"
             />
           </Link>
           <p className="text-sm text-slate-300 leading-relaxed max-w-sm">
-            <strong className="text-white">RAWMET.com — Online Real-time Business Portal</strong> operated by{" "}
+            <strong className="text-white">RAWMAT MART — Online Real-time Business Portal</strong> operated by{" "}
             <strong className="text-white">Sriñidhi Enterprises</strong>. Connecting verified Indian manufacturers,
             raw material suppliers, machinery OEMs, and industrial service providers.
           </p>
@@ -107,7 +107,7 @@ export function Footer({
                     href={soc.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Follow Rawmet on ${soc.name}`}
+                    aria-label={`Follow Rawmat Mart on ${soc.name}`}
                     title={soc.name}
                     className={`h-9 w-9 rounded-full bg-white/10 text-slate-200 flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-sm ${soc.color}`}
                   >
@@ -183,7 +183,7 @@ export function Footer({
       {/* Bottom Legal Strip */}
       <div className="border-t border-white/10 bg-[#04112c]">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
-          <p>© {new Date().getFullYear()} RAWMET.com — Sriñidhi Enterprises. All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} RAWMAT MART — Sriñidhi Enterprises. All Rights Reserved.</p>
           <p>GST / Authentic ID Verification • Multi-Vendor B2B Industrial Marketplace</p>
         </div>
       </div>

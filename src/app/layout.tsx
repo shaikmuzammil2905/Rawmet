@@ -10,13 +10,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rawmet.com";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "RAWMET.com | Online Real-time Industrial B2B Business Portal",
-    template: "%s | RAWMET.com",
+    default: "RAWMAT MART | Online Real-time Industrial B2B Business Portal",
+    template: "%s | RAWMAT MART",
   },
   description:
     "India's trusted multi-vendor B2B industrial marketplace by Sriñidhi Enterprises for Rubber, Plastic, Metals, Bio Petro Chemical products, industrial machineries, turnkey plants, and business services.",
   keywords: [
-    "RAWMET",
+    "RAWMAT MART",
+    "RAWMAT",
     "Sriñidhi Enterprises",
     "B2B industrial marketplace India",
     "rubber raw materials",
@@ -28,11 +29,11 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     type: "website",
-    siteName: "RAWMET.com",
-    title: "RAWMET.com — Your Trusted Platform for Industrial Business Solutions",
+    siteName: "RAWMAT MART",
+    title: "RAWMAT MART — Your Trusted Platform for Industrial Business Solutions",
     description:
       "Products | Machineries | Services — Connect with GST-verified industrial vendors and real-time business opportunities.",
-    images: [{ url: "/images/hero-desktop-1.png", width: 2048, height: 768, alt: "RAWMET Industrial Portal" }],
+    images: [{ url: "/images/hero-desktop-1.png", width: 2048, height: 768, alt: "RAWMAT MART Industrial Portal" }],
   },
   alternates: {
     canonical: "/",
@@ -45,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const orgSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "RAWMET.com — Sriñidhi Enterprises",
+    name: "RAWMAT MART — Sriñidhi Enterprises",
     url: siteUrl,
     logo: `${siteUrl}/images/rawmet-logo.png`,
     telephone: contactSettings.mobile,

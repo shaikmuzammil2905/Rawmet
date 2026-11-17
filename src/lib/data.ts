@@ -111,7 +111,7 @@ export function getCmsMap(): {
     heroSlides: parse("hero_slides", []),
     aboutContent: parse("about_content", {
       headline: "About Sriñidhi Enterprises",
-      subheadline: "RAWMET.com",
+      subheadline: "RAWMAT MART",
       summary: "",
       fullStory: "",
       mission: "",
@@ -129,7 +129,7 @@ export function getCmsMap(): {
     }),
     contactSettings: parse("contact_settings", {
       companyName: "Sriñidhi Enterprises",
-      portalName: "RAWMET.com",
+      portalName: "RAWMAT MART",
       mobile: "+91 7382177653",
       whatsapp: "917382177653",
       email: "support@rawmet.com",

@@ -155,11 +155,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <Link
               href="/"
               className="flex items-center shrink-0 py-1 pr-2 group focus:outline-none"
-              aria-label="RAWMET MART Home"
+              aria-label="RAWMAT MART Home"
             >
               <img
                 src="/images/rawmet-logo.png"
-                alt="RAWMET MART - Online Real-time Business Portal"
+                alt="RAWMAT MART - Online Real-time Business Portal"
                 className="h-10 sm:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
             </Link>

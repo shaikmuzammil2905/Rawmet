@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json(
-      { success: true, message: "Your enquiry has been sent to the verified vendor & RAWMET desk." },
+      { success: true, message: "Your enquiry has been sent to the verified vendor & RAWMAT MART desk." },
       { status: 201 }
     );
   } catch {
