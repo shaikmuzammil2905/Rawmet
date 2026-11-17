@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 import { signPaymentOrderToken } from "@/lib/auth";
+import { createRazorpayOrder, isRazorpayConfigured } from "@/lib/razorpay";
 import type { SubscriptionPlanRecord } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -41,11 +42,28 @@ export async function POST(req: Request) {
     const amountInr = plan.price_inr; // Never trust price from client!
     const gstAmountInr = Math.round(amountInr - amountInr / 1.18);
 
+    let razorpayOrder: { id: string; amount: number; currency: string } | null = null;
+    if (isRazorpayConfigured()) {
+      try {
+        razorpayOrder = await createRazorpayOrder({
+          amountInr,
+          receipt: orderId,
+          notes: {
+            planName: plan.name,
+            userId: String(session.user.id),
+            userMobile: session.user.mobile,
+          },
+        });
+      } catch (rzpErr) {
+        console.error("Razorpay order creation fallback:", rzpErr);
+      }
+    }
+
     if (!recentOrder) {
       db.prepare(
         `INSERT INTO payments (order_id, user_id, plan_id, amount_inr, gst_amount_inr, status, payment_method)
          VALUES (?, ?, ?, ?, ?, 'created', ?)`
-      ).run(orderId, session.user.id, plan.id, amountInr, gstAmountInr, body.paymentMethod || "UPI / Card / NetBanking");
+      ).run(orderId, session.user.id, plan.id, amountInr, gstAmountInr, body.paymentMethod || "Razorpay / UPI / Card");
     }
 
     const orderToken = signPaymentOrderToken(orderId, session.user.id, plan.id, amountInr);
@@ -57,6 +75,9 @@ export async function POST(req: Request) {
       amountInr,
       gstAmountInr,
       baseAmountInr: amountInr - gstAmountInr,
+      razorpayOrderId: razorpayOrder?.id || null,
+      razorpayKeyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || null,
+      gateway: razorpayOrder ? "razorpay" : "native",
     });
   } catch {
     return NextResponse.json({ error: "Unable to create payment order." }, { status: 500 });

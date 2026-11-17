@@ -12,6 +12,29 @@ interface OrderState {
   amountInr: number;
   gstAmountInr: number;
   baseAmountInr: number;
+  razorpayOrderId?: string | null;
+  razorpayKeyId?: string | null;
+  gateway?: string;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: any;
+  }
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+    if (window.Razorpay) return resolve(true);
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }
 
 export function CheckoutClient({
@@ -38,6 +61,90 @@ export function CheckoutClient({
   const gstAmount = Math.round(plan.price_inr - plan.price_inr / 1.18);
   const baseAmount = plan.price_inr - gstAmount;
 
+  async function launchRazorpayModal(orderData: OrderState) {
+    if (!orderData.razorpayOrderId || !orderData.razorpayKeyId) {
+      showToast("Razorpay order ID not available; proceeding with direct verification.", "info");
+      return;
+    }
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      showToast("Failed to load Razorpay SDK. You can complete authorization below.", "error");
+      return;
+    }
+
+    const options = {
+      key: orderData.razorpayKeyId,
+      amount: Math.round(orderData.amountInr * 100),
+      currency: "INR",
+      name: "RAWMAT MART",
+      description: `${plan.name} Subscription`,
+      image: "/images/rawmet-logo.png",
+      order_id: orderData.razorpayOrderId,
+      prefill: {
+        name: user?.name || "RAWMAT Subscriber",
+        contact: user?.mobile || "",
+        email: user?.email || "",
+      },
+      theme: {
+        color: "#0a2458",
+      },
+      modal: {
+        ondismiss: function () {
+          showToast("Payment window closed. You can retry or verify below.", "info");
+        },
+      },
+      handler: async function (response: {
+        razorpay_payment_id: string;
+        razorpay_order_id: string;
+        razorpay_signature: string;
+      }) {
+        setVerifying(true);
+        try {
+          const verifyRes = await fetch("/api/payments/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: orderData.orderId,
+              orderToken: orderData.orderToken,
+              outcome: "paid",
+              paymentMethod: "Razorpay Gateway",
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+          setPaymentResult({
+            status: verifyData.status || "paid",
+            message: verifyData.message || "Payment verified successfully!",
+            invoiceNumber: verifyData.invoiceNumber,
+            paymentId: verifyData.paymentId || response.razorpay_payment_id,
+            startsAt: verifyData.startsAt,
+            endsAt: verifyData.endsAt,
+          });
+          if (verifyData.status === "paid") {
+            showToast("Payment verified via Razorpay! Subscription activated.", "success");
+          } else {
+            showToast(verifyData.error || "Payment verification failed.", "error");
+          }
+        } catch {
+          showToast("Network error verifying Razorpay payment.", "error");
+        } finally {
+          setVerifying(false);
+        }
+      },
+    };
+
+    try {
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.open();
+    } catch (e) {
+      console.error("Error opening Razorpay modal:", e);
+      showToast("Unable to open Razorpay checkout popup. Use authorization below.", "error");
+    }
+  }
+
   async function handleCreateOrder() {
     setCreatingOrder(true);
     try {
@@ -53,7 +160,13 @@ export function CheckoutClient({
       }
       setOrder(data);
       setPaymentResult(null);
-      showToast("Secure order created. Complete payment verification below.", "info");
+
+      if (data.razorpayOrderId && data.razorpayKeyId) {
+        showToast("Opening Razorpay secure checkout...", "info");
+        await launchRazorpayModal(data);
+      } else {
+        showToast("Secure order created. Complete payment verification below.", "info");
+      }
     } finally {
       setCreatingOrder(false);
     }
@@ -283,8 +396,19 @@ export function CheckoutClient({
                   <span className="font-mono text-slate-600">{order.orderId}</span>
                 </div>
                 <p className="text-xs text-slate-600">
-                  Complete payment authorization. Backend cryptographic HMAC verification validates every status before activation:
+                  Complete payment authorization with Razorpay or server-verified checkout:
                 </p>
+                {order.razorpayOrderId && (
+                  <button
+                    type="button"
+                    disabled={verifying}
+                    onClick={() => launchRazorpayModal(order)}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0a2458] hover:bg-[#1652b8] text-white py-3 px-4 text-sm font-bold shadow transition-all"
+                  >
+                    <CreditCard className="h-4 w-4 text-[#f97316]" />
+                    <span>Pay with Razorpay Modal (UPI / Card / NetBanking)</span>
+                  </button>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"

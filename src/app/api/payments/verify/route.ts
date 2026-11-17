@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 import { verifyPaymentOrderToken } from "@/lib/auth";
+import { verifyRazorpaySignature } from "@/lib/razorpay";
 import type { SubscriptionPlanRecord } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -18,6 +19,9 @@ export async function POST(req: Request) {
       outcome?: "paid" | "failed" | "pending" | "cancelled";
       paymentMethod?: string;
       failureReason?: string;
+      razorpayPaymentId?: string;
+      razorpayOrderId?: string;
+      razorpaySignature?: string;
     };
 
     const orderId = (body.orderId || "").trim();
@@ -59,9 +63,21 @@ export async function POST(req: Request) {
       });
     }
 
-    // Verify server-issued HMAC signature
-    if (!verifyPaymentOrderToken(orderToken, payment.order_id, session.user.id, payment.plan_id, payment.amount_inr)) {
-      return NextResponse.json({ error: "Invalid payment verification signature." }, { status: 403 });
+    // If Razorpay signature is sent, verify with Razorpay HMAC
+    if (body.razorpaySignature && body.razorpayPaymentId && body.razorpayOrderId) {
+      const isValidRzp = verifyRazorpaySignature({
+        orderId: body.razorpayOrderId,
+        paymentId: body.razorpayPaymentId,
+        signature: body.razorpaySignature,
+      });
+      if (!isValidRzp) {
+        return NextResponse.json({ error: "Invalid Razorpay payment signature." }, { status: 403 });
+      }
+    } else {
+      // Verify server-issued HMAC signature
+      if (!verifyPaymentOrderToken(orderToken, payment.order_id, session.user.id, payment.plan_id, payment.amount_inr)) {
+        return NextResponse.json({ error: "Invalid payment verification signature." }, { status: 403 });
+      }
     }
 
     if (outcome === "failed" || outcome === "cancelled" || outcome === "pending") {
@@ -91,7 +107,7 @@ export async function POST(req: Request) {
       .prepare(`SELECT * FROM subscription_plans WHERE id = ?`)
       .get(payment.plan_id) as unknown as SubscriptionPlanRecord;
 
-    const paymentGatewayId = `PAY_${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+    const paymentGatewayId = body.razorpayPaymentId || `PAY_${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
     const invoiceNumber = `INV-RAW-${new Date().getFullYear()}-${String(payment.id).padStart(4, "0")}`;
     const totalMonths = plan.duration_months + plan.bonus_months;
 
