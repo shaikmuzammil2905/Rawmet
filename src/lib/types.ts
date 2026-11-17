@@ -31,6 +31,7 @@ export interface VendorRecord {
   description: string;
   product_details: string;
   verification_status: "pending" | "approved" | "rejected" | "suspended";
+  rejection_reason?: string;
   whatsapp_opt_in: number;
   whatsapp_categories: string;
   created_at: string;
@@ -77,6 +78,8 @@ export interface ListingRecord {
   image_url: string;
   gallery_urls: string;
   status: "pending" | "approved" | "rejected";
+  rejection_reason?: string;
+  is_published?: number;
   featured: number;
   views_count: number;
   created_at: string;
@@ -107,6 +110,7 @@ export interface SubscriptionPlanRecord {
   id: number;
   name: string;
   slug: string;
+  user_type?: "seller" | "buyer" | "all";
   duration_months: number;
   bonus_months: number;
   price_inr: number;
@@ -114,8 +118,39 @@ export interface SubscriptionPlanRecord {
   badge_text: string;
   highlight_text: string;
   features: string;
+  listing_allowance?: number;
+  contact_unlock_allowance?: number;
+  enquiry_allowance?: number;
+  description?: string;
   is_active: number;
   sort_order: number;
+}
+
+export interface SubscriptionFormRecord {
+  id: number;
+  user_id: number | null;
+  user_type: "seller" | "buyer";
+  name: string;
+  business_name: string;
+  mobile: string;
+  email: string;
+  plan_name: string;
+  amount_inr: number;
+  notes: string;
+  status: "pending" | "approved" | "rejected" | "converted";
+  admin_remarks: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditLogRecord {
+  id: number;
+  user_id: number | null;
+  user_email: string;
+  action: string;
+  details: string;
+  ip_address: string;
+  created_at: string;
 }
 
 export interface HeroSlide {

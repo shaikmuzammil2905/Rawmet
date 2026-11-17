@@ -9,6 +9,7 @@ export function ensureSeeded(): void {
   const existingAdmin = db.prepare(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`).get();
   if (existingAdmin) {
     syncUpdatedMedia(db);
+    syncSubscriptionPlans(db);
     globalThis.__rawmetSeeded = true;
     return;
   }
@@ -838,4 +839,195 @@ function syncUpdatedMedia(db: ReturnType<typeof getDb>): void {
     }
   }
 }
+
+export function syncSubscriptionPlans(db: ReturnType<typeof getDb>): void {
+  const plans = [
+    {
+      name: "Free Plan",
+      slug: "free-plan",
+      duration_months: 12,
+      bonus_months: 0,
+      price_inr: 0,
+      badge_text: "Free Tier",
+      highlight_text: "12 Months Free Access • 2 Listings",
+      features: JSON.stringify([
+        "2 Product / Machinery / Service Listings",
+        "Browse Live Requirements",
+        "Direct WhatsApp & Email Inquiries",
+        "Standard Platform Support",
+      ]),
+      listing_allowance: 2,
+      sort_order: 1,
+    },
+    {
+      name: "3 Months Plan",
+      slug: "3-months-plan",
+      duration_months: 3,
+      bonus_months: 0,
+      price_inr: 500,
+      badge_text: "Budget Entry",
+      highlight_text: "3 Months Full Access • 10 Listings",
+      features: JSON.stringify([
+        "10 Verified Listings Allowance",
+        "Category WhatsApp Opportunity Alerts",
+        "Direct Buyer & Seller Contacts",
+        "Standard Search Placement",
+      ]),
+      listing_allowance: 10,
+      sort_order: 2,
+    },
+    {
+      name: "6 Months Plan",
+      slug: "6-months-plan",
+      duration_months: 6,
+      bonus_months: 0,
+      price_inr: 600,
+      badge_text: "Popular Value",
+      highlight_text: "6 Months Full Access • 25 Listings",
+      features: JSON.stringify([
+        "25 Verified Listings Allowance",
+        "Priority Listing Placement in Search",
+        "Priority WhatsApp Lead Dispatch",
+        "Dedicated Email & Phone Support",
+      ]),
+      listing_allowance: 25,
+      sort_order: 3,
+    },
+    {
+      name: "Subscription Form",
+      slug: "subscription-form-plan",
+      duration_months: 12,
+      bonus_months: 0,
+      price_inr: 1500,
+      badge_text: "Custom Form",
+      highlight_text: "₹1,500 Form • Pending Terms Confirmation",
+      features: JSON.stringify([
+        "Dedicated Account Onboarding",
+        "Custom Listing Quotas & Direct Manager Support",
+        "Statutory Filing & CA Advisory Option",
+        "Terms & exact benefits subject to client confirmation",
+      ]),
+      listing_allowance: 50,
+      sort_order: 4,
+    },
+    {
+      name: "6 Months Starter",
+      slug: "6-months",
+      duration_months: 6,
+      bonus_months: 0,
+      price_inr: 6000,
+      badge_text: "Starter",
+      highlight_text: "6 Months Full Portal Access • Incl. 18% GST",
+      features: JSON.stringify([
+        "Unlimited access to verified vendor contacts & WhatsApp connect",
+        "Priority Real-Time Business Opportunity alerts",
+        "Chartered Accountant advice on call (Conditions Apply)",
+        "Dedicated customer support & verified buyer badge",
+        "100 Verified Listings Allowance",
+      ]),
+      listing_allowance: 100,
+      sort_order: 5,
+    },
+    {
+      name: "12 Months Growth",
+      slug: "12-months",
+      duration_months: 12,
+      bonus_months: 0,
+      price_inr: 11000,
+      badge_text: "Popular",
+      highlight_text: "12 Months Full Portal Access • Incl. 18% GST",
+      features: JSON.stringify([
+        "Everything in 6 Months Starter + higher savings",
+        "Priority listing placement in search results",
+        "Business GST monthly return filing support (Conditions Apply)",
+        "WhatsApp real-time lead notifications for your categories",
+        "250 Verified Listings Allowance",
+      ]),
+      listing_allowance: 250,
+      sort_order: 6,
+    },
+    {
+      name: "2 Years Enterprise",
+      slug: "2-years",
+      duration_months: 24,
+      bonus_months: 0,
+      price_inr: 20000,
+      badge_text: "Best Value",
+      highlight_text: "24 Months Full Portal Access • Incl. 18% GST",
+      features: JSON.stringify([
+        "All Growth features for 24 full months",
+        "Chartered Accountant advice + GST & Annual IT filing support*",
+        "Featured Vendor / Buyer spotlight on category pages",
+        "Dedicated account manager & referral rewards",
+        "500 Verified Listings Allowance",
+      ]),
+      listing_allowance: 500,
+      sort_order: 7,
+    },
+    {
+      name: "3 Years + 4th Year FREE",
+      slug: "3-years-launch-offer",
+      duration_months: 36,
+      bonus_months: 12,
+      price_inr: 35000,
+      badge_text: "LAUNCH OFFER • 4th YEAR FREE",
+      highlight_text: "Pay for 3 Years, Get 4th Year (12 Months) FREE! • Incl. 18% GST",
+      features: JSON.stringify([
+        "48 Months total validity (3 Years + 4th Year FREE Offer!)",
+        "Maximum Launching Offer discount for paid subscribers",
+        "CA Advice on Call + Monthly GST & Annual IT Return Filing*",
+        "Top homepage & category banner promotion priority",
+        "Unlimited verified product/machinery/service listings",
+      ]),
+      listing_allowance: 9999,
+      sort_order: 8,
+    },
+  ];
+
+  const checkStmt = db.prepare(`SELECT id FROM subscription_plans WHERE slug = ?`);
+  const insertStmt = db.prepare(`
+    INSERT INTO subscription_plans (
+      name, slug, duration_months, bonus_months, price_inr, gst_included,
+      badge_text, highlight_text, features, is_active, sort_order, listing_allowance
+    ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, 1, ?, ?)
+  `);
+  const updateStmt = db.prepare(`
+    UPDATE subscription_plans
+    SET name = ?, duration_months = ?, bonus_months = ?, price_inr = ?,
+        badge_text = ?, highlight_text = ?, features = ?, sort_order = ?, listing_allowance = ?
+    WHERE slug = ?
+  `);
+
+  for (const p of plans) {
+    const existing = checkStmt.get(p.slug) as { id: number } | undefined;
+    if (existing) {
+      updateStmt.run(
+        p.name,
+        p.duration_months,
+        p.bonus_months,
+        p.price_inr,
+        p.badge_text,
+        p.highlight_text,
+        p.features,
+        p.sort_order,
+        p.listing_allowance,
+        p.slug
+      );
+    } else {
+      insertStmt.run(
+        p.name,
+        p.slug,
+        p.duration_months,
+        p.bonus_months,
+        p.price_inr,
+        p.badge_text,
+        p.highlight_text,
+        p.features,
+        p.sort_order,
+        p.listing_allowance
+      );
+    }
+  }
+}
+
 

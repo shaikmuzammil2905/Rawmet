@@ -308,7 +308,58 @@ function initializeSchema(db: DbClient): void {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS subscription_forms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_type TEXT NOT NULL DEFAULT 'seller',
+      name TEXT NOT NULL,
+      business_name TEXT NOT NULL DEFAULT '',
+      mobile TEXT NOT NULL,
+      email TEXT NOT NULL DEFAULT '',
+      plan_name TEXT NOT NULL DEFAULT 'Subscription Form (₹1,500)',
+      amount_inr INTEGER NOT NULL DEFAULT 1500,
+      notes TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL CHECK(status IN ('pending','approved','rejected','converted')) DEFAULT 'pending',
+      admin_remarks TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_email TEXT NOT NULL DEFAULT '',
+      action TEXT NOT NULL,
+      details TEXT NOT NULL DEFAULT '',
+      ip_address TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+
+  runSafeMigrations(db);
+}
+
+function runSafeMigrations(db: DbClient): void {
+  const migrations = [
+    "ALTER TABLE subscription_plans ADD COLUMN user_type TEXT NOT NULL DEFAULT 'all'",
+    "ALTER TABLE subscription_plans ADD COLUMN listing_allowance INTEGER NOT NULL DEFAULT -1",
+    "ALTER TABLE subscription_plans ADD COLUMN contact_unlock_allowance INTEGER NOT NULL DEFAULT -1",
+    "ALTER TABLE subscription_plans ADD COLUMN enquiry_allowance INTEGER NOT NULL DEFAULT -1",
+    "ALTER TABLE subscription_plans ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE listings ADD COLUMN rejection_reason TEXT DEFAULT ''",
+    "ALTER TABLE listings ADD COLUMN is_published INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE vendors ADD COLUMN rejection_reason TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN rejection_reason TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN last_login_at TEXT DEFAULT ''",
+  ];
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+    } catch {
+      // Column already present
+    }
+  }
 }
 
 export function getDb(): DbClient {

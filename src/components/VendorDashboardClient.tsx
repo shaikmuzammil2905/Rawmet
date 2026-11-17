@@ -46,6 +46,11 @@ export function VendorDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [vendor, setVendor] = useState<VendorRecord | null>(null);
   const [listings, setListings] = useState<ListingRecord[]>([]);
+  const [quota, setQuota] = useState<{ used: number; allowance: number; planName: string }>({
+    used: 0,
+    allowance: 2,
+    planName: "Free Tier",
+  });
   const [enquiries, setEnquiries] = useState<Array<{ id: number; name: string; business_name: string; mobile: string; message: string; listing_title: string; created_at: string }>>([]);
   const [waNotifications, setWaNotifications] = useState<Array<{ id: number; category_slug: string; message_preview: string; requirement_title: string; buyer_mobile: string; created_at: string }>>([]);
   const [requirements, setRequirements] = useState<RequirementRecord[]>([]);
@@ -83,6 +88,9 @@ export function VendorDashboardClient() {
       const profData = await profRes.json();
       setVendor(profData.vendor || listData.vendor);
       setListings(listData.listings || []);
+      if (listData.quota) {
+        setQuota(listData.quota);
+      }
       setEnquiries(profData.enquiries || []);
       setWaNotifications(profData.notifications || []);
       setRequirements(profData.requirements || []);
@@ -266,7 +274,34 @@ export function VendorDashboardClient() {
       </div>
 
       {tab === "overview" && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <div className="rounded-2xl bg-gradient-to-r from-[#0a2458] to-[#123983] text-white p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-extrabold uppercase bg-orange-500 text-white px-2.5 py-0.5 rounded-full">
+                  {quota.planName}
+                </span>
+                <span className="text-xs text-blue-200">Listing Quota</span>
+              </div>
+              <h3 className="text-base font-bold mt-1.5">
+                {quota.used} of {quota.allowance} Listings Published
+              </h3>
+              <div className="w-56 sm:w-72 bg-white/20 rounded-full h-2.5 mt-2 overflow-hidden">
+                <div
+                  className="bg-orange-400 h-full rounded-full transition-all"
+                  style={{ width: `${Math.min(100, Math.round((quota.used / Math.max(1, quota.allowance)) * 100))}%` }}
+                />
+              </div>
+            </div>
+            <Link
+              href="/subscriptions"
+              className="rounded-full bg-white text-[#0a2458] hover:bg-orange-50 font-bold text-xs px-4 py-2 shrink-0 transition-colors shadow"
+            >
+              Upgrade Subscription Plan
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-2xl bg-white border border-slate-200 p-5">
             <p className="text-xs font-bold text-slate-500 uppercase">Total Listings</p>
             <p className="text-3xl font-extrabold text-[#0a2458] mt-1">{listings.length}</p>
@@ -286,6 +321,7 @@ export function VendorDashboardClient() {
             <p className="text-3xl font-extrabold text-[#1652b8] mt-1">{waNotifications.length}</p>
           </div>
         </div>
+      </div>
       )}
 
       {tab === "listings" && (

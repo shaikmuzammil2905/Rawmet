@@ -39,8 +39,8 @@ export async function POST(req: Request) {
         `INSERT INTO listings (
           vendor_id, type, category_slug, subcategory_slug, title, slug,
           short_description, description, specifications, location,
-          price_display, availability, image_url, gallery_urls, status, featured
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          price_display, availability, image_url, gallery_urls, status, featured, is_published
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
       )
       .run(
         vendorId,
@@ -61,6 +61,15 @@ export async function POST(req: Request) {
         body.featured ? 1 : 0
       );
 
+    db.prepare(`
+      INSERT INTO audit_logs (user_id, user_email, action, details)
+      VALUES (?, ?, 'admin_created_listing', ?)
+    `).run(
+      session.user.id,
+      session.user.email,
+      `Listing '${body.title}' (${body.type}) created by Admin`
+    );
+
     return NextResponse.json({ success: true, id: Number(res.lastInsertRowid) }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to add listing." }, { status: 500 });
@@ -74,6 +83,8 @@ export async function PATCH(req: Request) {
   const body = (await req.json()) as {
     id?: number;
     status?: "approved" | "pending" | "rejected";
+    rejection_reason?: string;
+    is_published?: boolean;
     featured?: boolean;
     title?: string;
     category_slug?: string;
@@ -91,6 +102,8 @@ export async function PATCH(req: Request) {
   db.prepare(
     `UPDATE listings SET
       status = COALESCE(?, status),
+      rejection_reason = COALESCE(?, rejection_reason),
+      is_published = COALESCE(?, is_published),
       featured = COALESCE(?, featured),
       title = COALESCE(?, title),
       category_slug = COALESCE(?, category_slug),
@@ -104,6 +117,8 @@ export async function PATCH(req: Request) {
     WHERE id = ?`
   ).run(
     body.status ?? null,
+    body.status === "rejected" ? (body.rejection_reason || "Requires specification revision.") : null,
+    typeof body.is_published === "boolean" ? (body.is_published ? 1 : 0) : null,
     typeof body.featured === "boolean" ? (body.featured ? 1 : 0) : null,
     body.title ?? null,
     body.category_slug ?? null,
@@ -127,6 +142,15 @@ export async function DELETE(req: Request) {
   const id = Number(searchParams.get("id"));
   const db = getDb();
   db.prepare(`DELETE FROM listings WHERE id = ?`).run(id);
+
+  db.prepare(`
+    INSERT INTO audit_logs (user_id, user_email, action, details)
+    VALUES (?, ?, 'admin_deleted_listing', ?)
+  `).run(
+    session.user.id,
+    session.user.email,
+    `Listing #${id} deleted by Admin`
+  );
+
   return NextResponse.json({ success: true });
 }
-

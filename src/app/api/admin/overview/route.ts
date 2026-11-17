@@ -10,28 +10,111 @@ export async function GET() {
 
   const db = getDb();
 
+  // Basic counts
+  const totalUsers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`).get() as { c: number }).c;
+  const totalRegisteredSellers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'vendor'`).get() as { c: number }).c;
+  const totalRegisteredBuyers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'customer'`).get() as { c: number }).c;
+
+  const totalVendors = (db.prepare(`SELECT COUNT(*) as c FROM vendors`).get() as { c: number }).c;
+  const activeVendors = (
+    db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'approved'`).get() as { c: number }
+  ).c;
+  const pendingVendors = (
+    db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'pending'`).get() as { c: number }
+  ).c;
+  const rejectedVendors = (
+    db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'rejected'`).get() as { c: number }
+  ).c;
+
+  const activeBuyers = (
+    db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'customer' AND status = 'active'`).get() as { c: number }
+  ).c;
+
+  // Listings by type and status
+  const totalListings = (db.prepare(`SELECT COUNT(*) as c FROM listings`).get() as { c: number }).c;
+  const approvedListings = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE status = 'approved'`).get() as { c: number }
+  ).c;
+  const pendingListings = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE status = 'pending'`).get() as { c: number }
+  ).c;
+  const rejectedListings = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE status = 'rejected'`).get() as { c: number }
+  ).c;
+
+  const totalProducts = (db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'product'`).get() as { c: number }).c;
+  const approvedProducts = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'product' AND status = 'approved'`).get() as { c: number }
+  ).c;
+  const pendingProducts = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'product' AND status = 'pending'`).get() as { c: number }
+  ).c;
+  const rejectedProducts = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'product' AND status = 'rejected'`).get() as { c: number }
+  ).c;
+
+  const totalMachineryListings = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'machinery'`).get() as { c: number }
+  ).c;
+  const totalServiceListings = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE type = 'service'`).get() as { c: number }
+  ).c;
+
+  const totalRequirements = (db.prepare(`SELECT COUNT(*) as c FROM requirements`).get() as { c: number }).c;
+
+  // Subscriptions & Payments
+  const activeSubscriptions = (
+    db
+      .prepare(`SELECT COUNT(*) as c FROM user_subscriptions WHERE status = 'active' AND datetime(ends_at) > datetime('now')`)
+      .get() as { c: number }
+  ).c;
+  const expiredSubscriptions = (
+    db
+      .prepare(`SELECT COUNT(*) as c FROM user_subscriptions WHERE datetime(ends_at) <= datetime('now')`)
+      .get() as { c: number }
+  ).c;
+
+  const totalRevenueInr = (
+    db.prepare(`SELECT COALESCE(SUM(amount_inr), 0) as s FROM payments WHERE status = 'paid'`).get() as { s: number }
+  ).s;
+  const totalVerifiedPayments = (
+    db.prepare(`SELECT COUNT(*) as c FROM payments WHERE status = 'paid'`).get() as { c: number }
+  ).c;
+  const pendingPayments = (
+    db.prepare(`SELECT COUNT(*) as c FROM payments WHERE status = 'pending'`).get() as { c: number }
+  ).c;
+
+  const pendingFormsCount = (
+    db.prepare(`SELECT COUNT(*) as c FROM subscription_forms WHERE status = 'pending'`).get() as { c: number }
+  ).c;
+
   const kpi = {
-    totalUsers: (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`).get() as { c: number }).c,
-    totalVendors: (db.prepare(`SELECT COUNT(*) as c FROM vendors`).get() as { c: number }).c,
-    activeVendors: (
-      db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'approved'`).get() as { c: number }
-    ).c,
-    pendingVendors: (
-      db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'pending'`).get() as { c: number }
-    ).c,
-    totalListings: (db.prepare(`SELECT COUNT(*) as c FROM listings`).get() as { c: number }).c,
-    pendingListings: (
-      db.prepare(`SELECT COUNT(*) as c FROM listings WHERE status = 'pending'`).get() as { c: number }
-    ).c,
-    totalRequirements: (db.prepare(`SELECT COUNT(*) as c FROM requirements`).get() as { c: number }).c,
-    activeSubscriptions: (
-      db
-        .prepare(`SELECT COUNT(*) as c FROM user_subscriptions WHERE status = 'active' AND datetime(ends_at) > datetime('now')`)
-        .get() as { c: number }
-    ).c,
-    totalRevenueInr: (
-      db.prepare(`SELECT COALESCE(SUM(amount_inr), 0) as s FROM payments WHERE status = 'paid'`).get() as { s: number }
-    ).s,
+    totalUsers,
+    totalRegisteredSellers,
+    totalRegisteredBuyers,
+    activeSellers: activeVendors,
+    activeBuyers,
+    totalVendors,
+    activeVendors,
+    pendingVendors,
+    rejectedVendors,
+    totalListings,
+    approvedListings,
+    pendingListings,
+    rejectedListings,
+    totalProducts,
+    approvedProducts,
+    pendingProducts,
+    rejectedProducts,
+    totalMachineryListings,
+    totalServiceListings,
+    totalRequirements,
+    activeSubscriptions,
+    expiredSubscriptions,
+    totalRevenueInr,
+    totalVerifiedPayments,
+    pendingPayments,
+    pendingFormsCount,
   };
 
   const categoryBreakdown = db
@@ -96,6 +179,8 @@ export async function GET() {
     .prepare(`SELECT * FROM whatsapp_notifications ORDER BY id DESC LIMIT 100`)
     .all();
   const referrals = db.prepare(`SELECT * FROM referrals ORDER BY id DESC`).all();
+  const subscriptionForms = db.prepare(`SELECT * FROM subscription_forms ORDER BY id DESC`).all();
+  const auditLogs = db.prepare(`SELECT * FROM audit_logs ORDER BY id DESC LIMIT 150`).all();
   const plans = getSubscriptionPlans(true);
   const cms = getCmsMap();
 
@@ -114,8 +199,9 @@ export async function GET() {
     gallery,
     whatsappNotifications,
     referrals,
+    subscriptionForms,
+    auditLogs,
     plans,
     cms,
   });
 }
-

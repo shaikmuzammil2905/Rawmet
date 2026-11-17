@@ -12,7 +12,30 @@ export async function GET() {
     .prepare(`SELECT * FROM listings WHERE vendor_id = ? ORDER BY id DESC`)
     .all(session.vendor.id);
 
-  return NextResponse.json({ listings, vendor: session.vendor });
+  // Check active subscription quota
+  const sub = db
+    .prepare(
+      `SELECT us.*, sp.name as plan_name, sp.listing_allowance
+       FROM user_subscriptions us
+       JOIN subscription_plans sp ON sp.id = us.plan_id
+       WHERE us.user_id = ? AND us.status = 'active' AND datetime(us.ends_at) > datetime('now')
+       ORDER BY sp.listing_allowance DESC, us.id DESC
+       LIMIT 1`
+    )
+    .get(session.user.id) as { plan_name: string; listing_allowance: number } | undefined;
+
+  const allowance = sub ? (sub.listing_allowance || 100) : 2;
+  const planName = sub ? sub.plan_name : "Free Tier (2 Listings)";
+
+  return NextResponse.json({
+    listings,
+    vendor: session.vendor,
+    quota: {
+      used: listings.length,
+      allowance,
+      planName,
+    },
+  });
 }
 
 export async function POST(req: Request) {
@@ -25,6 +48,36 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: `Free listings require GST / Authentic ID verification approval. Current status: ${session.vendor.verification_status.toUpperCase()}.`,
+      },
+      { status: 403 }
+    );
+  }
+
+  const db = getDb();
+
+  // Enforce listing allowance quota
+  const sub = db
+    .prepare(
+      `SELECT us.*, sp.name as plan_name, sp.listing_allowance
+       FROM user_subscriptions us
+       JOIN subscription_plans sp ON sp.id = us.plan_id
+       WHERE us.user_id = ? AND us.status = 'active' AND datetime(us.ends_at) > datetime('now')
+       ORDER BY sp.listing_allowance DESC, us.id DESC
+       LIMIT 1`
+    )
+    .get(session.user.id) as { plan_name: string; listing_allowance: number } | undefined;
+
+  const allowance = sub ? (sub.listing_allowance || 100) : 2;
+  const planName = sub ? sub.plan_name : "Free Tier (2 Listings)";
+
+  const currentCount = (
+    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE vendor_id = ?`).get(session.vendor.id) as { c: number }
+  ).c;
+
+  if (currentCount >= allowance) {
+    return NextResponse.json(
+      {
+        error: `Listing quota reached (${currentCount}/${allowance}). Your plan "${planName}" allows up to ${allowance} active catalog listings. Please upgrade your subscription plan to publish more products.`,
       },
       { status: 403 }
     );
@@ -52,7 +105,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Listing type, category, and title are required." }, { status: 400 });
     }
 
-    const db = getDb();
     const baseSlug = slugify(title);
     const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
 
@@ -61,8 +113,8 @@ export async function POST(req: Request) {
         `INSERT INTO listings (
           vendor_id, type, category_slug, subcategory_slug, title, slug,
           short_description, description, specifications, location, price_display,
-          availability, image_url, gallery_urls, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+          availability, image_url, gallery_urls, status, is_published
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)`
       )
       .run(
         session.vendor.id,
@@ -80,6 +132,15 @@ export async function POST(req: Request) {
         body.image_url || "/images/cat-products.png",
         JSON.stringify(body.gallery_urls || [body.image_url || "/images/cat-products.png"])
       );
+
+    db.prepare(`
+      INSERT INTO audit_logs (user_id, user_email, action, details)
+      VALUES (?, ?, 'vendor_submitted_listing', ?)
+    `).run(
+      session.user.id,
+      session.user.email,
+      `Vendor #${session.vendor.id} submitted listing '${title}' for approval`
+    );
 
     return NextResponse.json(
       {
@@ -103,19 +164,22 @@ export async function PATCH(req: Request) {
   try {
     const body = (await req.json()) as {
       id?: number;
+      type?: "product" | "machinery" | "service";
+      category_slug?: string;
+      subcategory_slug?: string;
       title?: string;
       short_description?: string;
       description?: string;
+      specifications?: Record<string, string>;
       location?: string;
       price_display?: string;
       availability?: string;
       image_url?: string;
-      category_slug?: string;
-      specifications?: Record<string, string>;
+      gallery_urls?: string[];
     };
 
     if (!body.id) {
-      return NextResponse.json({ error: "Listing ID required." }, { status: 400 });
+      return NextResponse.json({ error: "Listing id is required." }, { status: 400 });
     }
 
     const db = getDb();
@@ -124,40 +188,46 @@ export async function PATCH(req: Request) {
       .get(body.id, session.vendor.id);
 
     if (!existing) {
-      return NextResponse.json({ error: "Listing not found." }, { status: 404 });
+      return NextResponse.json({ error: "Listing not found or access denied." }, { status: 404 });
     }
 
     db.prepare(
       `UPDATE listings SET
-        title = COALESCE(?, title),
+        type = COALESCE(?, type),
         category_slug = COALESCE(?, category_slug),
+        subcategory_slug = COALESCE(?, subcategory_slug),
+        title = COALESCE(?, title),
         short_description = COALESCE(?, short_description),
         description = COALESCE(?, description),
+        specifications = COALESCE(?, specifications),
         location = COALESCE(?, location),
         price_display = COALESCE(?, price_display),
         availability = COALESCE(?, availability),
         image_url = COALESCE(?, image_url),
-        specifications = COALESCE(?, specifications),
+        gallery_urls = COALESCE(?, gallery_urls),
         status = 'pending',
         updated_at = datetime('now')
       WHERE id = ? AND vendor_id = ?`
     ).run(
-      body.title ?? null,
+      body.type ?? null,
       body.category_slug ?? null,
-      body.short_description ?? null,
+      body.subcategory_slug ?? null,
+      body.title ? body.title.trim() : null,
+      body.short_description ? body.short_description.trim() : null,
       body.description ?? null,
+      body.specifications ? JSON.stringify(body.specifications) : null,
       body.location ?? null,
       body.price_display ?? null,
       body.availability ?? null,
       body.image_url ?? null,
-      body.specifications ? JSON.stringify(body.specifications) : null,
+      body.gallery_urls ? JSON.stringify(body.gallery_urls) : null,
       body.id,
       session.vendor.id
     );
 
-    return NextResponse.json({ success: true, message: "Listing updated and queued for review." });
+    return NextResponse.json({ success: true, message: "Listing updated and resubmitted for Admin review." });
   } catch {
-    return NextResponse.json({ error: "Update failed." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update listing." }, { status: 500 });
   }
 }
 
@@ -169,13 +239,13 @@ export async function DELETE(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const id = Number(searchParams.get("id"));
-  if (!id) return NextResponse.json({ error: "Listing ID required." }, { status: 400 });
+
+  if (!id) {
+    return NextResponse.json({ error: "Listing id required." }, { status: 400 });
+  }
 
   const db = getDb();
-  const res = db.prepare(`DELETE FROM listings WHERE id = ? AND vendor_id = ?`).run(id, session.vendor.id);
-  if (res.changes === 0) {
-    return NextResponse.json({ error: "Listing not found." }, { status: 404 });
-  }
-  return NextResponse.json({ success: true });
-}
+  db.prepare(`DELETE FROM listings WHERE id = ? AND vendor_id = ?`).run(id, session.vendor.id);
 
+  return NextResponse.json({ success: true, message: "Listing deleted successfully." });
+}

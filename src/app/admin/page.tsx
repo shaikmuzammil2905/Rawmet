@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/data";
-import { AdminDashboardClient } from "@/components/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin Panel",
+  title: "Admin Panel | RAWMAT MART",
 };
 
 export default async function AdminPage() {
@@ -14,6 +13,5 @@ export default async function AdminPage() {
   if (!session) {
     redirect("/admin/login");
   }
-  return <AdminDashboardClient />;
+  redirect("/admin/dashboard");
 }
-

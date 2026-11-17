@@ -19,6 +19,7 @@ node_modules/
 .DS_Store
 *.pem
 *.csv
+image copy *.png
 .env
 .env.local
 .env.development.local
