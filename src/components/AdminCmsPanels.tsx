@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileUp, Plus, Save, Trash2 } from "lucide-react";
+import { Edit2, FileUp, Plus, Save, Trash2, X } from "lucide-react";
 import type {
   AboutContent,
   CategoryRecord,
@@ -26,21 +26,82 @@ export function AdminCategoriesPanel({
   const [type, setType] = useState<"product" | "machinery" | "service">("product");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [imageUrl, setImageUrl] = useState("/images/cat-products.png");
+  const [uploading, setUploading] = useState(false);
+
+  // Subcategory form
   const [subCatId, setSubCatId] = useState<number>(categories[0]?.id || 1);
   const [subName, setSubName] = useState("");
+
+  // Edit category modal
+  const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editImage, setEditImage] = useState("");
+
+  async function handleImageUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (url: string) => void
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setter(data.url);
+        showToast("Category image uploaded successfully!", "success");
+      } else {
+        showToast(data.error || "Image upload failed.", "error");
+      }
+    } catch {
+      showToast("Network error uploading image.", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function addCategory(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch("/api/admin/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "category", type, name, description: desc }),
+      body: JSON.stringify({ kind: "category", type, name, description: desc, imageUrl }),
     });
     if (res.ok) {
-      showToast("Category added!", "success");
+      showToast("Category added live to website!", "success");
       setName("");
       setDesc("");
+      setImageUrl("/images/cat-products.png");
       onRefresh();
+    } else {
+      showToast("Failed to add category.", "error");
+    }
+  }
+
+  async function saveCategoryEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCategory) return;
+    const res = await fetch("/api/admin/categories", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "category",
+        id: editingCategory.id,
+        name: editName,
+        description: editDesc,
+        imageUrl: editImage,
+      }),
+    });
+    if (res.ok) {
+      showToast("Category updated live on website!", "success");
+      setEditingCategory(null);
+      onRefresh();
+    } else {
+      showToast("Failed to update category.", "error");
     }
   }
 
@@ -59,113 +120,275 @@ export function AdminCategoriesPanel({
   }
 
   async function deleteItem(kind: "category" | "subcategory", id: number) {
+    if (!confirm(`Are you sure you want to delete this ${kind}?`)) return;
     await fetch(`/api/admin/categories?kind=${kind}&id=${id}`, { method: "DELETE" });
-    showToast("Deleted.", "info");
+    showToast(`${kind === "category" ? "Category" : "Subcategory"} deleted.`, "info");
     onRefresh();
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-        <h3 className="font-extrabold text-[#0a2458]">Categories ({categories.length})</h3>
-        <form onSubmit={addCategory} className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as "product" | "machinery" | "service")}
-              className="rounded-lg border px-3 py-2 text-xs bg-white"
-            >
-              <option value="product">Product</option>
-              <option value="machinery">Machinery</option>
-              <option value="service">Service</option>
-            </select>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Categories Section */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-[#0a2458]">Marketplace Categories ({categories.length})</h3>
+            <span className="text-xs text-slate-500 font-semibold">Live in main navigation</span>
+          </div>
+
+          {/* Add Category Form */}
+          <form onSubmit={addCategory} className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <p className="text-xs font-bold text-[#0a2458] flex items-center gap-1.5">
+              <Plus className="h-4 w-4 text-[#f97316]" /> Add New Category
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as "product" | "machinery" | "service")}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
+              >
+                <option value="product">Product Category</option>
+                <option value="machinery">Machinery Category</option>
+                <option value="service">Service Category</option>
+              </select>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Category Name (e.g. Rubber)"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
+              />
+            </div>
             <input
               type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="New category name"
-              className="rounded-lg border px-3 py-2 text-xs bg-white"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Category short description"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
             />
-          </div>
-          <input
-            type="text"
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="Category description"
-            className="w-full rounded-lg border px-3 py-2 text-xs bg-white"
-          />
-          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-[#0a2458] text-white px-4 py-1.5 text-xs font-bold">
-            <Plus className="h-3.5 w-3.5" /> Add Category
-          </button>
-        </form>
-
-        <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 text-xs">
-          {categories.map((c) => (
-            <div key={c.id} className="py-2.5 flex items-center justify-between gap-2">
-              <div>
-                <span className="uppercase font-bold text-[#f97316] mr-2">{c.type}</span>
-                <strong className="text-[#0a2458]">{c.name}</strong>
-              </div>
-              <button
-                type="button"
-                onClick={() => deleteItem("category", c.id)}
-                className="text-red-500 hover:text-red-700 p-1"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+            {/* Image upload */}
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-white bg-slate-100 transition-colors">
+                <FileUp className="h-3.5 w-3.5 text-[#f97316]" />
+                <span>{uploading ? "Uploading to S3..." : "Upload Category Image"}</span>
+                <input
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp"
+                  onChange={(e) => handleImageUpload(e, setImageUrl)}
+                  className="hidden"
+                />
+              </label>
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="Image URL"
+                className="flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-xs bg-white"
+              />
             </div>
-          ))}
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 text-xs font-bold shadow transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Save & Publish Category</span>
+            </button>
+          </form>
+
+          {/* Past Categories List */}
+          <div className="space-y-2 max-h-[500px] overflow-y-auto divide-y divide-slate-100 text-xs pr-1">
+            {categories.map((c) => (
+              <div key={c.id} className="pt-2.5 pb-2 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src={c.image_url || "/images/cat-products.png"}
+                    alt={c.name}
+                    className="h-9 w-9 object-cover rounded-lg border border-slate-200 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="uppercase font-bold text-[10px] text-[#f97316] bg-orange-50 px-1.5 py-0.5 rounded">
+                        {c.type}
+                      </span>
+                      <strong className="text-[#0a2458] truncate">{c.name}</strong>
+                    </div>
+                    {c.description && <p className="text-[11px] text-slate-500 truncate max-w-xs">{c.description}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCategory(c);
+                      setEditName(c.name);
+                      setEditDesc(c.description || "");
+                      setEditImage(c.image_url || "");
+                    }}
+                    className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Edit Category"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteItem("category", c.id)}
+                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete Category"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Subcategories Section */}
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-[#0a2458]">Subcategories ({subcategories.length})</h3>
+            <span className="text-xs text-slate-500 font-semibold">Filters & catalog hierarchy</span>
+          </div>
+
+          {/* Add Subcategory Form */}
+          <form onSubmit={addSubcategory} className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <p className="text-xs font-bold text-[#0a2458] flex items-center gap-1.5">
+              <Plus className="h-4 w-4 text-[#f97316]" /> Add New Subcategory
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <select
+                value={subCatId}
+                onChange={(e) => setSubCatId(Number(e.target.value))}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.type})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                required
+                value={subName}
+                onChange={(e) => setSubName(e.target.value)}
+                placeholder="Subcategory Name"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-xs font-bold shadow transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Subcategory</span>
+            </button>
+          </form>
+
+          {/* Past Subcategories List */}
+          <div className="space-y-1.5 max-h-[500px] overflow-y-auto divide-y divide-slate-100 text-xs pr-1">
+            {subcategories.map((s) => (
+              <div key={s.id} className="pt-2 pb-1.5 flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-slate-400 font-semibold mr-1.5">[{s.category_name}]:</span>
+                  <strong className="text-[#0a2458]">{s.name}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => deleteItem("subcategory", s.id)}
+                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete Subcategory"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4">
-        <h3 className="font-extrabold text-[#0a2458]">Subcategories ({subcategories.length})</h3>
-        <form onSubmit={addSubcategory} className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={subCatId}
-              onChange={(e) => setSubCatId(Number(e.target.value))}
-              className="rounded-lg border px-3 py-2 text-xs bg-white"
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.type})
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              required
-              value={subName}
-              onChange={(e) => setSubName(e.target.value)}
-              placeholder="New subcategory name"
-              className="rounded-lg border px-3 py-2 text-xs bg-white"
-            />
-          </div>
-          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-[#f97316] text-white px-4 py-1.5 text-xs font-bold">
-            <Plus className="h-3.5 w-3.5" /> Add Subcategory
-          </button>
-        </form>
-
-        <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 text-xs">
-          {subcategories.map((s) => (
-            <div key={s.id} className="py-2.5 flex items-center justify-between gap-2">
-              <div>
-                <span className="text-slate-500 mr-2">{s.category_name}:</span>
-                <strong className="text-[#0a2458]">{s.name}</strong>
-              </div>
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-[#0a2458] text-base">Edit Category</h3>
               <button
-                type="button"
-                onClick={() => deleteItem("subcategory", s.id)}
-                className="text-red-500 hover:text-red-700 p-1"
+                onClick={() => setEditingCategory(null)}
+                className="text-slate-400 hover:text-slate-600"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
-          ))}
+            <form onSubmit={saveCategoryEdit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Image</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100">
+                    <FileUp className="h-3.5 w-3.5 text-[#f97316]" />
+                    <span>Upload Image to S3</span>
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleImageUpload(e, setEditImage)}
+                      className="hidden"
+                    />
+                  </label>
+                  {editImage && (
+                    <img
+                      src={editImage}
+                      alt="Preview"
+                      className="h-8 w-8 object-cover rounded-lg border border-slate-200"
+                    />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={editImage}
+                  onChange={(e) => setEditImage(e.target.value)}
+                  placeholder="Image URL"
+                  className="w-full rounded-xl border border-slate-300 p-2 text-xs font-mono"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 font-bold text-xs shadow"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -178,9 +401,27 @@ export function AdminPlansPanel({
   onRefresh: () => void;
 }) {
   const { showToast } = useToast();
-  const [edits, setEdits] = useState<Record<number, { price_inr: number; badge_text: string; highlight_text: string }>>(() =>
+  const [edits, setEdits] = useState<
+    Record<
+      number,
+      {
+        price_inr: number;
+        badge_text: string;
+        highlight_text: string;
+        listing_allowance: number;
+      }
+    >
+  >(() =>
     Object.fromEntries(
-      plans.map((p) => [p.id, { price_inr: p.price_inr, badge_text: p.badge_text, highlight_text: p.highlight_text }])
+      plans.map((p) => [
+        p.id,
+        {
+          price_inr: p.price_inr,
+          badge_text: p.badge_text,
+          highlight_text: p.highlight_text,
+          listing_allowance: p.listing_allowance || 10,
+        },
+      ])
     )
   );
 
@@ -192,60 +433,96 @@ export function AdminPlansPanel({
       body: JSON.stringify({ id, ...e }),
     });
     if (res.ok) {
-      showToast("Subscription plan updated dynamically!", "success");
+      showToast("Subscription plan updated dynamically on live website!", "success");
       onRefresh();
+    } else {
+      showToast("Failed to save plan changes.", "error");
     }
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {plans.map((p) => {
-        const current = edits[p.id] || { price_inr: p.price_inr, badge_text: p.badge_text, highlight_text: p.highlight_text };
+        const current = edits[p.id] || {
+          price_inr: p.price_inr,
+          badge_text: p.badge_text,
+          highlight_text: p.highlight_text,
+          listing_allowance: p.listing_allowance || 10,
+        };
         return (
-          <div key={p.id} className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-[#0a2458]">{p.name}</h3>
-              <span className="text-xs font-bold text-[#f97316]">{p.duration_months}M + {p.bonus_months}M Bonus</span>
+          <div key={p.id} className="rounded-2xl bg-white border border-slate-200 p-4 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-extrabold text-[#f97316] bg-orange-50 px-2 py-0.5 rounded">
+                Plan #{p.id}
+              </span>
+              <span className="text-xs font-mono font-bold text-slate-500">{p.slug}</span>
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500">Price (₹ incl. 18% GST)</label>
-              <input
-                type="number"
-                value={current.price_inr}
-                onChange={(e) =>
-                  setEdits({ ...edits, [p.id]: { ...current, price_inr: Number(e.target.value) } })
-                }
-                className="w-full rounded-xl border px-3 py-2 text-sm mt-1"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500">Badge Text</label>
-              <input
-                type="text"
-                value={current.badge_text}
-                onChange={(e) =>
-                  setEdits({ ...edits, [p.id]: { ...current, badge_text: e.target.value } })
-                }
-                className="w-full rounded-xl border px-3 py-2 text-sm mt-1"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500">Highlight Note</label>
-              <input
-                type="text"
-                value={current.highlight_text}
-                onChange={(e) =>
-                  setEdits({ ...edits, [p.id]: { ...current, highlight_text: e.target.value } })
-                }
-                className="w-full rounded-xl border px-3 py-2 text-sm mt-1"
-              />
+            <h4 className="font-extrabold text-sm text-[#0a2458]">{p.name}</h4>
+            <div className="space-y-2 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Price (INR)</label>
+                <input
+                  type="number"
+                  value={current.price_inr}
+                  onChange={(e) =>
+                    setEdits({
+                      ...edits,
+                      [p.id]: { ...current, price_inr: Number(e.target.value) },
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Listing Allowance</label>
+                <input
+                  type="number"
+                  value={current.listing_allowance}
+                  onChange={(e) =>
+                    setEdits({
+                      ...edits,
+                      [p.id]: { ...current, listing_allowance: Number(e.target.value) },
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Badge Text</label>
+                <input
+                  type="text"
+                  value={current.badge_text}
+                  onChange={(e) =>
+                    setEdits({
+                      ...edits,
+                      [p.id]: { ...current, badge_text: e.target.value },
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-800"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Highlight Text</label>
+                <input
+                  type="text"
+                  value={current.highlight_text}
+                  onChange={(e) =>
+                    setEdits({
+                      ...edits,
+                      [p.id]: { ...current, highlight_text: e.target.value },
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-800"
+                />
+              </div>
             </div>
             <button
               type="button"
               onClick={() => savePlan(p.id)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-4 py-2 text-xs font-bold"
+              className="w-full flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white py-2 text-xs font-bold transition-colors shadow"
             >
-              <Save className="h-3.5 w-3.5" /> Save Plan Pricing
+              <Save className="h-3.5 w-3.5" />
+              <span>Save Plan</span>
             </button>
           </div>
         );
@@ -266,17 +543,39 @@ export function AdminGalleryPanel({
   const [category, setCategory] = useState("Rubber");
   const [imageUrl, setImageUrl] = useState("/images/refinery-plant.png");
   const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
 
-  async function uploadImg(e: React.ChangeEvent<HTMLInputElement>) {
+  // Edit gallery item
+  const [editingItem, setEditingItem] = useState<{
+    id: number;
+    title: string;
+    category: string;
+    image_url: string;
+    caption: string;
+  } | null>(null);
+
+  async function uploadImg(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (url: string) => void
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    if (res.ok) {
-      setImageUrl(data.url);
-      showToast("Gallery photo uploaded!", "success");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setter(data.url);
+        showToast("Gallery photo uploaded to S3!", "success");
+      } else {
+        showToast(data.error || "Upload failed.", "error");
+      }
+    } catch {
+      showToast("Error uploading file.", "error");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -288,14 +587,16 @@ export function AdminGalleryPanel({
       body: JSON.stringify({ title, category, imageUrl, caption }),
     });
     if (res.ok) {
-      showToast("Gallery item added!", "success");
+      showToast("Gallery item published live!", "success");
       setTitle("");
       setCaption("");
+      setImageUrl("/images/refinery-plant.png");
       onRefresh();
     }
   }
 
   async function deleteGallery(id: number) {
+    if (!confirm("Are you sure you want to delete this gallery item?")) return;
     await fetch(`/api/admin/gallery?id=${id}`, { method: "DELETE" });
     showToast("Gallery image removed.", "info");
     onRefresh();
@@ -303,8 +604,10 @@ export function AdminGalleryPanel({
 
   return (
     <div className="space-y-6">
-      <form onSubmit={addGallery} className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 max-w-2xl">
-        <h3 className="font-extrabold text-[#0a2458]">Add Gallery Image</h3>
+      <form onSubmit={addGallery} className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 max-w-2xl shadow-sm">
+        <h3 className="font-extrabold text-[#0a2458] flex items-center gap-2">
+          <Plus className="h-4 w-4 text-[#f97316]" /> Add Gallery Image
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             type="text"
@@ -312,56 +615,83 @@ export function AdminGalleryPanel({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Image Title *"
-            className="rounded-xl border px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800"
           />
           <input
             type="text"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="Category (Rubber, Plastic, Metals...)"
-            className="rounded-xl border px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800"
           />
         </div>
         <input
           type="text"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Caption"
-          className="w-full rounded-xl border px-3 py-2 text-sm"
+          placeholder="Caption / Description"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800"
         />
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-2 rounded-xl border border-dashed px-3.5 py-2 text-xs font-bold cursor-pointer">
+          <label className="inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100">
             <FileUp className="h-4 w-4 text-[#f97316]" />
-            Upload Image
-            <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={uploadImg} className="hidden" />
+            <span>{uploading ? "Uploading..." : "Upload Image"}</span>
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp"
+              onChange={(e) => uploadImg(e, setImageUrl)}
+              className="hidden"
+            />
           </label>
           <input
             type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
-            className="flex-1 rounded-xl border px-3 py-2 text-xs"
+            placeholder="Image URL"
+            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800"
           />
-          <button type="submit" className="rounded-full bg-[#f97316] text-white px-5 py-2 text-xs font-bold">
+          <button
+            type="submit"
+            className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 text-xs font-bold shadow transition-colors"
+          >
             Publish to Gallery
           </button>
         </div>
       </form>
 
+      {/* Gallery Items Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {gallery.map((g) => (
-          <div key={g.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
-            <img src={g.image_url} alt={g.title} className="h-40 w-full object-cover" />
-            <div className="p-4 flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-bold text-[#f97316]">{g.category}</span>
-                <p className="font-bold text-sm text-[#0a2458]">{g.title}</p>
+          <div key={g.id} className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="h-44 bg-slate-100 relative">
+                <img src={g.image_url} alt={g.title} className="h-full w-full object-cover" />
+                <span className="absolute top-2 left-2 rounded-full bg-[#0a2458]/80 backdrop-blur-sm text-white px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                  {g.category}
+                </span>
               </div>
-              <button type="button" onClick={() => deleteGallery(g.id)} className="text-red-500 hover:text-red-700 p-1">
-                <Trash2 className="h-4 w-4" />
+              <div className="p-4">
+                <p className="font-extrabold text-sm text-[#0a2458]">{g.title}</p>
+                {g.caption && <p className="text-xs text-slate-500 mt-1">{g.caption}</p>}
+              </div>
+            </div>
+            <div className="p-3 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => deleteGallery(g.id)}
+                className="inline-flex items-center gap-1 text-red-500 hover:text-red-700 text-xs font-bold p-1 rounded transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
               </button>
             </div>
           </div>
         ))}
+        {gallery.length === 0 && (
+          <div className="col-span-full p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+            No gallery images found. Upload your first gallery photo above.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -381,6 +711,32 @@ export function AdminCmsEditor({
   const { showToast } = useToast();
   const [data, setData] = useState(initialValue);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleS3Upload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    onUrl: (url: string) => void
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const out = await res.json();
+      if (res.ok && out.url) {
+        onUrl(out.url);
+        showToast("Image uploaded to S3 successfully!", "success");
+      } else {
+        showToast(out.error || "Upload failed.", "error");
+      }
+    } catch {
+      showToast("Error uploading file.", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -404,38 +760,64 @@ export function AdminCmsEditor({
   if (cmsKey === "launching_offer") {
     const val = data as LaunchingOfferContent;
     return (
-      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-2xl space-y-3">
-        <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
-        <input
-          type="text"
-          value={val.title}
-          onChange={(e) => setData({ ...val, title: e.target.value })}
-          placeholder="Offer Title"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <input
-          type="text"
-          value={val.subtitle}
-          onChange={(e) => setData({ ...val, subtitle: e.target.value })}
-          placeholder="Offer Subtitle"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <input
-          type="text"
-          value={val.fourthYearFreeNote}
-          onChange={(e) => setData({ ...val, fourthYearFreeNote: e.target.value })}
-          placeholder="4th Year FREE Note"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <input
-          type="text"
-          value={val.ctaText}
-          onChange={(e) => setData({ ...val, ctaText: e.target.value })}
-          placeholder="CTA Button Label"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-[#f97316] text-white px-6 py-2.5 text-sm font-bold">
-          {saving ? "Saving..." : "Save Launching Offer"}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-2xl space-y-3.5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
+          <span className="text-xs text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded">Live on /subscriptions</span>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Offer Badge</label>
+          <input
+            type="text"
+            value={val.badge}
+            onChange={(e) => setData({ ...val, badge: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Offer Title</label>
+          <input
+            type="text"
+            value={val.title}
+            onChange={(e) => setData({ ...val, title: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Offer Subtitle</label>
+          <input
+            type="text"
+            value={val.subtitle}
+            onChange={(e) => setData({ ...val, subtitle: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">4th Year FREE Highlight Note</label>
+          <input
+            type="text"
+            value={val.fourthYearFreeNote}
+            onChange={(e) => setData({ ...val, fourthYearFreeNote: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">CTA Button Label</label>
+          <input
+            type="text"
+            value={val.ctaText}
+            onChange={(e) => setData({ ...val, ctaText: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-6 py-2.5 text-xs font-bold shadow transition-all flex items-center gap-1.5"
+        >
+          <Save className="h-4 w-4" />
+          <span>{saving ? "Publishing to Website..." : "Save & Publish Offer"}</span>
         </button>
       </div>
     );
@@ -444,34 +826,55 @@ export function AdminCmsEditor({
   if (cmsKey === "about_content") {
     const val = data as AboutContent;
     return (
-      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-3xl space-y-3">
-        <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
-        <input
-          type="text"
-          value={val.headline}
-          onChange={(e) => setData({ ...val, headline: e.target.value })}
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <input
-          type="text"
-          value={val.subheadline}
-          onChange={(e) => setData({ ...val, subheadline: e.target.value })}
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <textarea
-          rows={2}
-          value={val.summary}
-          onChange={(e) => setData({ ...val, summary: e.target.value })}
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <textarea
-          rows={4}
-          value={val.fullStory}
-          onChange={(e) => setData({ ...val, fullStory: e.target.value })}
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-[#0a2458] text-white px-6 py-2.5 text-sm font-bold">
-          {saving ? "Saving..." : "Save About Us Content"}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-3xl space-y-3.5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
+          <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">Live on /about</span>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Headline</label>
+          <input
+            type="text"
+            value={val.headline}
+            onChange={(e) => setData({ ...val, headline: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Subheadline</label>
+          <input
+            type="text"
+            value={val.subheadline}
+            onChange={(e) => setData({ ...val, subheadline: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Executive Summary</label>
+          <textarea
+            rows={2}
+            value={val.summary}
+            onChange={(e) => setData({ ...val, summary: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Full Company Story</label>
+          <textarea
+            rows={5}
+            value={val.fullStory}
+            onChange={(e) => setData({ ...val, fullStory: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-6 py-2.5 text-xs font-bold shadow transition-all flex items-center gap-1.5"
+        >
+          <Save className="h-4 w-4" />
+          <span>{saving ? "Saving to Website..." : "Save About Us Content"}</span>
         </button>
       </div>
     );
@@ -480,54 +883,72 @@ export function AdminCmsEditor({
   if (cmsKey === "contact_settings") {
     const val = data as ContactSettings;
     return (
-      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-2xl space-y-3">
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 max-w-2xl space-y-3.5 shadow-sm">
         <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
+            <input
+              type="text"
+              value={val.companyName}
+              onChange={(e) => setData({ ...val, companyName: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Support Mobile</label>
+            <input
+              type="text"
+              value={val.mobile}
+              onChange={(e) => setData({ ...val, mobile: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp Connect</label>
+            <input
+              type="text"
+              value={val.whatsapp}
+              onChange={(e) => setData({ ...val, whatsapp: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Support Email</label>
+            <input
+              type="email"
+              value={val.email}
+              onChange={(e) => setData({ ...val, email: e.target.value })}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Office Address</label>
           <input
             type="text"
-            value={val.companyName}
-            onChange={(e) => setData({ ...val, companyName: e.target.value })}
-            placeholder="Company Name"
-            className="rounded-xl border px-3.5 py-2 text-sm"
-          />
-          <input
-            type="text"
-            value={val.mobile}
-            onChange={(e) => setData({ ...val, mobile: e.target.value })}
-            placeholder="Support Mobile"
-            className="rounded-xl border px-3.5 py-2 text-sm"
-          />
-          <input
-            type="text"
-            value={val.whatsapp}
-            onChange={(e) => setData({ ...val, whatsapp: e.target.value })}
-            placeholder="WhatsApp Number"
-            className="rounded-xl border px-3.5 py-2 text-sm"
-          />
-          <input
-            type="email"
-            value={val.email}
-            onChange={(e) => setData({ ...val, email: e.target.value })}
-            placeholder="Support Email"
-            className="rounded-xl border px-3.5 py-2 text-sm"
+            value={val.address}
+            onChange={(e) => setData({ ...val, address: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
           />
         </div>
-        <input
-          type="text"
-          value={val.address}
-          onChange={(e) => setData({ ...val, address: e.target.value })}
-          placeholder="Address"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <textarea
-          rows={2}
-          value={val.referralRewardRule}
-          onChange={(e) => setData({ ...val, referralRewardRule: e.target.value })}
-          placeholder="Referral Reward Rule"
-          className="w-full rounded-xl border px-3.5 py-2 text-sm"
-        />
-        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-[#0a2458] text-white px-6 py-2.5 text-sm font-bold">
-          {saving ? "Saving..." : "Save Portal Settings"}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">CA & Statutory Filing Conditions Note</label>
+          <textarea
+            rows={2}
+            value={val.conditionsApplyNote}
+            onChange={(e) => setData({ ...val, conditionsApplyNote: e.target.value })}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-6 py-2.5 text-xs font-bold shadow transition-all flex items-center gap-1.5"
+        >
+          <Save className="h-4 w-4" />
+          <span>{saving ? "Saving..." : "Save Settings"}</span>
         </button>
       </div>
     );
@@ -537,48 +958,65 @@ export function AdminCmsEditor({
   const slides = data as HeroSlide[];
   return (
     <div className="space-y-4 max-w-3xl">
-      <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-extrabold text-[#0a2458]">{title}</h3>
+        <span className="text-xs text-slate-500 font-bold">Homepage Dynamic Carousel</span>
+      </div>
       {slides.map((s, idx) => (
-        <div key={s.id} className="rounded-2xl bg-white border border-slate-200 p-4 space-y-2">
-          <p className="text-xs font-bold text-[#f97316]">Slide {idx + 1}</p>
-          <input
-            type="text"
-            value={s.headlinePrefix}
-            onChange={(e) => {
-              const next = [...slides];
-              next[idx] = { ...s, headlinePrefix: e.target.value };
-              setData(next);
-            }}
-            className="w-full rounded-xl border px-3 py-1.5 text-sm"
-          />
-          <div className="grid grid-cols-2 gap-2">
+        <div key={s.id} className="rounded-2xl bg-white border border-slate-200 p-4 space-y-3 shadow-sm">
+          <p className="text-xs font-black uppercase text-[#f97316]">Slide #{idx + 1}</p>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Headline Prefix</label>
             <input
               type="text"
-              value={s.headlineHighlight}
+              value={s.headlinePrefix}
               onChange={(e) => {
                 const next = [...slides];
-                next[idx] = { ...s, headlineHighlight: e.target.value };
+                next[idx] = { ...s, headlinePrefix: e.target.value };
                 setData(next);
               }}
-              className="rounded-xl border px-3 py-1.5 text-sm"
+              className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs"
             />
-            <input
-              type="text"
-              value={s.subcategoriesLine}
-              onChange={(e) => {
-                const next = [...slides];
-                next[idx] = { ...s, subcategoriesLine: e.target.value };
-                setData(next);
-              }}
-              className="rounded-xl border px-3 py-1.5 text-sm"
-            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Headline Highlight</label>
+              <input
+                type="text"
+                value={s.headlineHighlight}
+                onChange={(e) => {
+                  const next = [...slides];
+                  next[idx] = { ...s, headlineHighlight: e.target.value };
+                  setData(next);
+                }}
+                className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Subcategories Ticker Line</label>
+              <input
+                type="text"
+                value={s.subcategoriesLine}
+                onChange={(e) => {
+                  const next = [...slides];
+                  next[idx] = { ...s, subcategoriesLine: e.target.value };
+                  setData(next);
+                }}
+                className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs"
+              />
+            </div>
           </div>
         </div>
       ))}
-      <button type="button" onClick={save} disabled={saving} className="rounded-full bg-[#0a2458] text-white px-6 py-2.5 text-sm font-bold">
-        {saving ? "Saving..." : "Save Hero Banners"}
+      <button
+        type="button"
+        onClick={save}
+        disabled={saving}
+        className="rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-6 py-2.5 text-xs font-bold shadow transition-all flex items-center gap-1.5"
+      >
+        <Save className="h-4 w-4" />
+        <span>{saving ? "Saving Hero Slides..." : "Save Hero Banners"}</span>
       </button>
     </div>
   );
 }
-

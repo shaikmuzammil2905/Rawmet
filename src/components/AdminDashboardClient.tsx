@@ -6,14 +6,17 @@ import {
   BarChart3,
   Calendar,
   Check,
+  ChevronRight,
   ClipboardList,
   Cog,
   CreditCard,
   Download,
+  Edit2,
   Eye,
   EyeOff,
   FileSpreadsheet,
   FileText,
+  FileUp,
   Filter,
   FolderTree,
   Gift,
@@ -22,6 +25,7 @@ import {
   Info,
   LayoutDashboard,
   LogOut,
+  Menu,
   MessageCircle,
   MessageSquare,
   Package,
@@ -155,60 +159,30 @@ interface AdminOverviewData {
 }
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "subscription_forms", label: "Subscription Forms", icon: ClipboardList },
-  { id: "vendors", label: "Vendors", icon: Store },
-  { id: "users", label: "Users", icon: Users },
-  { id: "products", label: "Products", icon: Package },
-  { id: "machineries", label: "Machineries", icon: Cog },
-  { id: "services", label: "Services", icon: Wrench },
-  { id: "categories", label: "Categories", icon: FolderTree },
-  { id: "requirements", label: "Requirements", icon: FileText },
-  { id: "enquiries", label: "Enquiries", icon: MessageSquare },
-  { id: "subscriptions", label: "Subscriptions", icon: Tag },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "reports", label: "Reports & Exports", icon: Download },
-  { id: "audit_logs", label: "Audit Logs", icon: FileSpreadsheet },
-  { id: "offers", label: "Offers", icon: Gift },
-  { id: "gallery", label: "Gallery", icon: ImageIcon },
-  { id: "about", label: "About Us", icon: Info },
-  { id: "content", label: "Website Content", icon: Globe },
-  { id: "whatsapp", label: "WhatsApp Alerts", icon: MessageCircle },
-  { id: "referrals", label: "Promote / Referrals", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Core" },
+  { id: "subscription_forms", label: "Subscription Forms", icon: ClipboardList, group: "Core" },
+  { id: "vendors", label: "Vendors", icon: Store, group: "Core" },
+  { id: "users", label: "Users", icon: Users, group: "Core" },
+  { id: "products", label: "Products", icon: Package, group: "Catalog" },
+  { id: "machineries", label: "Machineries", icon: Cog, group: "Catalog" },
+  { id: "services", label: "Services", icon: Wrench, group: "Catalog" },
+  { id: "categories", label: "Categories", icon: FolderTree, group: "Catalog" },
+  { id: "requirements", label: "Requirements", icon: FileText, group: "Operations" },
+  { id: "enquiries", label: "Enquiries", icon: MessageSquare, group: "Operations" },
+  { id: "subscriptions", label: "Subscriptions", icon: Tag, group: "Operations" },
+  { id: "payments", label: "Payments", icon: CreditCard, group: "Operations" },
+  { id: "reports", label: "Reports & Exports", icon: Download, group: "Analytics" },
+  { id: "audit_logs", label: "Audit Logs", icon: FileSpreadsheet, group: "Analytics" },
+  { id: "offers", label: "Offers", icon: Gift, group: "CMS" },
+  { id: "gallery", label: "Gallery", icon: ImageIcon, group: "CMS" },
+  { id: "about", label: "About Us", icon: Info, group: "CMS" },
+  { id: "content", label: "Website Content", icon: Globe, group: "CMS" },
+  { id: "whatsapp", label: "WhatsApp Alerts", icon: MessageCircle, group: "Operations" },
+  { id: "referrals", label: "Promote / Referrals", icon: BarChart3, group: "Operations" },
+  { id: "settings", label: "Settings", icon: Settings, group: "CMS" },
 ] as const;
 
 type DateFilter = "all" | "today" | "yesterday" | "7d" | "30d" | "month";
-
-function isDateInFilter(dateStr: string | undefined | null, filter: DateFilter): boolean {
-  if (filter === "all" || !dateStr) return true;
-  const d = new Date(dateStr);
-  const now = new Date();
-  if (isNaN(d.getTime())) return true;
-
-  if (filter === "today") {
-    return d.toDateString() === now.toDateString();
-  }
-  if (filter === "yesterday") {
-    const y = new Date();
-    y.setDate(y.getDate() - 1);
-    return d.toDateString() === y.toDateString();
-  }
-  if (filter === "7d") {
-    const past7 = new Date();
-    past7.setDate(past7.getDate() - 7);
-    return d >= past7;
-  }
-  if (filter === "30d") {
-    const past30 = new Date();
-    past30.setDate(past30.getDate() - 30);
-    return d >= past30;
-  }
-  if (filter === "month") {
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }
-  return true;
-}
 
 function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   if (!rows || rows.length === 0) {
@@ -249,6 +223,9 @@ export function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
+  // Mobile menu drawer state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Rejection modal
   const [rejectModal, setRejectModal] = useState<{
     isOpen: boolean;
@@ -271,6 +248,20 @@ export function AdminDashboardClient() {
   const [newPrice, setNewPrice] = useState("Request Quote");
   const [newLoc, setNewLoc] = useState("Hyderabad, Telangana");
   const [newShort, setNewShort] = useState("");
+  const [newFullDesc, setNewFullDesc] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("/images/cat-products.png");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Edit Listing Modal state
+  const [editingListing, setEditingListing] = useState<ListingRecord | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCat, setEditCat] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editLoc, setEditLoc] = useState("");
+  const [editShort, setEditShort] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [editUploading, setEditUploading] = useState(false);
 
   async function loadOverview() {
     setLoading(true);
@@ -290,6 +281,32 @@ export function AdminDashboardClient() {
   useEffect(() => {
     loadOverview();
   }, []);
+
+  async function handleS3Upload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (url: string) => void,
+    setLoadingState: (loading: boolean) => void
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoadingState(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const out = await res.json();
+      if (res.ok && out.url) {
+        setter(out.url);
+        showToast("Image uploaded to S3 storage successfully!", "success");
+      } else {
+        showToast(out.error || "Image upload failed.", "error");
+      }
+    } catch {
+      showToast("Network error uploading file.", "error");
+    } finally {
+      setLoadingState(false);
+    }
+  }
 
   async function updateVendor(
     vendorId: number,
@@ -314,13 +331,40 @@ export function AdminDashboardClient() {
       body: JSON.stringify({ id, ...payload }),
     });
     if (res.ok) {
-      showToast("Listing updated.", "success");
+      showToast("Listing updated live on website!", "success");
       loadOverview();
     }
   }
 
+  async function saveEditedListing(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingListing) return;
+    const res = await fetch("/api/admin/listings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingListing.id,
+        title: editTitle,
+        category_slug: editCat,
+        price_display: editPrice,
+        location: editLoc,
+        short_description: editShort,
+        description: editDesc,
+        image_url: editImage,
+      }),
+    });
+    if (res.ok) {
+      showToast("Listing changes saved and live on website!", "success");
+      setEditingListing(null);
+      loadOverview();
+    } else {
+      showToast("Failed to save listing changes.", "error");
+    }
+  }
+
   async function deleteListing(id: number) {
-    if (!confirm("Are you sure you want to permanently delete this listing?")) return;
+    if (!confirm("Are you sure you want to permanently delete this listing from the database and website?"))
+      return;
     await fetch(`/api/admin/listings?id=${id}`, { method: "DELETE" });
     showToast("Listing deleted.", "info");
     loadOverview();
@@ -339,15 +383,19 @@ export function AdminDashboardClient() {
         category_slug: newCat || fallbackCat,
         title: newTitle,
         short_description: newShort || newTitle,
+        description: newFullDesc || newShort || newTitle,
         price_display: newPrice,
         location: newLoc,
+        image_url: newImageUrl,
         status: "approved",
       }),
     });
     if (res.ok) {
-      showToast("Listing published live!", "success");
+      showToast("Listing published directly live on main website!", "success");
       setNewTitle("");
       setNewShort("");
+      setNewFullDesc("");
+      setNewImageUrl("/images/cat-products.png");
       loadOverview();
     }
   }
@@ -405,29 +453,40 @@ export function AdminDashboardClient() {
     formStatusFilter === "all" ? true : f.status === formStatusFilter
   );
 
+  const currentNav = NAV_ITEMS.find((n) => n.id === activeTab);
+  const CurrentIcon = currentNav?.icon || LayoutDashboard;
+
+  // Group items for mobile menu drawer
+  const groupedNav = {
+    Core: NAV_ITEMS.filter((n) => n.group === "Core"),
+    Catalog: NAV_ITEMS.filter((n) => n.group === "Catalog"),
+    CMS: NAV_ITEMS.filter((n) => n.group === "CMS"),
+    Operations: NAV_ITEMS.filter((n) => n.group === "Operations"),
+    Analytics: NAV_ITEMS.filter((n) => n.group === "Analytics"),
+  };
+
   return (
-    <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-6 space-y-6">
+    <div className="mx-auto max-w-[1600px] px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Top Header */}
-      <header className="rounded-3xl bg-[#06183d] text-white p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl border border-blue-900/60">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-[#f97316] flex items-center justify-center shadow">
-              <ShieldCheck className="h-6 w-6 text-white" />
+      <header className="rounded-3xl bg-[#06183d] text-white p-4 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl border border-blue-900/60">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-[#f97316] flex items-center justify-center shadow-lg shrink-0">
+            <ShieldCheck className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-black">RAWMAT MART Super Admin</h1>
+              <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 border border-emerald-500/30">
+                Live
+              </span>
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black">RAWMAT MART Super Admin</h1>
-              <p className="text-xs text-blue-200 mt-0.5">
-                Centralized CMS, Vendor Verifications, AWS S3 Pipeline & Subscriptions Management
-              </p>
-            </div>
+            <p className="text-xs text-blue-200 mt-0.5 hidden sm:block">
+              Centralized CMS, Vendor Verifications, AWS S3 Pipeline & Subscriptions Management
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Stats Pill */}
-          <span className="rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1.5 border border-emerald-500/30">
-            {data.kpi.activeVendors} Active Vendors • ₹{data.kpi.totalRevenueInr.toLocaleString("en-IN")} Revenue
-          </span>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <button
             onClick={loadOverview}
             className="rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 transition-colors"
@@ -444,10 +503,69 @@ export function AdminDashboardClient() {
         </div>
       </header>
 
-      {/* Main Layout */}
+      {/* MOBILE SECTION BAR: Shown ONLY on mobile (< lg) */}
+      <div className="lg:hidden space-y-2">
+        <div className="flex items-center justify-between bg-[#0a2458] text-white p-3.5 rounded-2xl shadow-lg border border-blue-900/80">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-xl bg-[#f97316] flex items-center justify-center shadow shrink-0">
+              <CurrentIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase font-bold text-blue-300 block">Active Section</span>
+              <p className="font-black text-sm text-white truncate">{currentNav?.label}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-[#f97316] hover:bg-[#ea580c] active:scale-95 text-white px-4 py-2 text-xs font-black shadow-lg shadow-orange-500/30 transition-all shrink-0"
+          >
+            <Menu className="h-4 w-4" />
+            <span>Menu ({NAV_ITEMS.length})</span>
+          </button>
+        </div>
+
+        {/* Quick Swipeable Horizontal Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          {(
+            [
+              { id: "dashboard", label: "Dashboard" },
+              { id: "subscription_forms", label: "Forms", badge: data.kpi.pendingFormsCount },
+              { id: "products", label: "Products" },
+              { id: "machineries", label: "Machinery" },
+              { id: "services", label: "Services" },
+              { id: "vendors", label: "Vendors", badge: data.kpi.pendingVendors },
+              { id: "categories", label: "Categories" },
+              { id: "content", label: "Hero CMS" },
+              { id: "gallery", label: "Gallery" },
+              { id: "offers", label: "Offers" },
+              { id: "settings", label: "Settings" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 shadow-sm ${
+                activeTab === item.id
+                  ? "bg-[#f97316] text-white shadow-orange-500/20"
+                  : "bg-white text-slate-700 border border-slate-200"
+              }`}
+            >
+              <span>{item.label}</span>
+              {"badge" in item && item.badge ? (
+                <span className="h-4 min-w-4 rounded-full bg-rose-500 text-white text-[10px] font-black px-1 flex items-center justify-center">
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Grid: Desktop Sidebar + Content */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Navigation Sidebar */}
-        <aside className="lg:col-span-1 rounded-3xl bg-[#0a2458] p-4 text-white space-y-1 shadow-lg h-fit max-h-[85vh] overflow-y-auto sticky top-20">
+        {/* Navigation Sidebar: HIDDEN on mobile, SHOWN on desktop (lg:block) */}
+        <aside className="hidden lg:block lg:col-span-1 rounded-3xl bg-[#0a2458] p-4 text-white space-y-1 shadow-lg h-fit max-h-[85vh] overflow-y-auto sticky top-20">
           <p className="text-[10px] font-black uppercase text-blue-300 px-3 py-1 tracking-wider">
             Control Center
           </p>
@@ -479,21 +597,22 @@ export function AdminDashboardClient() {
           })}
         </aside>
 
-        {/* Content View */}
-        <main className="lg:col-span-4 space-y-6">
+        {/* Content View: Always full width on mobile! */}
+        <main className="lg:col-span-4 space-y-4 sm:space-y-6">
           {/* Action / Title Bar with Date Filters */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
             <div>
-              <h2 className="text-xl font-black text-[#0a2458]">
-                {NAV_ITEMS.find((n) => n.id === activeTab)?.label}
+              <h2 className="text-lg sm:text-xl font-black text-[#0a2458] flex items-center gap-2">
+                <CurrentIcon className="h-5 w-5 text-[#f97316] hidden sm:inline" />
+                <span>{currentNav?.label}</span>
               </h2>
               <span className="text-xs text-slate-500 font-medium">
-                Real-time synchronized data from RAWMAT MART database
+                Live database synchronization • RAWMAT MART Industrial Portal
               </span>
             </div>
 
             {/* Date Range Filter Buttons */}
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl text-xs font-semibold overflow-x-auto max-w-full">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl text-xs font-semibold overflow-x-auto max-w-full">
               <span className="text-slate-400 pl-2 pr-1 flex items-center gap-1 text-[11px]">
                 <Calendar className="h-3.5 w-3.5" />
                 <span>Filter:</span>
@@ -503,8 +622,8 @@ export function AdminDashboardClient() {
                   { id: "all", label: "All Time" },
                   { id: "today", label: "Today" },
                   { id: "yesterday", label: "Yesterday" },
-                  { id: "7d", label: "Last 7 Days" },
-                  { id: "30d", label: "Last 30 Days" },
+                  { id: "7d", label: "7 Days" },
+                  { id: "30d", label: "30 Days" },
                   { id: "month", label: "This Month" },
                 ] as const
               ).map((f) => (
@@ -527,7 +646,7 @@ export function AdminDashboardClient() {
           {activeTab === "dashboard" && (
             <div className="space-y-6">
               {/* Granular KPI Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {[
                   { label: "Total Sellers", value: data.kpi.totalRegisteredSellers, color: "text-[#0a2458]" },
                   { label: "Active Approved Sellers", value: data.kpi.activeSellers, color: "text-emerald-600" },
@@ -550,15 +669,15 @@ export function AdminDashboardClient() {
                     color: "text-[#f97316] font-black",
                   },
                 ].map((k) => (
-                  <div key={k.label} className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-                    <p className="text-[11px] font-bold uppercase text-slate-500">{k.label}</p>
-                    <p className={`text-2xl font-extrabold mt-1 ${k.color}`}>{k.value}</p>
+                  <div key={k.label} className="rounded-2xl bg-white border border-slate-200 p-3.5 sm:p-4 shadow-sm">
+                    <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-500">{k.label}</p>
+                    <p className={`text-xl sm:text-2xl font-extrabold mt-1 ${k.color}`}>{k.value}</p>
                   </div>
                 ))}
               </div>
 
               {/* Visual Distribution Chart */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
+              <div className="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm">
                 <h3 className="text-base font-extrabold text-[#0a2458] mb-4">
                   Marketplace Catalog Distribution
                 </h3>
@@ -596,17 +715,17 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: SUBSCRIPTION FORMS */}
+          {/* TAB 2: SUBSCRIPTION FORMS */}
           {activeTab === "subscription_forms" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">Filter by status:</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-500">Status:</span>
                   {(["all", "pending", "approved", "rejected", "converted"] as const).map((s) => (
                     <button
                       key={s}
                       onClick={() => setFormStatusFilter(s)}
-                      className={`rounded-xl px-3 py-1 text-xs font-bold uppercase transition-colors ${
+                      className={`rounded-xl px-2.5 py-1 text-xs font-bold uppercase transition-colors ${
                         formStatusFilter === s
                           ? "bg-[#0a2458] text-white"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -621,8 +740,8 @@ export function AdminDashboardClient() {
                 </span>
               </div>
 
-              <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
-                <table className="w-full text-xs text-left">
+              <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
+                <table className="w-full text-xs text-left min-w-[650px]">
                   <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
                     <tr>
                       <th className="p-3">ID / Date</th>
@@ -631,7 +750,6 @@ export function AdminDashboardClient() {
                       <th className="p-3">Contact</th>
                       <th className="p-3">Role</th>
                       <th className="p-3">Plan / Fee</th>
-                      <th className="p-3">Notes</th>
                       <th className="p-3">Status</th>
                       <th className="p-3">Actions</th>
                     </tr>
@@ -657,9 +775,6 @@ export function AdminDashboardClient() {
                         <td className="p-3 font-bold text-emerald-700">
                           ₹{f.amount_inr?.toLocaleString("en-IN")}
                           <div className="text-[10px] text-slate-500 font-normal">{f.plan_name}</div>
-                        </td>
-                        <td className="p-3 max-w-xs text-slate-600 truncate" title={f.notes}>
-                          {f.notes || "—"}
                         </td>
                         <td className="p-3">
                           <span
@@ -707,7 +822,7 @@ export function AdminDashboardClient() {
                     ))}
                     {filteredForms.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="p-6 text-center text-slate-500">
+                        <td colSpan={8} className="p-6 text-center text-slate-500">
                           No subscription forms match this status filter.
                         </td>
                       </tr>
@@ -718,10 +833,10 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB 2: VENDORS MANAGEMENT */}
+          {/* TAB 3: VENDORS MANAGEMENT */}
           {activeTab === "vendors" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
-              <table className="w-full text-xs text-left">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
+              <table className="w-full text-xs text-left min-w-[650px]">
                 <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
                   <tr>
                     <th className="p-3">Business</th>
@@ -788,10 +903,10 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB 3: USERS MANAGEMENT */}
+          {/* TAB 4: USERS MANAGEMENT */}
           {activeTab === "users" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
-              <table className="w-full text-xs text-left">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
+              <table className="w-full text-xs text-left min-w-[550px]">
                 <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
                   <tr>
                     <th className="p-3">Name</th>
@@ -841,179 +956,350 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB 4: PRODUCTS / MACHINERIES / SERVICES */}
+          {/* TAB 5: PRODUCTS / MACHINERIES / SERVICES (Full View, Add with S3 Upload, Edit Modal & Delete) */}
           {(activeTab === "products" || activeTab === "machineries" || activeTab === "services") && (
             <div className="space-y-6">
-              {/* Add Listing Form */}
+              {/* Add New Listing Card */}
               <form
                 onSubmit={(e) => addAdminListing(listingTypeFilter, e)}
-                className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm"
+                className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3.5 shadow-sm"
               >
-                <div className="flex items-center gap-2 text-sm font-extrabold text-[#0a2458]">
-                  <Plus className="h-4 w-4 text-[#f97316]" />
-                  <span>Publish New {activeTab.slice(0, -1).toUpperCase()}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-[#0a2458]">
+                    <Plus className="h-4 w-4 text-[#f97316]" />
+                    <span>Upload New {activeTab.slice(0, -1).toUpperCase()} to Website</span>
+                  </div>
+                  <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                    Direct S3 + Instant Live
+                  </span>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <input
-                    type="text"
-                    required
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Item Title / Model Name"
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                  />
-                  <select
-                    value={newCat}
-                    onChange={(e) => setNewCat(e.target.value)}
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                  >
-                    {data.categories
-                      .filter((c) => c.type === listingTypeFilter)
-                      .map((c) => (
-                        <option key={c.id} value={c.slug}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    placeholder="Price Display (e.g. ₹55/Kg)"
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                  />
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Item Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Title / Model Name"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Category *</label>
+                    <select
+                      value={newCat}
+                      onChange={(e) => setNewCat(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none bg-white"
+                    >
+                      {data.categories
+                        .filter((c) => c.type === listingTypeFilter)
+                        .map((c) => (
+                          <option key={c.id} value={c.slug}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Price Display</label>
+                    <input
+                      type="text"
+                      value={newPrice}
+                      onChange={(e) => setNewPrice(e.target.value)}
+                      placeholder="e.g. ₹55/Kg, ₹2.5 Lakh"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
+                    />
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={newLoc}
-                    onChange={(e) => setNewLoc(e.target.value)}
-                    placeholder="Location"
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={newShort}
-                    onChange={(e) => setNewShort(e.target.value)}
-                    placeholder="Short description / specs"
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                  />
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={newLoc}
+                      onChange={(e) => setNewLoc(e.target.value)}
+                      placeholder="City, State"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Short Description / Specs</label>
+                    <input
+                      type="text"
+                      value={newShort}
+                      onChange={(e) => setNewShort(e.target.value)}
+                      placeholder="Highlights, grade, MOQ"
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
+                    />
+                  </div>
                 </div>
+
+                {/* S3 Image Upload & Preview */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Listing Image (AWS S3 Upload)</label>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <label className="inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100 transition-colors">
+                      <FileUp className="h-4 w-4 text-[#f97316]" />
+                      <span>{uploadingImage ? "Uploading to AWS S3..." : "Upload Photo (S3)"}</span>
+                      <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.webp"
+                        onChange={(e) => handleS3Upload(e, setNewImageUrl, setUploadingImage)}
+                        className="hidden"
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder="Or paste direct image URL"
+                      className="flex-1 min-w-[200px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-700 bg-white"
+                    />
+                    {newImageUrl && (
+                      <img
+                        src={newImageUrl}
+                        alt="Preview"
+                        className="h-9 w-9 object-cover rounded-lg border border-slate-300 shadow-sm shrink-0"
+                      />
+                    )}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 text-xs font-bold shadow transition-all"
+                  disabled={uploadingImage}
+                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-6 py-2.5 text-xs font-black shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2"
                 >
-                  Publish to Catalog
+                  <Plus className="h-4 w-4" />
+                  <span>Publish & Save Directly Live</span>
                 </button>
               </form>
 
-              {/* Listings Table */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
-                    <tr>
-                      <th className="p-3">Image</th>
-                      <th className="p-3">Title</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Vendor</th>
-                      <th className="p-3">Price</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Published</th>
-                      <th className="p-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {data.listings
-                      .filter((l) => l.type === listingTypeFilter)
-                      .map((l) => (
-                        <tr key={l.id} className="hover:bg-slate-50">
-                          <td className="p-3">
-                            <img
-                              src={l.image_url}
-                              alt={l.title}
-                              className="h-10 w-10 object-cover rounded-lg border border-slate-200"
-                            />
-                          </td>
-                          <td className="p-3 font-bold text-[#0a2458] max-w-xs truncate">
-                            {l.title}
-                            {l.rejection_reason && (
-                              <div className="text-[10px] text-rose-600 font-normal">
-                                Rejected: {l.rejection_reason}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3 font-mono uppercase text-slate-600">{l.category_slug}</td>
-                          <td className="p-3 text-slate-600">{l.vendor_name || "Admin Direct"}</td>
-                          <td className="p-3 font-semibold text-emerald-700">{l.price_display}</td>
-                          <td className="p-3">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                                l.status === "approved"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : l.status === "rejected"
-                                  ? "bg-rose-100 text-rose-800"
-                                  : "bg-amber-100 text-amber-800"
-                              }`}
-                            >
-                              {l.status}
+              {/* Past Listings List / Grid (Mobile Card + Desktop Table) */}
+              <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-[#0a2458] text-base">
+                    All Past {activeTab.toUpperCase()} Listings (
+                    {data.listings.filter((l) => l.type === listingTypeFilter).length})
+                  </h3>
+                  <span className="text-xs text-slate-500 font-semibold">Editable • Live synchronized</span>
+                </div>
+
+                {/* Mobile View: High-Density Responsive Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3.5">
+                  {data.listings
+                    .filter((l) => l.type === listingTypeFilter)
+                    .map((l) => (
+                      <div
+                        key={l.id}
+                        className="rounded-2xl border border-slate-200 p-3.5 bg-white shadow-sm flex flex-col justify-between space-y-2.5"
+                      >
+                        <div className="flex items-start gap-3">
+                          <img
+                            src={l.image_url}
+                            alt={l.title}
+                            className="h-14 w-14 rounded-xl object-cover border border-slate-200 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[10px] uppercase font-bold text-[#f97316] bg-orange-50 px-1.5 py-0.5 rounded">
+                              {l.category_slug}
                             </span>
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => updateListing(l.id, { is_published: !l.is_published })}
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase transition-colors ${
-                                l.is_published
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
-                                  : "bg-slate-100 text-slate-500 border border-slate-300"
-                              }`}
-                            >
-                              {l.is_published ? "Published" : "Draft"}
-                            </button>
-                          </td>
-                          <td className="p-3 space-x-1 whitespace-nowrap">
-                            <button
-                              onClick={() => updateListing(l.id, { featured: !l.featured })}
-                              className={`rounded-lg px-2 py-1 font-bold text-[11px] ${
-                                l.featured ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
-                              }`}
-                            >
-                              {l.featured ? "Featured ★" : "Feature"}
-                            </button>
-                            <button
-                              onClick={() => updateListing(l.id, { status: "approved" })}
-                              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 font-bold text-[11px]"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                setRejectModal({
-                                  isOpen: true,
-                                  type: "listing",
-                                  id: l.id,
-                                  reason: "Technical specifications require detailed clarification.",
-                                })
-                              }
-                              className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 font-bold text-[11px]"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              onClick={() => deleteListing(l.id)}
-                              className="rounded-lg bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2 py-1 text-[11px]"
-                            >
-                              <Trash2 className="h-3 w-3 inline" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                            <h4 className="font-bold text-xs text-[#0a2458] mt-1 leading-snug line-clamp-2">
+                              {l.title}
+                            </h4>
+                            <p className="font-extrabold text-emerald-700 text-xs mt-0.5">{l.price_display}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                              l.status === "approved"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : l.status === "rejected"
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {l.status}
+                          </span>
+                          <button
+                            onClick={() => updateListing(l.id, { is_published: !l.is_published })}
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                              l.is_published
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {l.is_published ? "Published" : "Draft"}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 pt-1">
+                          <button
+                            onClick={() => {
+                              setEditingListing(l);
+                              setEditTitle(l.title);
+                              setEditCat(l.category_slug);
+                              setEditPrice(l.price_display);
+                              setEditLoc(l.location || "");
+                              setEditShort(l.short_description || "");
+                              setEditDesc(l.description || "");
+                              setEditImage(l.image_url || "");
+                            }}
+                            className="rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold py-1.5 flex items-center justify-center gap-1"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => updateListing(l.id, { featured: !l.featured })}
+                            className={`rounded-lg text-xs font-bold py-1.5 ${
+                              l.featured ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {l.featured ? "Featured ★" : "Feature"}
+                          </button>
+                          <button
+                            onClick={() => deleteListing(l.id)}
+                            className="rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold py-1.5 flex items-center justify-center gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Desktop View: Full Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
+                      <tr>
+                        <th className="p-3">Image</th>
+                        <th className="p-3">Title</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Vendor</th>
+                        <th className="p-3">Price</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Published</th>
+                        <th className="p-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {data.listings
+                        .filter((l) => l.type === listingTypeFilter)
+                        .map((l) => (
+                          <tr key={l.id} className="hover:bg-slate-50">
+                            <td className="p-3">
+                              <img
+                                src={l.image_url}
+                                alt={l.title}
+                                className="h-10 w-10 object-cover rounded-lg border border-slate-200"
+                              />
+                            </td>
+                            <td className="p-3 font-bold text-[#0a2458] max-w-xs truncate">
+                              {l.title}
+                              {l.rejection_reason && (
+                                <div className="text-[10px] text-rose-600 font-normal">
+                                  Rejected: {l.rejection_reason}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 font-mono uppercase text-slate-600">{l.category_slug}</td>
+                            <td className="p-3 text-slate-600">{l.vendor_name || "Admin Direct"}</td>
+                            <td className="p-3 font-semibold text-emerald-700">{l.price_display}</td>
+                            <td className="p-3">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                                  l.status === "approved"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : l.status === "rejected"
+                                    ? "bg-rose-100 text-rose-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {l.status}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <button
+                                onClick={() => updateListing(l.id, { is_published: !l.is_published })}
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase transition-colors ${
+                                  l.is_published
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                                    : "bg-slate-100 text-slate-500 border border-slate-300"
+                                }`}
+                              >
+                                {l.is_published ? "Published" : "Draft"}
+                              </button>
+                            </td>
+                            <td className="p-3 space-x-1 whitespace-nowrap">
+                              <button
+                                onClick={() => {
+                                  setEditingListing(l);
+                                  setEditTitle(l.title);
+                                  setEditCat(l.category_slug);
+                                  setEditPrice(l.price_display);
+                                  setEditLoc(l.location || "");
+                                  setEditShort(l.short_description || "");
+                                  setEditDesc(l.description || "");
+                                  setEditImage(l.image_url || "");
+                                }}
+                                className="rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 font-bold text-[11px] inline-flex items-center gap-1"
+                                title="Edit Listing"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => updateListing(l.id, { featured: !l.featured })}
+                                className={`rounded-lg px-2 py-1 font-bold text-[11px] ${
+                                  l.featured ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
+                                {l.featured ? "Featured ★" : "Feature"}
+                              </button>
+                              <button
+                                onClick={() => updateListing(l.id, { status: "approved" })}
+                                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 font-bold text-[11px]"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setRejectModal({
+                                    isOpen: true,
+                                    type: "listing",
+                                    id: l.id,
+                                    reason: "Technical specifications require detailed clarification.",
+                                  })
+                                }
+                                className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 font-bold text-[11px]"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                onClick={() => deleteListing(l.id)}
+                                className="rounded-lg bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2 py-1 text-[11px]"
+                              >
+                                <Trash2 className="h-3 w-3 inline" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB: CATEGORIES */}
+          {/* TAB 6: CATEGORIES */}
           {activeTab === "categories" && (
             <AdminCategoriesPanel
               categories={data.categories}
@@ -1022,12 +1308,12 @@ export function AdminDashboardClient() {
             />
           )}
 
-          {/* TAB: REQUIREMENTS */}
+          {/* TAB 7: REQUIREMENTS */}
           {activeTab === "requirements" && (
             <div className="space-y-3">
               {data.requirements.map((r) => (
-                <div key={r.id} className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm space-y-2">
-                  <div className="flex items-start justify-between">
+                <div key={r.id} className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-2">
+                  <div className="flex items-start justify-between flex-wrap gap-2">
                     <div>
                       <span className="text-[10px] font-extrabold uppercase rounded-full bg-blue-100 text-[#1652b8] px-2.5 py-0.5">
                         {r.category_type} • {r.category_slug}
@@ -1037,14 +1323,14 @@ export function AdminDashboardClient() {
                         {r.name} ({r.business_name || "Individual Buyer"}) • {r.location} • Qty: {r.quantity}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div>
                       <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase px-2.5 py-0.5">
                         {r.status}
                       </span>
                     </div>
                   </div>
                   <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl">{r.description}</p>
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="pt-2">
                     <button
                       onClick={() =>
                         runAction({ action: "requirement_dispatch_whatsapp", id: r.id })
@@ -1060,29 +1346,30 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: ENQUIRIES */}
+          {/* TAB 8: ENQUIRIES */}
           {activeTab === "enquiries" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3 shadow-sm">
+              <h3 className="font-extrabold text-[#0a2458] text-base">Direct Customer Inquiries ({data.enquiries.length})</h3>
               {data.enquiries.map((e) => (
-                <div key={e.id} className="rounded-xl border border-slate-100 p-3 hover:bg-slate-50">
-                  <div className="flex justify-between items-center text-xs">
+                <div key={e.id} className="rounded-xl border border-slate-100 p-3 bg-slate-50 text-xs space-y-1">
+                  <div className="flex justify-between items-center">
                     <span className="font-bold text-[#0a2458]">{e.name} ({e.mobile})</span>
                     <span className="text-slate-500 text-[11px]">Listing: {e.listing_title}</span>
                   </div>
-                  <p className="text-xs text-slate-700 mt-1">{e.message}</p>
+                  <p className="text-slate-700">{e.message}</p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* TAB: SUBSCRIPTIONS */}
+          {/* TAB 9: SUBSCRIPTIONS */}
           {activeTab === "subscriptions" && (
             <div className="space-y-6">
               <AdminPlansPanel plans={data.plans} onRefresh={loadOverview} />
 
-              <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
+              <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
                 <h3 className="font-extrabold text-[#0a2458] mb-3">Active Paid Subscribers</h3>
-                <table className="w-full text-xs text-left">
+                <table className="w-full text-xs text-left min-w-[550px]">
                   <thead className="bg-slate-50 uppercase font-bold border-b">
                     <tr>
                       <th className="p-3">User</th>
@@ -1108,10 +1395,10 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: PAYMENTS */}
+          {/* TAB 10: PAYMENTS */}
           {activeTab === "payments" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm">
-              <table className="w-full text-xs text-left">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
+              <table className="w-full text-xs text-left min-w-[600px]">
                 <thead className="bg-slate-50 uppercase font-bold border-b">
                   <tr>
                     <th className="p-3">Invoice #</th>
@@ -1142,7 +1429,7 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: REPORTS & EXPORTS */}
+          {/* TAB 11: REPORTS & EXPORTS */}
           {activeTab === "reports" && (
             <div className="space-y-4">
               <p className="text-xs text-slate-600">
@@ -1314,11 +1601,11 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: AUDIT LOGS */}
+          {/* TAB 12: AUDIT LOGS */}
           {activeTab === "audit_logs" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 overflow-x-auto shadow-sm space-y-3">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm space-y-3">
               <h3 className="font-extrabold text-[#0a2458]">System Activity & Audit Trail</h3>
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-xs text-left min-w-[500px]">
                 <thead className="bg-slate-50 uppercase font-bold border-b">
                   <tr>
                     <th className="p-3">ID / Time</th>
@@ -1354,7 +1641,7 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB: CMS PANELS */}
+          {/* TAB 13: CMS PANELS */}
           {activeTab === "offers" && (
             <AdminCmsEditor
               title="Launching Offer Management"
@@ -1387,7 +1674,7 @@ export function AdminDashboardClient() {
           )}
 
           {activeTab === "whatsapp" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3 shadow-sm">
               <h3 className="font-extrabold text-[#0a2458]">
                 Automated WhatsApp Opportunity Dispatches
               </h3>
@@ -1411,7 +1698,7 @@ export function AdminDashboardClient() {
           )}
 
           {activeTab === "referrals" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-3 shadow-sm">
+            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3 shadow-sm">
               <h3 className="font-extrabold text-[#0a2458]">
                 Promote Us • Grow With Us Submissions
               </h3>
@@ -1460,6 +1747,226 @@ export function AdminDashboardClient() {
           )}
         </main>
       </div>
+
+      {/* MOBILE NAVIGATION DRAWER (Opens when mobile Menu button is clicked) */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/65 backdrop-blur-sm animate-in fade-in duration-200 lg:hidden">
+          <div className="w-full max-h-[85vh] rounded-t-3xl bg-[#0a2458] text-white p-5 shadow-2xl border-t border-blue-900/80 flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-[#f97316] flex items-center justify-center">
+                  <Menu className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="font-black text-base tracking-tight">Admin Sections Menu</h3>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Grouped Navigation List */}
+            <div className="overflow-y-auto py-3 space-y-4 flex-1 pr-1">
+              {Object.entries(groupedNav).map(([groupTitle, items]) => (
+                <div key={groupTitle} className="space-y-1">
+                  <p className="text-[10px] uppercase font-black tracking-wider text-blue-300 px-3 py-1">
+                    {groupTitle}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {items.map((item) => {
+                      const Icon = item.icon;
+                      const isSelected = activeTab === item.id;
+                      const isForms = item.id === "subscription_forms";
+                      const formsBadge = isForms && (data.kpi.pendingFormsCount || 0) > 0;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileMenuOpen(false);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                            isSelected
+                              ? "bg-[#f97316] text-white shadow-lg shadow-orange-500/20"
+                              : "bg-white/5 hover:bg-white/10 text-blue-100"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span>{item.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {formsBadge && (
+                              <span className="rounded-full bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2">
+                                {data.kpi.pendingFormsCount}
+                              </span>
+                            )}
+                            <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-white/10 shrink-0 flex items-center justify-between">
+              <span className="text-[11px] text-blue-300">RAWMAT MART Portal Control</span>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition-colors"
+              >
+                Close Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT LISTING MODAL */}
+      {editingListing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+          <div className="w-full max-w-xl rounded-3xl bg-white p-5 sm:p-7 shadow-2xl text-slate-800 border border-slate-200 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-[#f97316]" />
+                <h3 className="font-extrabold text-base text-[#0a2458]">Edit Listing (Live Website)</h3>
+              </div>
+              <button
+                onClick={() => setEditingListing(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={saveEditedListing} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Item Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <select
+                    value={editCat}
+                    onChange={(e) => setEditCat(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs bg-white text-slate-800"
+                  >
+                    {data.categories
+                      .filter((c) => c.type === editingListing.type)
+                      .map((c) => (
+                        <option key={c.id} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Price Display</label>
+                  <input
+                    type="text"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Location</label>
+                <input
+                  type="text"
+                  value={editLoc}
+                  onChange={(e) => setEditLoc(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Short Description / Specs</label>
+                <textarea
+                  rows={2}
+                  value={editShort}
+                  onChange={(e) => setEditShort(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Full Technical Description</label>
+                <textarea
+                  rows={3}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                />
+              </div>
+
+              {/* S3 Image Replacement */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Listing Photo (AWS S3)</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100">
+                    <FileUp className="h-3.5 w-3.5 text-[#f97316]" />
+                    <span>{editUploading ? "Uploading..." : "Upload New Photo (S3)"}</span>
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleS3Upload(e, setEditImage, setEditUploading)}
+                      className="hidden"
+                    />
+                  </label>
+                  {editImage && (
+                    <img
+                      src={editImage}
+                      alt="Thumbnail"
+                      className="h-8 w-8 object-cover rounded-lg border border-slate-200"
+                    />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={editImage}
+                  onChange={(e) => setEditImage(e.target.value)}
+                  placeholder="Image URL"
+                  className="w-full rounded-xl border border-slate-300 p-2 text-xs font-mono text-slate-700"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingListing(null)}
+                  className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editUploading}
+                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-5 py-2 font-bold text-xs shadow"
+                >
+                  Save Changes Live
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* REJECTION REASON MODAL */}
       {rejectModal.isOpen && (
