@@ -87,16 +87,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [session, setSession] = useState<SessionSummary>({ authenticated: false, user: null });
 
-  // Completely hide header on Super Admin and Vendor Portal dashboards as requested
-  if (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/vendor/dashboard")
-  ) {
-    return null;
-  }
-
   useEffect(() => {
     let active = true;
+    if (pathname.startsWith("/admin") || pathname.startsWith("/vendor/dashboard")) {
+      return;
+    }
     fetch("/api/auth/session")
       .then((r) => r.json())
       .then((data) => {
@@ -112,6 +107,14 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
     setMobileOpen(false);
     setOpenDropdown(null);
   }, [pathname]);
+
+  // Completely hide header on Super Admin and Vendor Portal dashboards as requested
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/vendor/dashboard")
+  ) {
+    return null;
+  }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

@@ -219,21 +219,21 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
 export function AdminDashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams ? (searchParams.get("tab") as (typeof NAV_ITEMS)[number]["id"] | null) : null;
 
   const { showToast } = useToast();
   const [data, setData] = useState<AdminOverviewData | null>(null);
-  const [activeTab, setActiveTab] = useState<(typeof NAV_ITEMS)[number]["id"]>(
-    tabParam && NAV_ITEMS.some((n) => n.id === tabParam) ? tabParam : "dashboard"
-  );
+  const [activeTab, setActiveTab] = useState<(typeof NAV_ITEMS)[number]["id"]>("dashboard");
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   useEffect(() => {
-    if (tabParam && NAV_ITEMS.some((n) => n.id === tabParam)) {
-      setActiveTab(tabParam);
+    if (searchParams) {
+      const tabParam = searchParams.get("tab") as (typeof NAV_ITEMS)[number]["id"] | null;
+      if (tabParam && NAV_ITEMS.some((n) => n.id === tabParam)) {
+        setActiveTab(tabParam);
+      }
     }
-  }, [tabParam]);
+  }, [searchParams]);
 
   // Mobile menu drawer state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

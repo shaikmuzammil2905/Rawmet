@@ -368,6 +368,9 @@ export function getDb(): DbClient {
     let rawDb: Database;
     try {
       rawDb = new Database(dbPath);
+      try {
+        rawDb.exec("PRAGMA busy_timeout = 15000; PRAGMA journal_mode = WAL;");
+      } catch {}
     } catch {
       rawDb = new Database(":memory:");
     }

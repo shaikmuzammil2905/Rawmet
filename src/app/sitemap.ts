@@ -18,14 +18,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/login",
   ];
 
-  const categories = getCategories();
-  const catPaths = categories.map((c) => {
-    const prefix = c.type === "product" ? "/products" : c.type === "machinery" ? "/machineries" : "/services";
-    return `${prefix}/${c.slug}`;
-  });
+  let catPaths: string[] = [];
+  let listingPaths: string[] = [];
 
-  const { items } = queryListings({ limit: 100 });
-  const listingPaths = items.map((l) => `/listings/${l.slug}`);
+  try {
+    const categories = getCategories();
+    catPaths = categories.map((c) => {
+      const prefix = c.type === "product" ? "/products" : c.type === "machinery" ? "/machineries" : "/services";
+      return `${prefix}/${c.slug}`;
+    });
+
+    const { items } = queryListings({ limit: 100 });
+    listingPaths = items.map((l) => `/listings/${l.slug}`);
+  } catch {
+    // Graceful fallback during static build prerendering if DB is locked
+  }
 
   return [...staticPaths, ...catPaths, ...listingPaths].map((p) => ({
     url: `${base}${p}`,
