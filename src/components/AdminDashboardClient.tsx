@@ -219,7 +219,7 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
 export function AdminDashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as (typeof NAV_ITEMS)[number]["id"] | null;
+  const tabParam = searchParams ? (searchParams.get("tab") as (typeof NAV_ITEMS)[number]["id"] | null) : null;
 
   const { showToast } = useToast();
   const [data, setData] = useState<AdminOverviewData | null>(null);
@@ -283,8 +283,19 @@ export function AdminDashboardClient() {
         router.push("/admin/login");
         return;
       }
+      if (!res.ok) {
+        showToast("Unable to load overview data from server.", "error");
+        return;
+      }
       const d = await res.json();
+      if (!d || !d.kpi) {
+        showToast(d?.error || "Invalid overview data.", "error");
+        return;
+      }
       setData(d);
+    } catch (err) {
+      console.error("Dashboard loadOverview error:", err);
+      showToast("Network error loading dashboard.", "error");
     } finally {
       setLoading(false);
     }
@@ -449,11 +460,19 @@ export function AdminDashboardClient() {
     router.push("/admin/login");
   }
 
-  if (loading || !data) {
+  if (loading || !data || !data.kpi) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
         <div className="h-10 w-10 border-4 border-[#0a2458] border-t-transparent rounded-full animate-spin" />
         <p className="text-sm font-bold text-[#0a2458]">Loading Super Admin Control Center...</p>
+        {!loading && (!data || !data.kpi) && (
+          <button
+            onClick={loadOverview}
+            className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold px-5 py-2 mt-2 shadow transition-all"
+          >
+            Retry Loading Dashboard
+          </button>
+        )}
       </div>
     );
   }
@@ -548,11 +567,11 @@ export function AdminDashboardClient() {
           {(
             [
               { id: "dashboard", label: "Dashboard" },
-              { id: "subscription_forms", label: "Forms", badge: data.kpi.pendingFormsCount },
+              { id: "subscription_forms", label: "Forms", badge: data.kpi?.pendingFormsCount },
               { id: "products", label: "Products" },
               { id: "machineries", label: "Machinery" },
               { id: "services", label: "Services" },
-              { id: "vendors", label: "Vendors", badge: data.kpi.pendingVendors },
+              { id: "vendors", label: "Vendors", badge: data.kpi?.pendingVendors },
               { id: "categories", label: "Categories" },
               { id: "content", label: "Hero CMS" },
               { id: "gallery", label: "Gallery" },
@@ -590,7 +609,7 @@ export function AdminDashboardClient() {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isForms = item.id === "subscription_forms";
-            const formsBadge = isForms && (data.kpi.pendingFormsCount || 0) > 0;
+            const formsBadge = isForms && (data.kpi?.pendingFormsCount || 0) > 0;
             return (
               <button
                 key={item.id}
@@ -607,7 +626,7 @@ export function AdminDashboardClient() {
                 </div>
                 {formsBadge && (
                   <span className="rounded-full bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2">
-                    {data.kpi.pendingFormsCount}
+                    {data.kpi?.pendingFormsCount}
                   </span>
                 )}
               </button>
@@ -1799,7 +1818,7 @@ export function AdminDashboardClient() {
                       const Icon = item.icon;
                       const isSelected = activeTab === item.id;
                       const isForms = item.id === "subscription_forms";
-                      const formsBadge = isForms && (data.kpi.pendingFormsCount || 0) > 0;
+                      const formsBadge = isForms && (data.kpi?.pendingFormsCount || 0) > 0;
                       return (
                         <button
                           key={item.id}
@@ -1821,7 +1840,7 @@ export function AdminDashboardClient() {
                           <div className="flex items-center gap-1.5">
                             {formsBadge && (
                               <span className="rounded-full bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2">
-                                {data.kpi.pendingFormsCount}
+                                {data.kpi?.pendingFormsCount}
                               </span>
                             )}
                             <ChevronRight className="h-3.5 w-3.5 text-white/40" />

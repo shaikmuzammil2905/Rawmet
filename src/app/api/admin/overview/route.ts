@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { ensureSeeded } from "@/lib/seed";
 import { getCmsMap, getSubscriptionPlans, requireRole } from "@/lib/data";
 
 export async function GET() {
-  const session = await requireRole(["admin"]);
-  if (!session) {
-    return NextResponse.json({ error: "Admin access required." }, { status: 403 });
-  }
+  try {
+    ensureSeeded();
+    const session = await requireRole(["admin"]);
+    if (!session) {
+      return NextResponse.json({ error: "Admin access required." }, { status: 403 });
+    }
 
-  const db = getDb();
+    const db = getDb();
 
   // Basic counts
   const totalUsers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`).get() as { c: number }).c;
@@ -184,24 +187,28 @@ export async function GET() {
   const plans = getSubscriptionPlans(true);
   const cms = getCmsMap();
 
-  return NextResponse.json({
-    kpi,
-    categoryBreakdown,
-    vendors,
-    users,
-    listings,
-    categories,
-    subcategories,
-    requirements,
-    enquiries,
-    subscriptions,
-    payments,
-    gallery,
-    whatsappNotifications,
-    referrals,
-    subscriptionForms,
-    auditLogs,
-    plans,
-    cms,
-  });
+    return NextResponse.json({
+      kpi,
+      categoryBreakdown,
+      vendors,
+      users,
+      listings,
+      categories,
+      subcategories,
+      requirements,
+      enquiries,
+      subscriptions,
+      payments,
+      gallery,
+      whatsappNotifications,
+      referrals,
+      subscriptionForms,
+      auditLogs,
+      plans,
+      cms,
+    });
+  } catch (err) {
+    console.error("Admin overview error:", err);
+    return NextResponse.json({ error: "Failed to generate admin overview." }, { status: 500 });
+  }
 }

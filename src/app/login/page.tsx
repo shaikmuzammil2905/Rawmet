@@ -44,7 +44,7 @@ function LoginContent() {
       const dest =
         nextUrl ||
         (data.user.role === "admin"
-          ? "/admin"
+          ? "/admin/dashboard"
           : data.user.role === "vendor"
             ? "/vendor/dashboard"
             : "/dashboard");

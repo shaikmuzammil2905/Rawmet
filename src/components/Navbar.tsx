@@ -270,7 +270,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </nav>
 
-            {/* Desktop Action CTAs: User Login button only */}
+            {/* Desktop Action CTAs: User Login / Account button */}
             <div className="hidden lg:flex items-center gap-2.5 shrink-0">
               {session.authenticated && session.user ? (
                 <div className="flex items-center gap-2">
@@ -279,7 +279,13 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                     className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm transition-all"
                   >
                     <User className="h-4 w-4" />
-                    <span>Login</span>
+                    <span>
+                      {session.user.role === "admin"
+                        ? "Admin Panel"
+                        : session.user.role === "vendor"
+                          ? "Vendor Panel"
+                          : "My Account"}
+                    </span>
                   </Link>
                   <button
                     type="button"
@@ -309,7 +315,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
               >
                 <User className="h-3.5 w-3.5" />
-                <span>Login</span>
+                <span>{session.authenticated ? (session.user?.role === "admin" ? "Admin" : "Account") : "Login"}</span>
               </Link>
               <button
                 type="button"
@@ -333,7 +339,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold shadow"
                 >
                   <User className="h-4 w-4" />
-                  <span>Login</span>
+                  <span>{session.authenticated ? (session.user?.role === "admin" ? "Admin Panel" : session.user?.role === "vendor" ? "Vendor Panel" : "My Account") : "Login"}</span>
                 </Link>
               </div>
 
