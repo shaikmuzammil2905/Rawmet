@@ -270,52 +270,36 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </nav>
 
-            {/* Desktop Action CTAs: User Login / Account button */}
+            {/* Desktop Action CTAs: User Login button */}
             <div className="hidden lg:flex items-center gap-2.5 shrink-0">
-              {session.authenticated && session.user ? (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={dashboardHref}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm transition-all"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>
-                      {session.user.role === "admin"
-                        ? "Admin Panel"
-                        : session.user.role === "vendor"
-                          ? "Vendor Panel"
-                          : "My Account"}
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    title="Logout"
-                    aria-label="Logout"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+              >
+                <User className="h-4 w-4" />
+                <span>Login</span>
+              </Link>
+              {session.authenticated && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Logout"
+                  aria-label="Logout"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
                 >
-                  <User className="h-4 w-4" />
-                  <span>Login</span>
-                </Link>
+                  <LogOut className="h-4 w-4" />
+                </button>
               )}
             </div>
 
             {/* Mobile Right Controls */}
             <div className="flex xl:hidden items-center gap-2">
               <Link
-                href={session.authenticated ? dashboardHref : "/login"}
+                href="/login"
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
               >
                 <User className="h-3.5 w-3.5" />
-                <span>{session.authenticated ? (session.user?.role === "admin" ? "Admin" : "Account") : "Login"}</span>
+                <span>Login</span>
               </Link>
               <button
                 type="button"
@@ -335,11 +319,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <div className="px-4 py-4 space-y-3">
               <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-100">
                 <Link
-                  href={session.authenticated ? dashboardHref : "/login"}
+                  href="/login"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold shadow"
                 >
                   <User className="h-4 w-4" />
-                  <span>{session.authenticated ? (session.user?.role === "admin" ? "Admin Panel" : session.user?.role === "vendor" ? "Vendor Panel" : "My Account") : "Login"}</span>
+                  <span>Login</span>
                 </Link>
               </div>
 
