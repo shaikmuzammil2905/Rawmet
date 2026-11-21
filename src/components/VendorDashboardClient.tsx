@@ -15,6 +15,7 @@ import {
   Plus,
   ShieldAlert,
   Trash2,
+  LogOut,
 } from "lucide-react";
 import type { ListingRecord, RequirementRecord, VendorRecord } from "@/lib/types";
 import { useToast } from "./ToastProvider";
@@ -184,6 +185,12 @@ export function VendorDashboardClient() {
     else showToast(data.error || "Update failed", "error");
   }
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
   if (loading || !vendor) {
     return <div className="mx-auto max-w-6xl px-4 py-12 text-center text-sm text-slate-500">Loading Vendor Portal...</div>;
   }
@@ -191,7 +198,33 @@ export function VendorDashboardClient() {
   const isVerified = vendor.verification_status === "approved";
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-8">
+      {/* Self-contained Vendor Portal Top Header */}
+      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
+        <Link href="/" className="flex items-center gap-2 group">
+          <img src="/images/rawmet-logo.png" alt="RAWMAT MART" className="h-9 sm:h-11 w-auto object-contain" />
+          <span className="text-xs font-bold text-slate-500 group-hover:text-[#0a2458] transition-colors hidden sm:inline">
+            ← Back to Website
+          </span>
+        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            className="sm:hidden text-xs font-bold text-slate-600 hover:text-[#0a2458] px-2 py-1"
+          >
+            Website
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 px-3.5 py-1.5 text-xs font-bold transition-colors border border-rose-200 shadow-sm"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
       {/* Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-[#0a2458] to-[#123983] p-6 sm:p-8 text-white shadow-lg mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>

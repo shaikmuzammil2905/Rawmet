@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ArrowRight,
   Facebook,
@@ -19,6 +22,13 @@ export function Footer({
   whatsapp?: string;
   email?: string;
 }) {
+  const pathname = usePathname();
+
+  // Hide public footer in Super Admin and Vendor Portal dashboards
+  if (pathname.startsWith("/admin") || pathname.startsWith("/vendor")) {
+    return null;
+  }
+
   const SOCIAL_LINKS = [
     { name: "LinkedIn", href: "https://linkedin.com/company/rawmet-enterprises", icon: Linkedin, color: "hover:bg-[#0077b5] hover:text-white" },
     { name: "Twitter / X", href: "https://twitter.com/rawmet_b2b", icon: Twitter, color: "hover:bg-[#1da1f2] hover:text-white" },
@@ -190,4 +200,3 @@ export function Footer({
     </footer>
   );
 }
-

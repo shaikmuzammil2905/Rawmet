@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Calendar,
@@ -217,11 +218,22 @@ function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
 
 export function AdminDashboardClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as (typeof NAV_ITEMS)[number]["id"] | null;
+
   const { showToast } = useToast();
   const [data, setData] = useState<AdminOverviewData | null>(null);
-  const [activeTab, setActiveTab] = useState<(typeof NAV_ITEMS)[number]["id"]>("dashboard");
+  const [activeTab, setActiveTab] = useState<(typeof NAV_ITEMS)[number]["id"]>(
+    tabParam && NAV_ITEMS.some((n) => n.id === tabParam) ? tabParam : "dashboard"
+  );
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
+  useEffect(() => {
+    if (tabParam && NAV_ITEMS.some((n) => n.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Mobile menu drawer state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -487,6 +499,12 @@ export function AdminDashboardClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <Link
+            href="/"
+            className="rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 transition-colors"
+          >
+            Website
+          </Link>
           <button
             onClick={loadOverview}
             className="rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 transition-colors"

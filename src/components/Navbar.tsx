@@ -7,12 +7,10 @@ import {
   ChevronDown,
   Home,
   Info,
-  LayoutDashboard,
   LogOut,
   Menu,
   Phone,
   ShoppingBag,
-  Store,
   Tag,
   User,
   X,
@@ -21,7 +19,12 @@ import type { UserRole } from "@/lib/types";
 
 interface SessionSummary {
   authenticated: boolean;
-  user: { id: number; name: string; role: UserRole; email: string } | null;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: UserRole;
+  } | null;
 }
 
 const PRODUCT_LINKS = [
@@ -54,7 +57,7 @@ const SERVICE_LINKS = [
   { label: "Mechanical Services", href: "/services/mechanical-services" },
   { label: "Logistics Services", href: "/services/logistics-services" },
   { label: "Loans Services", href: "/services/loans-services" },
-  { label: "Registrations - GST, Partner Ship, Pvt Ltd", href: "/services/business-registrations" },
+  { label: "Registrations – GST, Partnership, Pvt Ltd", href: "/services/business-registrations" },
   { label: "Website/ App Services", href: "/services/website-app-services" },
   { label: "Import & Export Services", href: "/services/import-export-services" },
   { label: "Vehicle -Fabrication -Services", href: "/services/vehicle-fabrication-services" },
@@ -62,10 +65,17 @@ const SERVICE_LINKS = [
   { label: "Consultant - Services", href: "/services/consultant-services" },
 ];
 
+const SHOP_LINKS = [
+  { label: "Products Catalog (Rubber, Plastic, Metals...)", href: "/products" },
+  { label: "Industrial Machineries & Turnkey Plants", href: "/machineries" },
+  { label: "Industrial Services (AMC, Logistics, Loans...)", href: "/services" },
+];
+
 const ABOUT_LINKS = [
   { label: "About Sriñidhi Enterprises", href: "/about" },
-  { label: "Real-Time Opportunities", href: "/requirements" },
-  { label: "Subscription Plans", href: "/subscriptions" },
+  { label: "Our Mission & Verification Standards", href: "/about#standards" },
+  { label: "Management & Corporate Office", href: "/about#office" },
+  { label: "Contact Customer Support", href: "/about#contact" },
   { label: "Promote Us • Grow With Us", href: "/promote" },
 ];
 
@@ -75,6 +85,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [session, setSession] = useState<SessionSummary>({ authenticated: false, user: null });
+
+  // Completely hide header on Super Admin and Vendor Portal dashboards as requested
+  if (pathname.startsWith("/admin") || pathname.startsWith("/vendor")) {
+    return null;
+  }
 
   useEffect(() => {
     let active = true;
@@ -103,7 +118,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
   const dashboardHref =
     session.user?.role === "admin"
-      ? "/admin"
+      ? "/admin/dashboard"
       : session.user?.role === "vendor"
         ? "/vendor/dashboard"
         : "/dashboard";
@@ -164,11 +179,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </Link>
 
-            {/* Desktop Center Nav */}
+            {/* Desktop Center Nav: featuring Home, Shop, Sell, About Us, Products, Machineries, Services, Requirements, Gallery */}
             <nav className="hidden xl:flex items-center gap-1" aria-label="Main navigation">
               <Link
                 href="/"
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
                   isHome
                     ? "bg-[#0a2458] text-white shadow-sm"
                     : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
@@ -178,12 +193,23 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               </Link>
 
               <NavDropdown
-                label="About Us"
-                active={pathname.startsWith("/about") || pathname.startsWith("/promote") || pathname.startsWith("/requirements")}
-                items={ABOUT_LINKS}
-                isOpen={openDropdown === "about"}
-                onToggle={(open) => setOpenDropdown(open ? "about" : null)}
+                label="Shop"
+                active={pathname.startsWith("/products") || pathname.startsWith("/machineries") || pathname.startsWith("/services")}
+                items={SHOP_LINKS}
+                isOpen={openDropdown === "shop"}
+                onToggle={(open) => setOpenDropdown(open ? "shop" : null)}
               />
+
+              <Link
+                href={session.user?.role === "vendor" ? "/vendor/dashboard" : "/vendor/register"}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  pathname.startsWith("/vendor")
+                    ? "bg-[#0a2458] text-white"
+                    : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
+                }`}
+              >
+                Sell
+              </Link>
 
               <NavDropdown
                 label="Products"
@@ -210,8 +236,19 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
 
               <Link
+                href="/requirements"
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  pathname.startsWith("/requirements")
+                    ? "bg-[#0a2458] text-white"
+                    : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
+                }`}
+              >
+                Requirements
+              </Link>
+
+              <Link
                 href="/gallery"
-                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
                   pathname.startsWith("/gallery")
                     ? "bg-[#0a2458] text-white"
                     : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
@@ -220,43 +257,32 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 Gallery
               </Link>
 
-              <Link
-                href="/requirements"
-                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                  pathname.startsWith("/requirements")
-                    ? "bg-[#0a2458] text-white"
-                    : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
-                }`}
-              >
-                Requirements
-              </Link>
+              <NavDropdown
+                label="About Us"
+                active={pathname.startsWith("/about") || pathname.startsWith("/promote")}
+                items={ABOUT_LINKS}
+                isOpen={openDropdown === "about"}
+                onToggle={(open) => setOpenDropdown(open ? "about" : null)}
+              />
             </nav>
 
-            {/* Desktop Action CTAs */}
+            {/* Desktop Action CTAs: User Login button only */}
             <div className="hidden lg:flex items-center gap-2.5 shrink-0">
-              <Link
-                href="/vendor/register"
-                className="inline-flex items-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-4 py-2 text-sm font-semibold shadow-sm hover:shadow transition-all active:scale-[0.98]"
-              >
-                <Store className="h-4 w-4" />
-                <span>Vendor Register</span>
-              </Link>
-
               {session.authenticated && session.user ? (
                 <div className="flex items-center gap-2">
                   <Link
                     href={dashboardHref}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-4 py-2 text-sm font-semibold shadow-sm transition-all"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm transition-all"
                   >
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span className="max-w-[110px] truncate">{session.user.name.split(" ")[0]}</span>
+                    <User className="h-4 w-4" />
+                    <span>Login</span>
                   </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
                     title="Logout"
                     aria-label="Logout"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
                   >
                     <LogOut className="h-4 w-4" />
                   </button>
@@ -264,7 +290,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               ) : (
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-semibold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
                 >
                   <User className="h-4 w-4" />
                   <span>Login</span>
@@ -276,10 +302,10 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <div className="flex xl:hidden items-center gap-2">
               <Link
                 href={session.authenticated ? dashboardHref : "/login"}
-                className="hidden sm:inline-flex lg:hidden items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
               >
                 <User className="h-3.5 w-3.5" />
-                {session.authenticated ? "Account" : "Login"}
+                <span>Login</span>
               </Link>
               <button
                 type="button"
@@ -299,39 +325,27 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <div className="px-4 py-4 space-y-3">
               <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-100">
                 <Link
-                  href="/vendor/register"
-                  className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 rounded-full bg-[#f97316] text-white px-4 py-2.5 text-sm font-semibold"
+                  href={session.authenticated ? dashboardHref : "/login"}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold shadow"
                 >
-                  <Store className="h-4 w-4" />
-                  Vendor Register
+                  <User className="h-4 w-4" />
+                  <span>Login</span>
                 </Link>
-                {session.authenticated ? (
-                  <Link
-                    href={dashboardHref}
-                    className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold"
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Link>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold"
-                  >
-                    <User className="h-4 w-4" />
-                    Login
-                  </Link>
-                )}
               </div>
 
-              <MobileNavGroup title="Main Navigation" items={[
-                { label: "Home", href: "/" },
-                { label: "Real-Time Requirements", href: "/requirements" },
-                { label: "Subscription Plans & Offers", href: "/subscriptions" },
-                { label: "Gallery", href: "/gallery" },
-                { label: "About Sriñidhi Enterprises", href: "/about" },
-                { label: "Promote Us • Grow With Us", href: "/promote" },
-              ]} />
+              <MobileNavGroup
+                title="Main Navigation"
+                items={[
+                  { label: "Home", href: "/" },
+                  { label: "Shop (All Products, Machineries, Services)", href: "/products" },
+                  { label: "Sell on RAWMAT", href: "/vendor/register" },
+                  { label: "Real-Time Requirements", href: "/requirements" },
+                  { label: "Subscription Plans & Offers", href: "/subscriptions" },
+                  { label: "Gallery", href: "/gallery" },
+                  { label: "About Sriñidhi Enterprises", href: "/about" },
+                  { label: "Promote Us • Grow With Us", href: "/promote" },
+                ]}
+              />
               <MobileNavGroup title="Products" items={PRODUCT_LINKS} />
               <MobileNavGroup title="Machineries" items={MACHINERY_LINKS} />
               <MobileNavGroup title="Services" items={SERVICE_LINKS} />
@@ -356,7 +370,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
         )}
       </header>
 
-      {/* Mobile Sticky Bottom Bar matching reference mobile UI */}
+      {/* Mobile Sticky Bottom Bar matching reference mobile UI (Home, Shop, Sell, About Us) */}
       <nav
         aria-label="Mobile quick navigation"
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0a2458] text-white border-t border-white/10 shadow-[0_-4px_18px_rgba(10,36,88,0.28)] no-print"
@@ -425,14 +439,14 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
 function NavDropdown({
   label,
-  items,
   active,
+  items,
   isOpen,
   onToggle,
 }: {
   label: string;
-  items: { label: string; href: string }[];
   active: boolean;
+  items: Array<{ label: string; href: string }>;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
 }) {
@@ -446,26 +460,29 @@ function NavDropdown({
         type="button"
         onClick={() => onToggle(!isOpen)}
         aria-expanded={isOpen}
-        className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
+        className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all flex items-center gap-1 ${
           active
-            ? "bg-[#0a2458] text-white"
+            ? "bg-[#0a2458] text-white shadow-sm"
             : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
         }`}
       >
         <span>{label}</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full pt-1.5 w-64 z-50">
-          <div className="rounded-xl border border-slate-200 bg-white py-2 shadow-xl">
-            {items.map((item) => (
+        <div className="absolute top-full left-0 pt-2 z-50 min-w-[240px]">
+          <div className="rounded-2xl bg-white shadow-xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
+            {items.map((it) => (
               <Link
-                key={item.href}
-                href={item.href}
-                className="block px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-[#0a2458] font-medium transition-colors"
+                key={it.href}
+                href={it.href}
+                onClick={() => onToggle(false)}
+                className="block px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-orange-50 hover:text-[#f97316] transition-colors"
               >
-                {item.label}
+                {it.label}
               </Link>
             ))}
           </div>
@@ -480,26 +497,26 @@ function MobileNavGroup({
   items,
 }: {
   title: string;
-  items: { label: string; href: string }[];
+  items: Array<{ label: string; href: string }>;
 }) {
-  const [expanded, setExpanded] = useState(title === "Main Navigation");
+  const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/70">
+    <div className="border-b border-slate-100 pb-2">
       <button
         type="button"
-        onClick={() => setExpanded((p) => !p)}
-        className="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-bold text-[#0a2458]"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between py-2 text-sm font-bold text-slate-800"
       >
         <span>{title}</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {expanded && (
-        <div className="px-2 pb-2 grid grid-cols-1 gap-0.5">
+      {open && (
+        <div className="pl-3 py-1 space-y-1">
           {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-lg px-3 py-1.5 text-sm text-slate-700 hover:bg-white hover:text-[#0a2458] font-medium"
+              className="block py-1.5 text-xs font-semibold text-slate-600 hover:text-[#f97316]"
             >
               {item.label}
             </Link>
@@ -509,4 +526,3 @@ function MobileNavGroup({
     </div>
   );
 }
-

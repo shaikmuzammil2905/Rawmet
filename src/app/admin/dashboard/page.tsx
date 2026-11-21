@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/data";
@@ -15,5 +16,16 @@ export default async function AdminDashboardPage() {
   if (!session) {
     redirect("/admin/login");
   }
-  return <AdminDashboardClient />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
+          <div className="h-10 w-10 border-4 border-[#0a2458] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-[#0a2458]">Loading Super Admin Control Center...</p>
+        </div>
+      }
+    >
+      <AdminDashboardClient />
+    </Suspense>
+  );
 }
