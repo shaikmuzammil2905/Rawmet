@@ -80,14 +80,18 @@ const ABOUT_LINKS = [
 ];
 
 export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: string }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname || "";
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [session, setSession] = useState<SessionSummary>({ authenticated: false, user: null });
 
   // Completely hide header on Super Admin and Vendor Portal dashboards as requested
-  if (pathname.startsWith("/admin") || pathname.startsWith("/vendor")) {
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/vendor/dashboard")
+  ) {
     return null;
   }
 

@@ -22,10 +22,14 @@ export function Footer({
   whatsapp?: string;
   email?: string;
 }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname || "";
 
-  // Hide public footer in Super Admin and Vendor Portal dashboards
-  if (pathname.startsWith("/admin") || pathname.startsWith("/vendor")) {
+  // Hide public footer only in Super Admin and Vendor Portal dashboards
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/vendor/dashboard")
+  ) {
     return null;
   }
 

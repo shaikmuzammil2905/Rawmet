@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeCheck, FileUp, ShieldCheck, Store } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
@@ -25,7 +25,7 @@ const CATEGORY_OPTIONS = [
   { value: "website-app-services", label: "Website / App Services" },
 ];
 
-export default function VendorRegisterPage() {
+function VendorRegisterForm() {
   const router = useRouter();
   const { showToast } = useToast();
 
@@ -351,6 +351,20 @@ export default function VendorRegisterPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function VendorRegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm font-bold text-[#0a2458]">
+          Loading Vendor Registration...
+        </div>
+      }
+    >
+      <VendorRegisterForm />
+    </Suspense>
   );
 }
 
