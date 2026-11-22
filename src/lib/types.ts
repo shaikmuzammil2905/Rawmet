@@ -54,6 +54,8 @@ export interface SubcategoryRecord {
   name: string;
   slug: string;
   description: string;
+  category_name?: string;
+  category_type?: string;
 }
 
 export interface ListingRecord {

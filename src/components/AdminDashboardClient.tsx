@@ -31,6 +31,7 @@ import {
   MessageSquare,
   Package,
   Plus,
+  Search,
   Send,
   Settings,
   ShieldAlert,
@@ -162,7 +163,7 @@ interface AdminOverviewData {
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "Core" },
   { id: "subscription_forms", label: "Subscription Forms", icon: ClipboardList, group: "Core" },
-  { id: "vendors", label: "Vendors", icon: Store, group: "Core" },
+  { id: "vendors", label: "Sellers", icon: Store, group: "Core" },
   { id: "users", label: "Users", icon: Users, group: "Core" },
   { id: "products", label: "Products", icon: Package, group: "Catalog" },
   { id: "machineries", label: "Machineries", icon: Cog, group: "Catalog" },
@@ -257,6 +258,7 @@ export function AdminDashboardClient() {
   // Quick Add listing state
   const [newTitle, setNewTitle] = useState("");
   const [newCat, setNewCat] = useState("");
+  const [newSubcat, setNewSubcat] = useState("");
   const [newPrice, setNewPrice] = useState("Request Quote");
   const [newLoc, setNewLoc] = useState("Hyderabad, Telangana");
   const [newShort, setNewShort] = useState("");
@@ -264,16 +266,41 @@ export function AdminDashboardClient() {
   const [newImageUrl, setNewImageUrl] = useState("/images/cat-products.png");
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Main Category Creation (inside Products / Machinery / Services)
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [newCatImage, setNewCatImage] = useState("/images/cat-products.png");
+  const [uploadingCatImage, setUploadingCatImage] = useState(false);
+
+  // Sub-Category Creation (inside Products / Machinery / Services)
+  const [newSubcatParentId, setNewSubcatParentId] = useState<number>(0);
+  const [newSubcatName, setNewSubcatName] = useState("");
+  const [newSubcatDesc, setNewSubcatDesc] = useState("");
+
+  // Edit Category Modal state
+  const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
+  const [editCatName, setEditCatName] = useState("");
+  const [editCatDesc, setEditCatDesc] = useState("");
+  const [editCatImage, setEditCatImage] = useState("");
+  const [uploadingEditCatImage, setUploadingEditCatImage] = useState(false);
+
   // Edit Listing Modal state
   const [editingListing, setEditingListing] = useState<ListingRecord | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCat, setEditCat] = useState("");
+  const [editSubcat, setEditSubcat] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editLoc, setEditLoc] = useState("");
   const [editShort, setEditShort] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editImage, setEditImage] = useState("");
   const [editUploading, setEditUploading] = useState(false);
+
+  // Filter and search states
+  const [sellerSearch, setSellerSearch] = useState("");
+  const [sellerStatusFilter, setSellerStatusFilter] = useState("all");
+  const [listingSearch, setListingSearch] = useState("");
+  const [listingCatFilter, setListingCatFilter] = useState("all");
 
   async function loadOverview() {
     setLoading(true);
@@ -342,7 +369,7 @@ export function AdminDashboardClient() {
       body: JSON.stringify({ vendorId, verificationStatus, rejectionReason }),
     });
     if (res.ok) {
-      showToast(`Vendor marked ${verificationStatus}.`, "success");
+      showToast(`Seller marked ${verificationStatus}.`, "success");
       loadOverview();
     }
   }
@@ -369,6 +396,7 @@ export function AdminDashboardClient() {
         id: editingListing.id,
         title: editTitle,
         category_slug: editCat,
+        subcategory_slug: editSubcat,
         price_display: editPrice,
         location: editLoc,
         short_description: editShort,
@@ -395,15 +423,19 @@ export function AdminDashboardClient() {
 
   async function addAdminListing(type: "product" | "machinery" | "service", e: React.FormEvent) {
     e.preventDefault();
-    const fallbackCat =
-      data?.categories.find((c) => c.type === type)?.slug ||
-      (type === "product" ? "rubber" : type === "machinery" ? "rubber-machineries" : "amc");
+    const categoriesForType = (data?.categories || []).filter((c) => c.type === type);
+    const chosenCat = newCat || categoriesForType[0]?.slug || (type === "product" ? "rubber" : type === "machinery" ? "rubber-machineries" : "amc");
+    if (!chosenCat) {
+      showToast("Please create a main category first before uploading listings.", "error");
+      return;
+    }
     const res = await fetch("/api/admin/listings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type,
-        category_slug: newCat || fallbackCat,
+        category_slug: chosenCat,
+        subcategory_slug: newSubcat || "",
         title: newTitle,
         short_description: newShort || newTitle,
         description: newFullDesc || newShort || newTitle,
@@ -419,7 +451,113 @@ export function AdminDashboardClient() {
       setNewShort("");
       setNewFullDesc("");
       setNewImageUrl("/images/cat-products.png");
+      setNewSubcat("");
       loadOverview();
+    } else {
+      showToast("Failed to publish listing.", "error");
+    }
+  }
+
+  async function createMainCategory(type: "product" | "machinery" | "service", e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCatName.trim()) {
+      showToast("Main category name is required.", "error");
+      return;
+    }
+    const res = await fetch("/api/admin/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "category",
+        type,
+        name: newCatName.trim(),
+        description: newCatDesc.trim(),
+        imageUrl: newCatImage || "/images/cat-products.png",
+      }),
+    });
+    if (res.ok) {
+      showToast(`Category '${newCatName}' created and live on website!`, "success");
+      setNewCatName("");
+      setNewCatDesc("");
+      setNewCatImage("/images/cat-products.png");
+      loadOverview();
+    } else {
+      showToast("Failed to create category.", "error");
+    }
+  }
+
+  async function createSubCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newSubcatName.trim()) {
+      showToast("Sub-category name is required.", "error");
+      return;
+    }
+    if (!newSubcatParentId) {
+      showToast("Please select a parent main category.", "error");
+      return;
+    }
+    const res = await fetch("/api/admin/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "subcategory",
+        categoryId: newSubcatParentId,
+        name: newSubcatName.trim(),
+        description: newSubcatDesc.trim(),
+      }),
+    });
+    if (res.ok) {
+      showToast(`Sub-category '${newSubcatName}' created successfully!`, "success");
+      setNewSubcatName("");
+      setNewSubcatDesc("");
+      loadOverview();
+    } else {
+      showToast("Failed to create sub-category.", "error");
+    }
+  }
+
+  async function deleteCategory(id: number, name: string) {
+    if (!confirm(`Are you sure you want to delete category '${name}'? This will remove it from the website.`)) return;
+    const res = await fetch(`/api/admin/categories?kind=category&id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("Category deleted.", "info");
+      loadOverview();
+    } else {
+      showToast("Failed to delete category.", "error");
+    }
+  }
+
+  async function deleteSubcategory(id: number, name: string) {
+    if (!confirm(`Are you sure you want to delete sub-category '${name}'?`)) return;
+    const res = await fetch(`/api/admin/categories?kind=subcategory&id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("Sub-category deleted.", "info");
+      loadOverview();
+    } else {
+      showToast("Failed to delete sub-category.", "error");
+    }
+  }
+
+  async function saveEditedCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCategory) return;
+    const res = await fetch("/api/admin/categories", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "category",
+        id: editingCategory.id,
+        name: editCatName,
+        description: editCatDesc,
+        imageUrl: editCatImage,
+      }),
+    });
+    if (res.ok) {
+      showToast("Category updated live on website!", "success");
+      setEditingCategory(null);
+      loadOverview();
+    } else {
+      showToast("Failed to update category.", "error");
     }
   }
 
@@ -447,7 +585,7 @@ export function AdminDashboardClient() {
     if (res.ok) {
       showToast(
         typeof out.matchedVendors === "number"
-          ? `Dispatched WhatsApp alerts to ${out.matchedVendors} matching vendor(s)!`
+          ? `Dispatched WhatsApp alerts to ${out.matchedVendors} matching seller(s)!`
           : "Action completed!",
         "success"
       );
@@ -512,7 +650,7 @@ export function AdminDashboardClient() {
               </span>
             </div>
             <p className="text-xs text-blue-200 mt-0.5 hidden sm:block">
-              Centralized CMS, Vendor Verifications, AWS S3 Pipeline & Subscriptions Management
+              Centralized CMS, Seller Verifications, AWS S3 Pipeline & Subscriptions Management
             </p>
           </div>
         </div>
@@ -571,7 +709,7 @@ export function AdminDashboardClient() {
               { id: "products", label: "Products" },
               { id: "machineries", label: "Machinery" },
               { id: "services", label: "Services" },
-              { id: "vendors", label: "Vendors", badge: data.kpi?.pendingVendors },
+              { id: "vendors", label: "Sellers", badge: data.kpi?.pendingVendors },
               { id: "categories", label: "Categories" },
               { id: "content", label: "Hero CMS" },
               { id: "gallery", label: "Gallery" },
@@ -870,35 +1008,79 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB 3: VENDORS MANAGEMENT */}
-          {activeTab === "vendors" && (
-            <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
-              <table className="w-full text-xs text-left min-w-[650px]">
-                <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
-                  <tr>
-                    <th className="p-3">Business</th>
-                    <th className="p-3">Owner</th>
-                    <th className="p-3">GST Number</th>
-                    <th className="p-3">Mobile / WA</th>
-                    <th className="p-3">Category</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.vendors.map((v) => (
-                    <tr key={v.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-[#0a2458]">
-                        {v.business_name}
-                        <div className="text-[11px] font-normal text-slate-500">{v.city}, {v.state}</div>
-                      </td>
-                      <td className="p-3 text-slate-700">{v.owner_name}</td>
-                      <td className="p-3 font-mono text-[11px]">{v.gst_number || "Awaiting Doc"}</td>
-                      <td className="p-3 font-mono">{v.mobile}</td>
-                      <td className="p-3 font-semibold uppercase text-slate-600">{v.business_category}</td>
-                      <td className="p-3">
+          {/* TAB 3: SELLERS MANAGEMENT */}
+          {activeTab === "vendors" && (() => {
+            const filteredSellers = data.vendors.filter((v) => {
+              const matchesStatus = sellerStatusFilter === "all" ? true : v.verification_status === sellerStatusFilter;
+              const q = sellerSearch.toLowerCase().trim();
+              const matchesSearch =
+                !q ||
+                v.business_name.toLowerCase().includes(q) ||
+                v.owner_name.toLowerCase().includes(q) ||
+                (v.gst_number || "").toLowerCase().includes(q) ||
+                (v.mobile || "").includes(q) ||
+                (v.city || "").toLowerCase().includes(q) ||
+                (v.state || "").toLowerCase().includes(q);
+              return matchesStatus && matchesSearch;
+            });
+
+            return (
+              <div className="space-y-4">
+                {/* Search & Filter Header */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-extrabold text-[#0a2458] text-base">
+                        Sellers & Business Verifications ({filteredSellers.length} / {data.vendors.length})
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Manage registered manufacturers, bulk suppliers, GST validations, and catalog rights.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {(["all", "approved", "pending", "rejected"] as const).map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => setSellerStatusFilter(st)}
+                          className={`rounded-full px-3 py-1 text-xs font-bold uppercase transition-colors ${
+                            sellerStatusFilter === st
+                              ? "bg-[#0a2458] text-white shadow-sm"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={sellerSearch}
+                      onChange={(e) => setSellerSearch(e.target.value)}
+                      placeholder="Search sellers by business name, owner, GST number, mobile, city..."
+                      className="w-full rounded-xl border border-slate-300 pl-10 pr-4 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0a2458] focus:outline-none bg-slate-50/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Mobile View: High-density responsive cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3.5">
+                  {filteredSellers.map((v) => (
+                    <div
+                      key={v.id}
+                      className="rounded-2xl border border-slate-200 p-4 bg-white shadow-sm flex flex-col justify-between space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-sm text-[#0a2458] truncate">{v.business_name}</h4>
+                          <p className="text-xs text-slate-600 font-semibold">{v.owner_name}</p>
+                          <p className="text-[11px] text-slate-500">{v.city}, {v.state}</p>
+                        </div>
                         <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase shrink-0 ${
                             v.verification_status === "approved"
                               ? "bg-emerald-100 text-emerald-800"
                               : v.verification_status === "rejected"
@@ -908,37 +1090,139 @@ export function AdminDashboardClient() {
                         >
                           {v.verification_status}
                         </span>
+                      </div>
+
+                      <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-bold">GST:</span>
+                          <span className="font-mono text-slate-800 font-bold">{v.gst_number || "Awaiting Doc"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-bold">Mobile / WA:</span>
+                          <span className="font-mono text-slate-800">{v.mobile}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-bold">Category:</span>
+                          <span className="font-semibold text-slate-700 uppercase">{v.business_category}</span>
+                        </div>
                         {v.rejection_reason && (
-                          <div className="text-[10px] text-rose-600 mt-1 max-w-xs">{v.rejection_reason}</div>
+                          <div className="text-rose-600 font-medium pt-1 border-t border-rose-100">
+                            Reason: {v.rejection_reason}
+                          </div>
                         )}
-                      </td>
-                      <td className="p-3 space-x-1.5 whitespace-nowrap">
-                        <button
-                          onClick={() => updateVendor(v.id, "approved")}
-                          className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            setRejectModal({
-                              isOpen: true,
-                              type: "vendor",
-                              id: v.id,
-                              reason: "GST Certificate / Authentic ID could not be verified.",
-                            })
-                          }
-                          className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                        >
-                          Reject
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                        {v.verification_status !== "approved" && (
+                          <button
+                            onClick={() => updateVendor(v.id, "approved")}
+                            className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-bold transition-all"
+                          >
+                            Approve Seller
+                          </button>
+                        )}
+                        {v.verification_status !== "rejected" && (
+                          <button
+                            onClick={() =>
+                              setRejectModal({
+                                isOpen: true,
+                                type: "vendor",
+                                id: v.id,
+                                reason: "GST Certificate / Authentic ID could not be verified.",
+                              })
+                            }
+                            className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-2 text-xs font-bold transition-all"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  {filteredSellers.length === 0 && (
+                    <div className="col-span-full py-8 text-center text-xs text-slate-500">
+                      No sellers match your search or filter.
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop View: Full Table */}
+                <div className="hidden lg:block rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
+                  <table className="w-full text-xs text-left min-w-[650px]">
+                    <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
+                      <tr>
+                        <th className="p-3">Business</th>
+                        <th className="p-3">Owner</th>
+                        <th className="p-3">GST Number</th>
+                        <th className="p-3">Mobile / WA</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredSellers.map((v) => (
+                        <tr key={v.id} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-[#0a2458]">
+                            {v.business_name}
+                            <div className="text-[11px] font-normal text-slate-500">{v.city}, {v.state}</div>
+                          </td>
+                          <td className="p-3 text-slate-700">{v.owner_name}</td>
+                          <td className="p-3 font-mono text-[11px]">{v.gst_number || "Awaiting Doc"}</td>
+                          <td className="p-3 font-mono">{v.mobile}</td>
+                          <td className="p-3 font-semibold uppercase text-slate-600">{v.business_category}</td>
+                          <td className="p-3">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                                v.verification_status === "approved"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : v.verification_status === "rejected"
+                                  ? "bg-rose-100 text-rose-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {v.verification_status}
+                            </span>
+                            {v.rejection_reason && (
+                              <div className="text-[10px] text-rose-600 mt-1 max-w-xs">{v.rejection_reason}</div>
+                            )}
+                          </td>
+                          <td className="p-3 space-x-1.5 whitespace-nowrap">
+                            <button
+                              onClick={() => updateVendor(v.id, "approved")}
+                              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() =>
+                                setRejectModal({
+                                  isOpen: true,
+                                  type: "vendor",
+                                  id: v.id,
+                                  reason: "GST Certificate / Authentic ID could not be verified.",
+                                })
+                              }
+                              className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                            >
+                              Reject
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredSellers.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-6 text-center text-slate-500">
+                            No sellers match your search or filter.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TAB 4: USERS MANAGEMENT */}
           {activeTab === "users" && (
@@ -993,143 +1277,510 @@ export function AdminDashboardClient() {
             </div>
           )}
 
-          {/* TAB 5: PRODUCTS / MACHINERIES / SERVICES (Full View, Add with S3 Upload, Edit Modal & Delete) */}
-          {(activeTab === "products" || activeTab === "machineries" || activeTab === "services") && (
-            <div className="space-y-6">
-              {/* Add New Listing Card */}
-              <form
-                onSubmit={(e) => addAdminListing(listingTypeFilter, e)}
-                className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3.5 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-extrabold text-[#0a2458]">
-                    <Plus className="h-4 w-4 text-[#f97316]" />
-                    <span>Upload New {activeTab.slice(0, -1).toUpperCase()} to Website</span>
+          {/* TAB 5: PRODUCTS / MACHINERIES / SERVICES (Full View: Step 1 Main Category -> Step 2 Sub Category -> Step 3 Listing Create -> Past Listings) */}
+          {(activeTab === "products" || activeTab === "machineries" || activeTab === "services") && (() => {
+            const typeLabel = activeTab === "products" ? "Product" : activeTab === "machineries" ? "Machinery" : "Service";
+            const categoriesForType = data.categories.filter((c) => c.type === listingTypeFilter);
+            const subcategoriesForType = data.subcategories.filter((s) => s.category_type === listingTypeFilter || categoriesForType.some((c) => c.id === s.category_id));
+
+            // Subcategories belonging to the chosen newCat
+            const activeMainCatObj = categoriesForType.find((c) => c.slug === (newCat || categoriesForType[0]?.slug));
+            const availableSubcatsForListing = activeMainCatObj
+              ? subcategoriesForType.filter((s) => s.category_id === activeMainCatObj.id)
+              : [];
+
+            // Filtered past listings
+            const filteredListings = data.listings
+              .filter((l) => l.type === listingTypeFilter)
+              .filter((l) => {
+                const matchesCat = listingCatFilter === "all" ? true : l.category_slug === listingCatFilter;
+                const q = listingSearch.toLowerCase().trim();
+                const matchesQ =
+                  !q ||
+                  l.title.toLowerCase().includes(q) ||
+                  (l.vendor_name || "").toLowerCase().includes(q) ||
+                  (l.location || "").toLowerCase().includes(q) ||
+                  (l.category_slug || "").toLowerCase().includes(q) ||
+                  (l.subcategory_slug || "").toLowerCase().includes(q);
+                return matchesCat && matchesQ;
+              });
+
+            return (
+              <div className="space-y-6">
+                {/* STEP 1: MAIN CATEGORY OPTION */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-7 rounded-xl bg-[#0a2458] text-white flex items-center justify-center font-black text-xs shadow">
+                        1
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#0a2458]">
+                          Main Category Option — {typeLabel}s ({categoriesForType.length})
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Create primary categories for {typeLabel.toLowerCase()}s (e.g., Rubber, Plastic, Metals) with instant live website sync.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full w-fit">
+                      Live on Website & Navigation
+                    </span>
                   </div>
-                  <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                    Direct S3 + Instant Live
-                  </span>
+
+                  {/* Add Main Category Form */}
+                  <form
+                    onSubmit={(e) => createMainCategory(listingTypeFilter, e)}
+                    className="bg-slate-50/80 rounded-2xl border border-slate-200 p-3.5 sm:p-4 space-y-3"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Main Category Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          placeholder={`e.g. ${
+                            listingTypeFilter === "product"
+                              ? "Rubber Products, Plastic Materials"
+                              : listingTypeFilter === "machinery"
+                              ? "Rubber Machineries, Turnkey Plants"
+                              : "Logistics Services, AMC Services"
+                          }`}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Short Description
+                        </label>
+                        <input
+                          type="text"
+                          value={newCatDesc}
+                          onChange={(e) => setNewCatDesc(e.target.value)}
+                          placeholder="Category highlights, materials & catalog scope"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* S3 Image Upload & Preview */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Category Banner / Icon (AWS S3 Upload)
+                      </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-xs font-bold cursor-pointer hover:bg-slate-100 bg-white transition-colors">
+                          <FileUp className="h-4 w-4 text-[#f97316]" />
+                          <span>{uploadingCatImage ? "Uploading S3..." : "Upload Photo (S3)"}</span>
+                          <input
+                            type="file"
+                            accept=".png,.jpg,.jpeg,.webp"
+                            onChange={(e) => handleS3Upload(e, setNewCatImage, setUploadingCatImage)}
+                            className="hidden"
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={newCatImage}
+                          onChange={(e) => setNewCatImage(e.target.value)}
+                          placeholder="Or paste direct image URL"
+                          className="flex-1 min-w-[200px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-700 bg-white"
+                        />
+                        {newCatImage && (
+                          <img
+                            src={newCatImage}
+                            alt="Category Preview"
+                            className="h-8 w-8 object-cover rounded-lg border border-slate-300 shrink-0"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={uploadingCatImage}
+                      className="rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-xs font-black shadow transition-all flex items-center gap-1.5"
+                    >
+                      <Plus className="h-4 w-4 text-[#f97316]" />
+                      <span>Create Main Category</span>
+                    </button>
+                  </form>
+
+                  {/* Existing Main Categories List (Mobile Cards + Desktop Grid) */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
+                      Existing {typeLabel} Main Categories ({categoriesForType.length})
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {categoriesForType.map((c) => {
+                        const subCount = subcategoriesForType.filter((s) => s.category_id === c.id).length;
+                        return (
+                          <div
+                            key={c.id}
+                            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 shadow-sm transition-all"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={c.image_url || "/images/cat-products.png"}
+                                alt={c.name}
+                                className="h-9 w-9 rounded-lg object-cover border border-slate-200 shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-xs text-[#0a2458] truncate">{c.name}</h4>
+                                <span className="text-[10px] text-slate-500">
+                                  {subCount} sub-categories
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                              <button
+                                onClick={() => {
+                                  setEditingCategory(c);
+                                  setEditCatName(c.name);
+                                  setEditCatDesc(c.description || "");
+                                  setEditCatImage(c.image_url || "/images/cat-products.png");
+                                }}
+                                className="rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 p-1.5 transition-colors"
+                                title="Edit Category"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deleteCategory(c.id, c.name)}
+                                className="rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 p-1.5 transition-colors"
+                                title="Delete Category"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {categoriesForType.length === 0 && (
+                        <div className="col-span-full py-4 text-center text-xs text-slate-500">
+                          No main categories created yet for {typeLabel}s. Create one above to get started.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Item Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="Title / Model Name"
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                    />
+                {/* STEP 2: SUB CATEGORY OPTION (BELOW MAIN CATEGORY) */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-7 rounded-xl bg-[#f97316] text-white flex items-center justify-center font-black text-xs shadow">
+                        2
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#0a2458]">
+                          Sub Category Option — {typeLabel}s ({subcategoriesForType.length})
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Step 2: Add specific sub-categories nested under any {typeLabel.toLowerCase()} main category created above.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-full w-fit">
+                      Nested Categorization
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Category *</label>
-                    <select
-                      value={newCat}
-                      onChange={(e) => setNewCat(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none bg-white"
+
+                  {/* Add Subcategory Form */}
+                  <form
+                    onSubmit={createSubCategory}
+                    className="bg-slate-50/80 rounded-2xl border border-slate-200 p-3.5 sm:p-4 space-y-3"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Parent Main Category *
+                        </label>
+                        <select
+                          value={newSubcatParentId || (categoriesForType[0]?.id || 0)}
+                          onChange={(e) => setNewSubcatParentId(Number(e.target.value))}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
+                        >
+                          {categoriesForType.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Sub-Category Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newSubcatName}
+                          onChange={(e) => setNewSubcatName(e.target.value)}
+                          placeholder="e.g. Natural Rubber, EPDM, Nitrile, HDPE"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Description (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newSubcatDesc}
+                          onChange={(e) => setNewSubcatDesc(e.target.value)}
+                          placeholder="Grades, specs, or subcategory notes"
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={categoriesForType.length === 0}
+                      className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-5 py-2 text-xs font-black shadow transition-all flex items-center gap-1.5"
                     >
-                      {data.categories
-                        .filter((c) => c.type === listingTypeFilter)
-                        .map((c) => (
+                      <Plus className="h-4 w-4" />
+                      <span>Create Sub-Category</span>
+                    </button>
+                  </form>
+
+                  {/* Existing Sub-Categories List */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">
+                      Existing {typeLabel} Sub-Categories ({subcategoriesForType.length})
+                    </span>
+                    <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
+                      {subcategoriesForType.map((s) => (
+                        <div
+                          key={s.id}
+                          className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs shadow-sm"
+                        >
+                          <span className="font-bold text-[#0a2458]">{s.name}</span>
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {s.category_name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => deleteSubcategory(s.id, s.name)}
+                            className="text-slate-400 hover:text-rose-600 transition-colors ml-1"
+                            title="Delete Sub-category"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {subcategoriesForType.length === 0 && (
+                        <div className="w-full py-3 text-center text-xs text-slate-500">
+                          No sub-categories created yet. Add one above under your main category.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* STEP 3: CREATE LISTING (PRODUCTS / MACHINERIES / SERVICES - CREATE) */}
+                <form
+                  onSubmit={(e) => addAdminListing(listingTypeFilter, e)}
+                  className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-4 shadow-sm"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow">
+                        3
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#0a2458]">
+                          {typeLabel}s — Create Listing
+                        </h3>
+                        <p className="text-[11px] text-slate-500">
+                          Step 3: Select Main Category & Sub-Category created above, specify details, and publish live to website.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-full w-fit">
+                      Direct S3 + Instant Live Sync
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Item Title *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="Title / Material / Machine Name"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Main Category *</label>
+                      <select
+                        value={newCat || categoriesForType[0]?.slug}
+                        onChange={(e) => {
+                          setNewCat(e.target.value);
+                          setNewSubcat("");
+                        }}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                      >
+                        {categoriesForType.map((c) => (
                           <option key={c.id} value={c.slug}>
                             {c.name}
                           </option>
                         ))}
-                    </select>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Sub-Category</label>
+                      <select
+                        value={newSubcat}
+                        onChange={(e) => setNewSubcat(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                      >
+                        <option value="">(No Sub-Category / General)</option>
+                        {availableSubcatsForListing.map((s) => (
+                          <option key={s.id} value={s.slug}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Price Display</label>
-                    <input
-                      type="text"
-                      value={newPrice}
-                      onChange={(e) => setNewPrice(e.target.value)}
-                      placeholder="e.g. ₹55/Kg, ₹2.5 Lakh"
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={newLoc}
-                      onChange={(e) => setNewLoc(e.target.value)}
-                      placeholder="City, State"
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Short Description / Specs</label>
-                    <input
-                      type="text"
-                      value={newShort}
-                      onChange={(e) => setNewShort(e.target.value)}
-                      placeholder="Highlights, grade, MOQ"
-                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#1652b8] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* S3 Image Upload & Preview */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Listing Image (AWS S3 Upload)</label>
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <label className="inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100 transition-colors">
-                      <FileUp className="h-4 w-4 text-[#f97316]" />
-                      <span>{uploadingImage ? "Uploading to AWS S3..." : "Upload Photo (S3)"}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Price Display</label>
                       <input
-                        type="file"
-                        accept=".png,.jpg,.jpeg,.webp"
-                        onChange={(e) => handleS3Upload(e, setNewImageUrl, setUploadingImage)}
-                        className="hidden"
+                        type="text"
+                        value={newPrice}
+                        onChange={(e) => setNewPrice(e.target.value)}
+                        placeholder="e.g. ₹55/Kg, ₹2.5 Lakh, Request Quote"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
                       />
-                    </label>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Location</label>
+                      <input
+                        type="text"
+                        value={newLoc}
+                        onChange={(e) => setNewLoc(e.target.value)}
+                        placeholder="City, State / Pan India"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Short Description / Specs</label>
+                      <input
+                        type="text"
+                        value={newShort}
+                        onChange={(e) => setNewShort(e.target.value)}
+                        placeholder="Highlights, Grade, Capacity, MOQ"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Full Detailed Description</label>
+                    <textarea
+                      rows={2}
+                      value={newFullDesc}
+                      onChange={(e) => setNewFullDesc(e.target.value)}
+                      placeholder="Comprehensive technical specifications, warranty, applications..."
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none bg-white"
+                    />
+                  </div>
+
+                  {/* S3 Image Upload & Preview */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Listing Image (AWS S3 Upload)</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3.5 py-2 text-xs font-bold cursor-pointer hover:bg-slate-100 bg-white transition-colors">
+                        <FileUp className="h-4 w-4 text-[#f97316]" />
+                        <span>{uploadingImage ? "Uploading to S3..." : "Upload Photo (S3)"}</span>
+                        <input
+                          type="file"
+                          accept=".png,.jpg,.jpeg,.webp"
+                          onChange={(e) => handleS3Upload(e, setNewImageUrl, setUploadingImage)}
+                          className="hidden"
+                        />
+                      </label>
+                      <input
+                        type="text"
+                        value={newImageUrl}
+                        onChange={(e) => setNewImageUrl(e.target.value)}
+                        placeholder="Or paste direct image URL"
+                        className="flex-1 min-w-[200px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-700 bg-white"
+                      />
+                      {newImageUrl && (
+                        <img
+                          src={newImageUrl}
+                          alt="Listing Preview"
+                          className="h-9 w-9 object-cover rounded-lg border border-slate-300 shadow-sm shrink-0"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={uploadingImage || categoriesForType.length === 0}
+                    className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-6 py-2.5 text-xs font-black shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Publish & Save Directly Live</span>
+                  </button>
+                </form>
+
+                {/* STEP 4: ALL PAST LISTINGS (FILTER, SEARCH, MOBILE CARDS & DESKTOP TABLE) */}
+                <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-extrabold text-[#0a2458] text-base">
+                        All Past {typeLabel} Listings ({filteredListings.length} /{" "}
+                        {data.listings.filter((l) => l.type === listingTypeFilter).length})
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Editable • Instant live synchronization with public marketplace
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select
+                        value={listingCatFilter}
+                        onChange={(e) => setListingCatFilter(e.target.value)}
+                        className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-700 font-semibold bg-white"
+                      >
+                        <option value="all">All Categories</option>
+                        {categoriesForType.map((c) => (
+                          <option key={c.id} value={c.slug}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      value={newImageUrl}
-                      onChange={(e) => setNewImageUrl(e.target.value)}
-                      placeholder="Or paste direct image URL"
-                      className="flex-1 min-w-[200px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-700 bg-white"
+                      value={listingSearch}
+                      onChange={(e) => setListingSearch(e.target.value)}
+                      placeholder={`Search ${typeLabel.toLowerCase()}s by title, category, subcategory, seller, location...`}
+                      className="w-full rounded-xl border border-slate-300 pl-10 pr-4 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0a2458] focus:outline-none bg-slate-50/50"
                     />
-                    {newImageUrl && (
-                      <img
-                        src={newImageUrl}
-                        alt="Preview"
-                        className="h-9 w-9 object-cover rounded-lg border border-slate-300 shadow-sm shrink-0"
-                      />
-                    )}
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={uploadingImage}
-                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-6 py-2.5 text-xs font-black shadow-lg shadow-orange-500/20 transition-all flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Publish & Save Directly Live</span>
-                </button>
-              </form>
-
-              {/* Past Listings List / Grid (Mobile Card + Desktop Table) */}
-              <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-[#0a2458] text-base">
-                    All Past {activeTab.toUpperCase()} Listings (
-                    {data.listings.filter((l) => l.type === listingTypeFilter).length})
-                  </h3>
-                  <span className="text-xs text-slate-500 font-semibold">Editable • Live synchronized</span>
-                </div>
-
-                {/* Mobile View: High-Density Responsive Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3.5">
-                  {data.listings
-                    .filter((l) => l.type === listingTypeFilter)
-                    .map((l) => (
+                  {/* Mobile View: Responsive Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3.5">
+                    {filteredListings.map((l) => (
                       <div
                         key={l.id}
                         className="rounded-2xl border border-slate-200 p-3.5 bg-white shadow-sm flex flex-col justify-between space-y-2.5"
@@ -1141,13 +1792,21 @@ export function AdminDashboardClient() {
                             className="h-14 w-14 rounded-xl object-cover border border-slate-200 shrink-0"
                           />
                           <div className="min-w-0 flex-1">
-                            <span className="text-[10px] uppercase font-bold text-[#f97316] bg-orange-50 px-1.5 py-0.5 rounded">
-                              {l.category_slug}
-                            </span>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-[10px] uppercase font-bold text-[#f97316] bg-orange-50 px-1.5 py-0.5 rounded">
+                                {l.category_slug}
+                              </span>
+                              {l.subcategory_slug && (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                  {l.subcategory_slug}
+                                </span>
+                              )}
+                            </div>
                             <h4 className="font-bold text-xs text-[#0a2458] mt-1 leading-snug line-clamp-2">
                               {l.title}
                             </h4>
                             <p className="font-extrabold text-emerald-700 text-xs mt-0.5">{l.price_display}</p>
+                            <p className="text-[11px] text-slate-500">Seller: {l.vendor_name || "Admin Direct"}</p>
                           </div>
                         </div>
 
@@ -1181,6 +1840,7 @@ export function AdminDashboardClient() {
                               setEditingListing(l);
                               setEditTitle(l.title);
                               setEditCat(l.category_slug);
+                              setEditSubcat(l.subcategory_slug || "");
                               setEditPrice(l.price_display);
                               setEditLoc(l.location || "");
                               setEditShort(l.short_description || "");
@@ -1210,27 +1870,31 @@ export function AdminDashboardClient() {
                         </div>
                       </div>
                     ))}
-                </div>
+                    {filteredListings.length === 0 && (
+                      <div className="col-span-full py-8 text-center text-xs text-slate-500">
+                        No {typeLabel.toLowerCase()} listings found matching search or filter.
+                      </div>
+                    )}
+                  </div>
 
-                {/* Desktop View: Full Table */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
-                      <tr>
-                        <th className="p-3">Image</th>
-                        <th className="p-3">Title</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Vendor</th>
-                        <th className="p-3">Price</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Published</th>
-                        <th className="p-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {data.listings
-                        .filter((l) => l.type === listingTypeFilter)
-                        .map((l) => (
+                  {/* Desktop View: Full Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
+                        <tr>
+                          <th className="p-3">Image</th>
+                          <th className="p-3">Title</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Sub-Category</th>
+                          <th className="p-3">Seller</th>
+                          <th className="p-3">Price</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Published</th>
+                          <th className="p-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredListings.map((l) => (
                           <tr key={l.id} className="hover:bg-slate-50">
                             <td className="p-3">
                               <img
@@ -1248,6 +1912,7 @@ export function AdminDashboardClient() {
                               )}
                             </td>
                             <td className="p-3 font-mono uppercase text-slate-600">{l.category_slug}</td>
+                            <td className="p-3 font-mono text-slate-500">{l.subcategory_slug || "—"}</td>
                             <td className="p-3 text-slate-600">{l.vendor_name || "Admin Direct"}</td>
                             <td className="p-3 font-semibold text-emerald-700">{l.price_display}</td>
                             <td className="p-3">
@@ -1281,6 +1946,7 @@ export function AdminDashboardClient() {
                                   setEditingListing(l);
                                   setEditTitle(l.title);
                                   setEditCat(l.category_slug);
+                                  setEditSubcat(l.subcategory_slug || "");
                                   setEditPrice(l.price_display);
                                   setEditLoc(l.location || "");
                                   setEditShort(l.short_description || "");
@@ -1302,39 +1968,28 @@ export function AdminDashboardClient() {
                                 {l.featured ? "Featured ★" : "Feature"}
                               </button>
                               <button
-                                onClick={() => updateListing(l.id, { status: "approved" })}
-                                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 font-bold text-[11px]"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setRejectModal({
-                                    isOpen: true,
-                                    type: "listing",
-                                    id: l.id,
-                                    reason: "Technical specifications require detailed clarification.",
-                                  })
-                                }
-                                className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 font-bold text-[11px]"
-                              >
-                                Reject
-                              </button>
-                              <button
                                 onClick={() => deleteListing(l.id)}
-                                className="rounded-lg bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2 py-1 text-[11px]"
+                                className="rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 px-2 py-1 font-bold text-[11px]"
                               >
-                                <Trash2 className="h-3 w-3 inline" />
+                                Delete
                               </button>
                             </td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
+                        {filteredListings.length === 0 && (
+                          <tr>
+                            <td colSpan={9} className="p-6 text-center text-slate-500">
+                              No {typeLabel.toLowerCase()} listings found matching search or filter.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 6: CATEGORIES */}
           {activeTab === "categories" && (
@@ -1375,7 +2030,7 @@ export function AdminDashboardClient() {
                       className="rounded-full bg-[#25D366] hover:bg-[#20b858] text-white px-3.5 py-1.5 text-xs font-bold shadow flex items-center gap-1.5"
                     >
                       <MessageCircle className="h-3.5 w-3.5" />
-                      <span>Dispatch WhatsApp Alert to Matching Vendors</span>
+                      <span>Dispatch WhatsApp Alert to Matching Sellers</span>
                     </button>
                   </div>
                 </div>
@@ -1479,7 +2134,7 @@ export function AdminDashboardClient() {
                   </div>
                   <h4 className="font-extrabold text-sm text-[#0a2458]">Sellers Directory Report</h4>
                   <p className="text-xs text-slate-500">
-                    All registered manufacturers, vendors, GST numbers, verification statuses, and locations.
+                    All registered manufacturers, sellers, GST numbers, verification statuses, and locations.
                   </p>
                   <button
                     onClick={() =>
@@ -1716,7 +2371,7 @@ export function AdminDashboardClient() {
                 Automated WhatsApp Opportunity Dispatches
               </h3>
               <p className="text-xs text-slate-500">
-                Log of real-time requirement alerts queued or sent directly to verified category vendors.
+                Log of real-time requirement alerts queued or sent directly to verified category sellers.
               </p>
               <div className="space-y-2">
                 {data.whatsappNotifications.map((n) => (
@@ -1897,10 +2552,13 @@ export function AdminDashboardClient() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <label className="block font-bold text-slate-700 mb-1">Main Category</label>
                   <select
                     value={editCat}
-                    onChange={(e) => setEditCat(e.target.value)}
+                    onChange={(e) => {
+                      setEditCat(e.target.value);
+                      setEditSubcat("");
+                    }}
                     className="w-full rounded-xl border border-slate-300 p-2.5 text-xs bg-white text-slate-800"
                   >
                     {data.categories
@@ -1913,11 +2571,43 @@ export function AdminDashboardClient() {
                   </select>
                 </div>
                 <div>
+                  <label className="block font-bold text-slate-700 mb-1">Sub-Category</label>
+                  <select
+                    value={editSubcat}
+                    onChange={(e) => setEditSubcat(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs bg-white text-slate-800"
+                  >
+                    <option value="">(No Sub-Category / General)</option>
+                    {data.subcategories
+                      .filter((s) => {
+                        const parentCat = data.categories.find((c) => c.slug === editCat);
+                        return parentCat ? s.category_id === parentCat.id : false;
+                      })
+                      .map((s) => (
+                        <option key={s.id} value={s.slug}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
                   <label className="block font-bold text-slate-700 mb-1">Price Display</label>
                   <input
                     type="text"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={editLoc}
+                    onChange={(e) => setEditLoc(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800"
                   />
                 </div>
@@ -2005,6 +2695,96 @@ export function AdminDashboardClient() {
         </div>
       )}
 
+      {/* EDIT CATEGORY MODAL */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-5 sm:p-7 shadow-2xl text-slate-800 border border-slate-200 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-[#f97316]" />
+                <h3 className="font-extrabold text-base text-[#0a2458]">Edit Main Category</h3>
+              </div>
+              <button
+                onClick={() => setEditingCategory(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={saveEditedCategory} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCatName}
+                  onChange={(e) => setEditCatName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={editCatDesc}
+                  onChange={(e) => setEditCatDesc(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Photo / Banner (AWS S3)</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold cursor-pointer hover:bg-slate-50 bg-slate-100">
+                    <FileUp className="h-3.5 w-3.5 text-[#f97316]" />
+                    <span>{uploadingEditCatImage ? "Uploading..." : "Upload New Photo"}</span>
+                    <input
+                      type="file"
+                      accept=".png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleS3Upload(e, setEditCatImage, setUploadingEditCatImage)}
+                      className="hidden"
+                    />
+                  </label>
+                  {editCatImage && (
+                    <img
+                      src={editCatImage}
+                      alt="Thumbnail"
+                      className="h-8 w-8 object-cover rounded-lg border border-slate-200"
+                    />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={editCatImage}
+                  onChange={(e) => setEditCatImage(e.target.value)}
+                  placeholder="Image URL"
+                  className="w-full rounded-xl border border-slate-300 p-2 text-xs font-mono text-slate-700"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingEditCatImage}
+                  className="rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white px-5 py-2 font-bold text-xs shadow"
+                >
+                  Save Category Live
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* REJECTION REASON MODAL */}
       {rejectModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
@@ -2012,7 +2792,7 @@ export function AdminDashboardClient() {
             <div className="flex items-center gap-3 mb-3 text-rose-600">
               <ShieldAlert className="h-6 w-6" />
               <h3 className="font-extrabold text-base">
-                Reject {rejectModal.type === "vendor" ? "Vendor Application" : "Catalog Listing"}
+                Reject {rejectModal.type === "vendor" ? "Seller Application" : "Catalog Listing"}
               </h3>
             </div>
             <p className="text-xs text-slate-600 mb-3">

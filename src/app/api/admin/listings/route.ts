@@ -88,6 +88,7 @@ export async function PATCH(req: Request) {
     featured?: boolean;
     title?: string;
     category_slug?: string;
+    subcategory_slug?: string;
     short_description?: string;
     description?: string;
     price_display?: string;
@@ -107,6 +108,7 @@ export async function PATCH(req: Request) {
       featured = COALESCE(?, featured),
       title = COALESCE(?, title),
       category_slug = COALESCE(?, category_slug),
+      subcategory_slug = COALESCE(?, subcategory_slug),
       short_description = COALESCE(?, short_description),
       description = COALESCE(?, description),
       price_display = COALESCE(?, price_display),
@@ -122,6 +124,7 @@ export async function PATCH(req: Request) {
     typeof body.featured === "boolean" ? (body.featured ? 1 : 0) : null,
     body.title ?? null,
     body.category_slug ?? null,
+    body.subcategory_slug ?? null,
     body.short_description ?? null,
     body.description ?? null,
     body.price_display ?? null,
