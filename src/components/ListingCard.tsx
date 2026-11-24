@@ -10,7 +10,7 @@ export function ListingCard({ listing }: { listing: ListingRecord }) {
 
   return (
     <article className="group rounded-2xl border border-slate-200/90 bg-white shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
-      <Link href={`/listings/${listing.slug}`} className="relative h-36 sm:h-48 bg-slate-100 overflow-hidden block">
+      <Link href={`/listings/${listing.slug}`} target="_blank" rel="noopener noreferrer" className="relative h-36 sm:h-48 bg-slate-100 overflow-hidden block">
         <img
           src={listing.image_url || "/images/cat-products.png"}
           alt={listing.title}
@@ -41,7 +41,7 @@ export function ListingCard({ listing }: { listing: ListingRecord }) {
             </span>
           </div>
 
-          <Link href={`/listings/${listing.slug}`}>
+          <Link href={`/listings/${listing.slug}`} target="_blank" rel="noopener noreferrer">
             <h3 className="text-xs sm:text-sm font-extrabold text-[#0a2458] group-hover:text-[#1652b8] transition-colors line-clamp-2 leading-snug min-h-[2.1rem] sm:min-h-[2.5rem]">
               {listing.title}
             </h3>
@@ -54,6 +54,8 @@ export function ListingCard({ listing }: { listing: ListingRecord }) {
 
           <Link
             href={`/listings/${listing.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block mt-1.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-[#1652b8] hover:text-[#f97316]"
           >
             VIEW DETAILS

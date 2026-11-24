@@ -275,7 +275,8 @@ export function getListingBySlug(slug: string): {
 } {
   ensureSeeded();
   const db = getDb();
-  const row = db
+  const decoded = decodeURIComponent(slug || "").toLowerCase().trim();
+  let row = db
     .prepare(
       `SELECT l.*,
               COALESCE(v.business_name, 'RAWMAT Verified Seller') as vendor_name,
@@ -285,9 +286,26 @@ export function getListingBySlug(slug: string): {
               COALESCE(v.city, 'Pan India') as vendor_city
        FROM listings l
        LEFT JOIN vendors v ON v.id = l.vendor_id
-       WHERE l.slug = ?`
+       WHERE LOWER(l.slug) = ?`
     )
-    .get(slug) as unknown as ListingRecord | undefined;
+    .get(decoded) as unknown as ListingRecord | undefined;
+
+  if (!row) {
+    row = db
+      .prepare(
+        `SELECT l.*,
+                COALESCE(v.business_name, 'RAWMAT Verified Seller') as vendor_name,
+                CASE WHEN v.verification_status = 'approved' OR v.id IS NULL THEN 1 ELSE 0 END as vendor_verified,
+                COALESCE(v.whatsapp, '917382177653') as vendor_whatsapp,
+                COALESCE(v.mobile, '7382177653') as vendor_mobile,
+                COALESCE(v.city, 'Pan India') as vendor_city
+         FROM listings l
+         LEFT JOIN vendors v ON v.id = l.vendor_id
+         WHERE l.slug LIKE ? OR LOWER(l.title) = ? OR CAST(l.id AS TEXT) = ?
+         ORDER BY l.id DESC LIMIT 1`
+      )
+      .get(`${decoded}%`, decoded, decoded) as unknown as ListingRecord | undefined;
+  }
 
   if (!row) return { listing: null, vendor: null, related: [] };
 

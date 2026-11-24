@@ -37,14 +37,16 @@ const SHOP_SECTIONS = [
 export function CatalogBrowser({
   type,
   title,
-  categories,
-  subcategories,
+  categories: initialCategories,
+  subcategories: initialSubcategories,
   initialCategory = "",
   initialItems,
   initialTotal,
   basePath,
 }: CatalogBrowserProps) {
   const router = useRouter();
+  const [categories, setCategories] = useState<CategoryRecord[]>(initialCategories);
+  const [subcategories, setSubcategories] = useState<SubcategoryRecord[]>(initialSubcategories);
   const [items, setItems] = useState<ListingRecord[]>(initialItems);
   const [total, setTotal] = useState(initialTotal);
   const [category, setCategory] = useState(initialCategory);
@@ -54,6 +56,22 @@ export function CatalogBrowser({
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const limit = 12;
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active || !Array.isArray(data?.categories)) return;
+        const filtered = data.categories.filter((c: CategoryRecord) => !type || c.type === type);
+        if (filtered.length > 0) setCategories(filtered);
+        if (Array.isArray(data?.subcategories)) setSubcategories(data.subcategories);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [type]);
 
   const activeCategoryObj = categories.find((c) => c.slug === category);
   const visibleSubs = activeCategoryObj
@@ -179,13 +197,17 @@ export function CatalogBrowser({
               {activeCategoryObj ? activeCategoryObj.name : title}
             </h1>
           </div>
-          <Link
-            href={basePath}
+          <button
+            type="button"
+            onClick={() => {
+              handleReset();
+              router.push(basePath);
+            }}
             className="inline-flex items-center gap-0.5 text-xs font-bold text-[#f97316] hover:underline shrink-0"
           >
             <span>+ View All</span>
             <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          </button>
         </div>
 
         {/* 4-per-row Category Grid: strictly 4 columns per row without horizontal side-scrolling (Reference: image copy 22.png) */}
@@ -196,6 +218,13 @@ export function CatalogBrowser({
               <Link
                 key={cat.id}
                 href={`${basePath}/${cat.slug}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCategory(cat.slug);
+                  setSubcategory("");
+                  fetchFiltered(cat.slug, "", q, sort, 0, false);
+                  router.push(`${basePath}/${cat.slug}`, { scroll: false });
+                }}
                 className={`group w-full rounded-xl sm:rounded-2xl bg-white p-2 sm:p-3 border transition-all flex flex-col items-center text-center shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
                   isSelected
                     ? "border-[#f97316] ring-2 ring-[#f97316]/25 bg-orange-50/30"
@@ -217,13 +246,11 @@ export function CatalogBrowser({
           })}
 
           {/* MORE / ALL Card */}
-          <Link
-            href={basePath}
-            onClick={(e) => {
-              if (!category) {
-                e.preventDefault();
-                handleReset();
-              }
+          <button
+            type="button"
+            onClick={() => {
+              handleReset();
+              router.push(basePath);
             }}
             className={`group w-full rounded-xl sm:rounded-2xl p-2 sm:p-3 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
               !category
@@ -235,9 +262,9 @@ export function CatalogBrowser({
               <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 transition-transform group-hover:translate-x-0.5" />
             </div>
             <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wide text-[#0a2458]">
-              More
+              All Options
             </span>
-          </Link>
+          </button>
         </div>
       </section>
 

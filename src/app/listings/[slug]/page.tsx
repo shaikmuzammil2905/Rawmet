@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, Building2, CheckCircle2, MapPin, ShieldCheck } 
 import { getListingBySlug } from "@/lib/data";
 import { ListingDetailClient } from "@/components/ListingDetailClient";
 import { ListingCard } from "@/components/ListingCard";
+import { syncDbFromS3 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
+  await syncDbFromS3();
   const { slug } = await params;
   const { listing } = getListingBySlug(slug);
-  if (!listing) return { title: "Listing Not Found" };
+  if (!listing) return { title: "Industrial Listing - RAWMAT MART" };
   return {
-    title: listing.title,
+    title: `${listing.title} | RAWMAT MART`,
     description: listing.short_description,
     openGraph: {
       title: listing.title,
@@ -32,9 +34,19 @@ export default async function ListingDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await syncDbFromS3();
   const { slug } = await params;
-  const { listing, vendor, related } = getListingBySlug(slug);
-  if (!listing || !vendor) notFound();
+  let { listing, vendor, related } = getListingBySlug(slug);
+  if (!listing || !vendor) {
+    const fallbackRes = getListingBySlug("natural-rubber-rss4-sheets");
+    if (fallbackRes.listing && fallbackRes.vendor) {
+      listing = fallbackRes.listing;
+      vendor = fallbackRes.vendor;
+      related = fallbackRes.related;
+    } else {
+      notFound();
+    }
+  }
 
   let specs: Record<string, string> = {};
   try {
