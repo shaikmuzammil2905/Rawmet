@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   ensureSeeded();
 
   return NextResponse.json(

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MachineriesPage() {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const categories = getCategories("machinery");
   const subcategories = getSubcategories();
   const { items, total } = queryListings({ type: "machinery", limit: 12 });

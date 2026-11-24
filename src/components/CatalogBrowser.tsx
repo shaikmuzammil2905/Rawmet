@@ -34,6 +34,24 @@ const SHOP_SECTIONS = [
   { key: "service" as const, label: "Services", href: "/services", icon: Handshake },
 ];
 
+function getCategoryThumb(cat: CategoryRecord, sectionType: string): string {
+  if (cat.image_url && cat.image_url !== "/images/cat-products.png") {
+    return cat.image_url;
+  }
+  const n = cat.name.toLowerCase();
+  if (n.includes("rubber")) return "/images/cat-thumb-rubber.png";
+  if (n.includes("plastic")) return "/images/cat-thumb-plastic.png";
+  if (n.includes("metal") || n.includes("steel") || n.includes("pipe")) return "/images/cat-thumb-metals.png";
+  if (n.includes("bio")) return "/images/cat-thumb-bio.png";
+  if (n.includes("petrol") || n.includes("oil") || n.includes("lube")) return "/images/cat-thumb-petrolium.png";
+  if (n.includes("chem") || n.includes("solvent")) return "/images/cat-thumb-chemical.png";
+  if (n.includes("coco") || n.includes("peat")) return "/images/cat-thumb-cocopeat.png";
+  if (n.includes("harish")) return "/images/cat-thumb-harish.png";
+  if (sectionType === "machinery") return "/images/cat-machineries.png";
+  if (sectionType === "service") return "/images/cat-services.png";
+  return "/images/cat-thumb-rubber.png";
+}
+
 export function CatalogBrowser({
   type,
   title,
@@ -233,9 +251,13 @@ export function CatalogBrowser({
               >
                 <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-lg sm:rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shadow-xs mb-1 sm:mb-2 shrink-0">
                   <img
-                    src={cat.image_url || "/images/cat-products.png"}
+                    src={getCategoryThumb(cat, type)}
                     alt={cat.name}
+                    loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = getCategoryThumb(cat, type);
+                    }}
                   />
                 </div>
                 <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-tight text-[#0a2458] group-hover:text-[#1652b8] line-clamp-2 leading-tight text-center">

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ServicesPage() {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const categories = getCategories("service");
   const subcategories = getSubcategories();
   const { items, total } = queryListings({ type: "service", limit: 12 });
