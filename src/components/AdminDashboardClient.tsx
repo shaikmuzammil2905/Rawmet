@@ -19,7 +19,6 @@ import {
   FileText,
   FileUp,
   Filter,
-  FolderTree,
   Gift,
   Globe,
   Image as ImageIcon,
@@ -60,7 +59,6 @@ import type {
 } from "@/lib/types";
 import { useToast } from "./ToastProvider";
 import {
-  AdminCategoriesPanel,
   AdminCmsEditor,
   AdminGalleryPanel,
   AdminPlansPanel,
@@ -168,7 +166,6 @@ const NAV_ITEMS = [
   { id: "products", label: "Products", icon: Package, group: "Catalog" },
   { id: "machineries", label: "Machineries", icon: Cog, group: "Catalog" },
   { id: "services", label: "Services", icon: Wrench, group: "Catalog" },
-  { id: "categories", label: "Categories", icon: FolderTree, group: "Catalog" },
   { id: "requirements", label: "Requirements", icon: FileText, group: "Operations" },
   { id: "enquiries", label: "Enquiries", icon: MessageSquare, group: "Operations" },
   { id: "subscriptions", label: "Subscriptions", icon: Tag, group: "Operations" },
@@ -710,7 +707,6 @@ export function AdminDashboardClient() {
               { id: "machineries", label: "Machinery" },
               { id: "services", label: "Services" },
               { id: "vendors", label: "Sellers", badge: data.kpi?.pendingVendors },
-              { id: "categories", label: "Categories" },
               { id: "content", label: "Hero CMS" },
               { id: "gallery", label: "Gallery" },
               { id: "offers", label: "Offers" },
@@ -1990,15 +1986,6 @@ export function AdminDashboardClient() {
               </div>
             );
           })()}
-
-          {/* TAB 6: CATEGORIES */}
-          {activeTab === "categories" && (
-            <AdminCategoriesPanel
-              categories={data.categories}
-              subcategories={data.subcategories}
-              onRefresh={loadOverview}
-            />
-          )}
 
           {/* TAB 7: REQUIREMENTS */}
           {activeTab === "requirements" && (

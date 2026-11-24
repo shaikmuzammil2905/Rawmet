@@ -197,7 +197,7 @@ export function queryListings(filters: ListingFilters = {}): {
   if (statusFilter !== "all") {
     conditions.push(`l.status = ?`);
     params.push(statusFilter);
-    conditions.push(`v.verification_status = 'approved'`);
+    conditions.push(`(v.id IS NULL OR v.verification_status = 'approved' OR l.vendor_id = 1)`);
   }
 
   if (filters.type) {
@@ -243,16 +243,19 @@ export function queryListings(filters: ListingFilters = {}): {
   const offset = Math.max(filters.offset || 0, 0);
 
   const countRow = db
-    .prepare(`SELECT COUNT(*) as total FROM listings l JOIN vendors v ON v.id = l.vendor_id ${whereClause}`)
+    .prepare(`SELECT COUNT(*) as total FROM listings l LEFT JOIN vendors v ON v.id = l.vendor_id ${whereClause}`)
     .get(...params) as { total: number };
 
   const items = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name,
-              CASE WHEN v.verification_status = 'approved' THEN 1 ELSE 0 END as vendor_verified,
-              v.whatsapp as vendor_whatsapp, v.mobile as vendor_mobile, v.city as vendor_city
+      `SELECT l.*,
+              COALESCE(v.business_name, 'RAWMAT Verified Seller') as vendor_name,
+              CASE WHEN v.verification_status = 'approved' OR v.id IS NULL THEN 1 ELSE 0 END as vendor_verified,
+              COALESCE(v.whatsapp, '917382177653') as vendor_whatsapp,
+              COALESCE(v.mobile, '7382177653') as vendor_mobile,
+              COALESCE(v.city, 'Pan India') as vendor_city
        FROM listings l
-       JOIN vendors v ON v.id = l.vendor_id
+       LEFT JOIN vendors v ON v.id = l.vendor_id
        ${whereClause}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`
@@ -261,7 +264,7 @@ export function queryListings(filters: ListingFilters = {}): {
 
   return {
     items: items.map((item) => ({ ...item, vendor_verified: Boolean(item.vendor_verified) })),
-    total: countRow.total,
+    total: countRow?.total || 0,
   };
 }
 
@@ -274,11 +277,14 @@ export function getListingBySlug(slug: string): {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name,
-              CASE WHEN v.verification_status = 'approved' THEN 1 ELSE 0 END as vendor_verified,
-              v.whatsapp as vendor_whatsapp, v.mobile as vendor_mobile, v.city as vendor_city
+      `SELECT l.*,
+              COALESCE(v.business_name, 'RAWMAT Verified Seller') as vendor_name,
+              CASE WHEN v.verification_status = 'approved' OR v.id IS NULL THEN 1 ELSE 0 END as vendor_verified,
+              COALESCE(v.whatsapp, '917382177653') as vendor_whatsapp,
+              COALESCE(v.mobile, '7382177653') as vendor_mobile,
+              COALESCE(v.city, 'Pan India') as vendor_city
        FROM listings l
-       JOIN vendors v ON v.id = l.vendor_id
+       LEFT JOIN vendors v ON v.id = l.vendor_id
        WHERE l.slug = ?`
     )
     .get(slug) as unknown as ListingRecord | undefined;
@@ -287,14 +293,44 @@ export function getListingBySlug(slug: string): {
 
   db.prepare(`UPDATE listings SET views_count = views_count + 1 WHERE id = ?`).run(row.id);
 
-  const vendor = db.prepare(`SELECT * FROM vendors WHERE id = ?`).get(row.vendor_id) as unknown as VendorRecord;
+  let vendor = row.vendor_id
+    ? (db.prepare(`SELECT * FROM vendors WHERE id = ?`).get(row.vendor_id) as unknown as VendorRecord | undefined)
+    : undefined;
+  if (!vendor) {
+    vendor = {
+      id: 1,
+      user_id: 1,
+      business_name: "RAWMAT MART Verified Seller",
+      owner_name: "Platform Seller",
+      mobile: "7382177653",
+      whatsapp: "917382177653",
+      email: "support@rawmet.com",
+      business_category: "Industrial Supplier",
+      product_service_category: "Pan India Verified",
+      gst_number: "VERIFIED-GST",
+      id_proof_type: "GST Certificate",
+      id_proof_url: "",
+      logo_url: "/images/rawmet-logo.png",
+      address: "Hyderabad, India",
+      city: "Pan India",
+      state: "India",
+      description: "Direct listing verified by RAWMAT MART Super Admin.",
+      product_details: "",
+      verification_status: "approved",
+      whatsapp_opt_in: 1,
+      whatsapp_categories: "[]",
+      created_at: new Date().toISOString(),
+    };
+  }
+
   const related = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name,
-              CASE WHEN v.verification_status = 'approved' THEN 1 ELSE 0 END as vendor_verified
+      `SELECT l.*,
+              COALESCE(v.business_name, 'RAWMAT Verified Seller') as vendor_name,
+              CASE WHEN v.verification_status = 'approved' OR v.id IS NULL THEN 1 ELSE 0 END as vendor_verified
        FROM listings l
-       JOIN vendors v ON v.id = l.vendor_id
-       WHERE l.status = 'approved' AND v.verification_status = 'approved'
+       LEFT JOIN vendors v ON v.id = l.vendor_id
+       WHERE l.status = 'approved'
          AND l.id != ? AND (l.category_slug = ? OR l.type = ?)
        ORDER BY CASE WHEN l.category_slug = ? THEN 0 ELSE 1 END, l.id DESC
        LIMIT 4`

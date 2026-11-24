@@ -31,14 +31,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true }, { status: 201 });
     }
 
-    const slug = slugify(name);
+    const baseSlug = slugify(name);
+    const existing = db.prepare(`SELECT id FROM categories WHERE slug = ?`).get(baseSlug);
+    const slug = existing ? `${baseSlug}-${Date.now().toString(36).slice(-4)}` : baseSlug;
     db.prepare(
       `INSERT INTO categories (type, name, slug, description, image_url, sort_order, is_active)
        VALUES (?, ?, ?, ?, ?, 10, 1)`
     ).run(
       body.type || "product",
       name,
-      `${slug}-${Date.now().toString(36).slice(-3)}`,
+      slug,
       body.description || "",
       body.imageUrl || "/images/cat-products.png"
     );

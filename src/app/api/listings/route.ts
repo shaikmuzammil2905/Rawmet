@@ -3,6 +3,9 @@ import { getCategories, getRequirements, queryListings } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: Request) {
   ensureSeeded();
   const { searchParams } = new URL(req.url);
@@ -29,8 +32,15 @@ export async function GET(req: Request) {
     offset,
   });
 
+  const cacheHeaders = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  };
+
   if (!includeGlobal) {
-    return NextResponse.json({ items, total, categories: getCategories(type || undefined) });
+    return NextResponse.json(
+      { items, total, categories: getCategories(type || undefined) },
+      { headers: cacheHeaders }
+    );
   }
 
   const db = getDb();
@@ -49,12 +59,15 @@ export async function GET(req: Request) {
 
   const requirements = getRequirements({ q, category: category || "all", limit: 12 });
 
-  return NextResponse.json({
-    items,
-    total,
-    vendors,
-    requirements,
-    categories: getCategories(),
-  });
+  return NextResponse.json(
+    {
+      items,
+      total,
+      vendors,
+      requirements,
+      categories: getCategories(),
+    },
+    { headers: cacheHeaders }
+  );
 }
 
