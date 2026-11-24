@@ -472,6 +472,7 @@ export function AdminDashboardClient() {
         imageUrl: newCatImage || "/images/cat-products.png",
       }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast(`Category '${newCatName}' created and live on website!`, "success");
       setNewCatName("");
@@ -479,7 +480,7 @@ export function AdminDashboardClient() {
       setNewCatImage("/images/cat-products.png");
       loadOverview();
     } else {
-      showToast("Failed to create category.", "error");
+      showToast(out.error || "Failed to create category.", "error");
     }
   }
 
@@ -489,8 +490,10 @@ export function AdminDashboardClient() {
       showToast("Sub-category name is required.", "error");
       return;
     }
-    if (!newSubcatParentId) {
-      showToast("Please select a parent main category.", "error");
+    const categoriesForType = (data?.categories || []).filter((c) => c.type === listingTypeFilter);
+    const chosenParentId = Number(newSubcatParentId || categoriesForType[0]?.id || 0);
+    if (!chosenParentId) {
+      showToast("Please select or create a parent main category first.", "error");
       return;
     }
     const res = await fetch("/api/admin/categories", {
@@ -498,40 +501,43 @@ export function AdminDashboardClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         kind: "subcategory",
-        categoryId: newSubcatParentId,
+        categoryId: chosenParentId,
         name: newSubcatName.trim(),
         description: newSubcatDesc.trim(),
       }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast(`Sub-category '${newSubcatName}' created successfully!`, "success");
       setNewSubcatName("");
       setNewSubcatDesc("");
       loadOverview();
     } else {
-      showToast("Failed to create sub-category.", "error");
+      showToast(out.error || "Failed to create sub-category.", "error");
     }
   }
 
   async function deleteCategory(id: number, name: string) {
     if (!confirm(`Are you sure you want to delete category '${name}'? This will remove it from the website.`)) return;
     const res = await fetch(`/api/admin/categories?kind=category&id=${id}`, { method: "DELETE" });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
-      showToast("Category deleted.", "info");
+      showToast(`Category '${name}' deleted.`, "info");
       loadOverview();
     } else {
-      showToast("Failed to delete category.", "error");
+      showToast(out.error || "Failed to delete category.", "error");
     }
   }
 
   async function deleteSubcategory(id: number, name: string) {
     if (!confirm(`Are you sure you want to delete sub-category '${name}'?`)) return;
     const res = await fetch(`/api/admin/categories?kind=subcategory&id=${id}`, { method: "DELETE" });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
-      showToast("Sub-category deleted.", "info");
+      showToast(`Sub-category '${name}' deleted.`, "info");
       loadOverview();
     } else {
-      showToast("Failed to delete sub-category.", "error");
+      showToast(out.error || "Failed to delete sub-category.", "error");
     }
   }
 

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
 export async function GET() {
+  await syncDbFromS3();
   const session = await requireRole(["vendor", "admin"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
@@ -142,6 +143,8 @@ export async function POST(req: Request) {
       `Vendor #${session.vendor.id} submitted listing '${title}' for approval`
     );
 
+    await syncDbToS3();
+
     return NextResponse.json(
       {
         success: true,
@@ -225,6 +228,8 @@ export async function PATCH(req: Request) {
       session.vendor.id
     );
 
+    await syncDbToS3();
+
     return NextResponse.json({ success: true, message: "Listing updated and resubmitted for Admin review." });
   } catch {
     return NextResponse.json({ error: "Failed to update listing." }, { status: 500 });
@@ -246,6 +251,7 @@ export async function DELETE(req: Request) {
 
   const db = getDb();
   db.prepare(`DELETE FROM listings WHERE id = ? AND vendor_id = ?`).run(id, session.vendor.id);
+  await syncDbToS3();
 
   return NextResponse.json({ success: true, message: "Listing deleted successfully." });
 }

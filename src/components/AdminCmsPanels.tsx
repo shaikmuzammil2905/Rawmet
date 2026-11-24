@@ -107,23 +107,36 @@ export function AdminCategoriesPanel({
 
   async function addSubcategory(e: React.FormEvent) {
     e.preventDefault();
+    const chosenCatId = Number(subCatId || categories[0]?.id || 0);
+    if (!chosenCatId) {
+      showToast("Please select a parent category.", "error");
+      return;
+    }
     const res = await fetch("/api/admin/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "subcategory", categoryId: subCatId, name: subName }),
+      body: JSON.stringify({ kind: "subcategory", categoryId: chosenCatId, name: subName }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast("Subcategory added!", "success");
       setSubName("");
       onRefresh();
+    } else {
+      showToast(out.error || "Failed to add subcategory.", "error");
     }
   }
 
   async function deleteItem(kind: "category" | "subcategory", id: number) {
     if (!confirm(`Are you sure you want to delete this ${kind}?`)) return;
-    await fetch(`/api/admin/categories?kind=${kind}&id=${id}`, { method: "DELETE" });
-    showToast(`${kind === "category" ? "Category" : "Subcategory"} deleted.`, "info");
-    onRefresh();
+    const res = await fetch(`/api/admin/categories?kind=${kind}&id=${id}`, { method: "DELETE" });
+    const out = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showToast(`${kind === "category" ? "Category" : "Subcategory"} deleted.`, "info");
+      onRefresh();
+    } else {
+      showToast(out.error || `Failed to delete ${kind}.`, "error");
+    }
   }
 
   return (

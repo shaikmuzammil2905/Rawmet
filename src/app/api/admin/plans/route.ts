@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
 export async function PATCH(req: Request) {
@@ -20,30 +20,37 @@ export async function PATCH(req: Request) {
 
   if (!body.id) return NextResponse.json({ error: "Plan ID required." }, { status: 400 });
 
-  const db = getDb();
-  db.prepare(
-    `UPDATE subscription_plans SET
-      name = COALESCE(?, name),
-      price_inr = COALESCE(?, price_inr),
-      duration_months = COALESCE(?, duration_months),
-      bonus_months = COALESCE(?, bonus_months),
-      badge_text = COALESCE(?, badge_text),
-      highlight_text = COALESCE(?, highlight_text),
-      features = COALESCE(?, features),
-      is_active = COALESCE(?, is_active)
-    WHERE id = ?`
-  ).run(
-    body.name ?? null,
-    body.price_inr ?? null,
-    body.duration_months ?? null,
-    body.bonus_months ?? null,
-    body.badge_text ?? null,
-    body.highlight_text ?? null,
-    body.features ? JSON.stringify(body.features) : null,
-    typeof body.is_active === "boolean" ? (body.is_active ? 1 : 0) : null,
-    body.id
-  );
+  try {
+    await syncDbFromS3(true);
+    const db = getDb();
+    db.prepare(
+      `UPDATE subscription_plans SET
+        name = COALESCE(?, name),
+        price_inr = COALESCE(?, price_inr),
+        duration_months = COALESCE(?, duration_months),
+        bonus_months = COALESCE(?, bonus_months),
+        badge_text = COALESCE(?, badge_text),
+        highlight_text = COALESCE(?, highlight_text),
+        features = COALESCE(?, features),
+        is_active = COALESCE(?, is_active)
+      WHERE id = ?`
+    ).run(
+      body.name ?? null,
+      body.price_inr ?? null,
+      body.duration_months ?? null,
+      body.bonus_months ?? null,
+      body.badge_text ?? null,
+      body.highlight_text ?? null,
+      body.features ? JSON.stringify(body.features) : null,
+      typeof body.is_active === "boolean" ? (body.is_active ? 1 : 0) : null,
+      body.id
+    );
 
-  return NextResponse.json({ success: true });
+    await syncDbToS3();
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to update subscription plan.";
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
 }
 

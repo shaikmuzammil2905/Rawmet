@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
 export async function PATCH(req: Request) {
@@ -16,27 +16,34 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "vendorId and verificationStatus are required." }, { status: 400 });
   }
 
-  const db = getDb();
-  db.prepare(
-    `UPDATE vendors
-     SET verification_status = ?,
-         rejection_reason = COALESCE(?, rejection_reason)
-     WHERE id = ?`
-  ).run(
-    body.verificationStatus,
-    body.verificationStatus === "rejected" ? (body.rejectionReason || "Documents require revision.") : null,
-    body.vendorId
-  );
+  try {
+    await syncDbFromS3(true);
+    const db = getDb();
+    db.prepare(
+      `UPDATE vendors
+       SET verification_status = ?,
+           rejection_reason = COALESCE(?, rejection_reason)
+       WHERE id = ?`
+    ).run(
+      body.verificationStatus,
+      body.verificationStatus === "rejected" ? (body.rejectionReason || "Documents require revision.") : null,
+      body.vendorId
+    );
 
-  // Audit log
-  db.prepare(`
-    INSERT INTO audit_logs (user_id, user_email, action, details)
-    VALUES (?, ?, 'vendor_status_update', ?)
-  `).run(
-    session.user.id,
-    session.user.email,
-    `Vendor #${body.vendorId} status set to ${body.verificationStatus}${body.rejectionReason ? ` (Reason: ${body.rejectionReason})` : ""}`
-  );
+    // Audit log
+    db.prepare(`
+      INSERT INTO audit_logs (user_id, user_email, action, details)
+      VALUES (?, ?, 'vendor_status_update', ?)
+    `).run(
+      session.user.id,
+      session.user.email,
+      `Vendor #${body.vendorId} status set to ${body.verificationStatus}${body.rejectionReason ? ` (Reason: ${body.rejectionReason})` : ""}`
+    );
 
-  return NextResponse.json({ success: true });
+    await syncDbToS3();
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to update vendor.";
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
 }

@@ -630,7 +630,6 @@ function syncUpdatedMedia(db: ReturnType<typeof getDb>): void {
     { type: "product", name: "Petrolium", slug: "petrolium", description: "Base oils SN150/SN500, furnace oils, bitumen VG30/40, paraffin wax, and petroleum derivatives.", image_url: "/images/cat-thumb-petrolium.png", sort_order: 5 },
     { type: "product", name: "Chemical", slug: "chemical", description: "Industrial solvents, toluene, xylene, caustic soda, specialty polymers, and chemical reagents.", image_url: "/images/cat-thumb-chemical.png", sort_order: 6 },
     { type: "product", name: "Coco pet", slug: "coco-pet", description: "Washed & buffered 5Kg coco peat blocks, coco coir substrate, and horticultural briquettes.", image_url: "/images/cat-thumb-cocopeat.png", sort_order: 7 },
-    { type: "product", name: "harish", slug: "harish", description: "Industrial raw materials, polymers, and manufacturing supplies verified on RAWMAT MART.", image_url: "/images/cat-thumb-harish.png", sort_order: 8 },
 
     // Machineries (7)
     { type: "machinery", name: "Rubber", slug: "rubber-machineries", description: "Kneaders, two-roll mixing mills, hydraulic vulcanizing presses, and tire retreading lines.", image_url: "/images/cat-machineries.png", sort_order: 1 },
@@ -658,14 +657,10 @@ function syncUpdatedMedia(db: ReturnType<typeof getDb>): void {
 
   const checkCat = db.prepare(`SELECT id FROM categories WHERE slug = ?`);
   const updateCat = db.prepare(`UPDATE categories SET name = ?, type = ?, description = ?, image_url = ?, sort_order = ?, is_active = 1 WHERE slug = ?`);
-  const insertCatRow = db.prepare(`INSERT INTO categories (type, name, slug, description, image_url, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)`);
-
   for (const c of catUpdates) {
     const row = checkCat.get(c.slug) as { id: number } | undefined;
     if (row) {
       updateCat.run(c.name, c.type, c.description, c.image_url, c.sort_order, c.slug);
-    } else {
-      insertCatRow.run(c.type, c.name, c.slug, c.description, c.image_url, c.sort_order);
     }
   }
 

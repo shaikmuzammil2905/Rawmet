@@ -358,6 +358,50 @@ export function CatalogBrowser({
         </div>
       </div>
 
+      {/* Subcategory Filter Pills (Interactive quick-filter for category hierarchy) */}
+      {visibleSubs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 py-1">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">
+            Subcategories:
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setSubcategory("");
+              fetchFiltered(category, "", q, sort, 0, false);
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+              !subcategory
+                ? "bg-[#0a2458] text-white shadow-xs"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            All {activeCategoryObj?.name || "Subcategories"}
+          </button>
+          {visibleSubs.map((s) => {
+            const isSubActive = subcategory === s.slug;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  const nextSub = isSubActive ? "" : s.slug;
+                  setSubcategory(nextSub);
+                  fetchFiltered(category, nextSub, q, sort, 0, false);
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                  isSubActive
+                    ? "bg-[#f97316] text-white shadow-xs"
+                    : "bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:bg-orange-50/50"
+                }`}
+              >
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Results Header */}
       <div className="flex items-center justify-between text-xs sm:text-sm text-slate-600">
         <p className="font-medium flex items-center gap-1.5">

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, syncDbToS3 } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
 export async function POST(req: Request) {
@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       vendor_id?: number;
       type: "product" | "machinery" | "service";
@@ -81,6 +82,7 @@ export async function PATCH(req: Request) {
   const session = await requireRole(["admin"]);
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
+  await syncDbFromS3(true);
   const body = (await req.json()) as {
     id?: number;
     status?: "approved" | "pending" | "rejected";
@@ -143,6 +145,7 @@ export async function DELETE(req: Request) {
   const session = await requireRole(["admin"]);
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
+  await syncDbFromS3(true);
   const { searchParams } = new URL(req.url);
   const id = Number(searchParams.get("id"));
   const db = getDb();

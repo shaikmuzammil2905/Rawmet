@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
 const ALLOWED_KEYS = new Set([
@@ -19,13 +19,21 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Valid CMS key and value are required." }, { status: 400 });
   }
 
-  const db = getDb();
-  db.prepare(
-    `INSERT INTO site_content (key, value, updated_at)
-     VALUES (?, ?, datetime('now'))
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
-  ).run(body.key, JSON.stringify(body.value));
+  try {
+    await syncDbFromS3(true);
+    const db = getDb();
+    db.prepare(
+      `INSERT INTO site_content (key, value, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+    ).run(body.key, JSON.stringify(body.value));
 
-  return NextResponse.json({ success: true });
+    await syncDbToS3();
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to update CMS content.";
+    console.error("CMS PATCH error:", err);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
 }
 
