@@ -86,6 +86,44 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [session, setSession] = useState<SessionSummary>({ authenticated: false, user: null });
+  const [productLinks, setProductLinks] = useState(PRODUCT_LINKS);
+  const [machineryLinks, setMachineryLinks] = useState(MACHINERY_LINKS);
+  const [serviceLinks, setServiceLinks] = useState(SERVICE_LINKS);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active || !Array.isArray(data?.categories)) return;
+        const prod = data.categories.filter((c: { type: string; name: string; slug: string }) => c.type === "product");
+        const mach = data.categories.filter((c: { type: string; name: string; slug: string }) => c.type === "machinery");
+        const serv = data.categories.filter((c: { type: string; name: string; slug: string }) => c.type === "service");
+
+        if (prod.length > 0) {
+          setProductLinks([
+            { label: "All Products", href: "/products" },
+            ...prod.map((c: { name: string; slug: string }) => ({ label: c.name, href: `/products/${c.slug}` })),
+          ]);
+        }
+        if (mach.length > 0) {
+          setMachineryLinks([
+            { label: "All Machineries", href: "/machineries" },
+            ...mach.map((c: { name: string; slug: string }) => ({ label: c.name, href: `/machineries/${c.slug}` })),
+          ]);
+        }
+        if (serv.length > 0) {
+          setServiceLinks([
+            { label: "All Services", href: "/services" },
+            ...serv.map((c: { name: string; slug: string }) => ({ label: c.name, href: `/services/${c.slug}` })),
+          ]);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -221,7 +259,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <NavDropdown
                 label="Products"
                 active={pathname.startsWith("/products")}
-                items={PRODUCT_LINKS}
+                items={productLinks}
                 isOpen={openDropdown === "products"}
                 onToggle={(open) => setOpenDropdown(open ? "products" : null)}
               />
@@ -229,7 +267,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <NavDropdown
                 label="Machineries"
                 active={pathname.startsWith("/machineries")}
-                items={MACHINERY_LINKS}
+                items={machineryLinks}
                 isOpen={openDropdown === "machineries"}
                 onToggle={(open) => setOpenDropdown(open ? "machineries" : null)}
               />
@@ -237,7 +275,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <NavDropdown
                 label="Services"
                 active={pathname.startsWith("/services")}
-                items={SERVICE_LINKS}
+                items={serviceLinks}
                 isOpen={openDropdown === "services"}
                 onToggle={(open) => setOpenDropdown(open ? "services" : null)}
               />
@@ -343,9 +381,9 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   { label: "Promote Us • Grow With Us", href: "/promote" },
                 ]}
               />
-              <MobileNavGroup title="Products" items={PRODUCT_LINKS} />
-              <MobileNavGroup title="Machineries" items={MACHINERY_LINKS} />
-              <MobileNavGroup title="Services" items={SERVICE_LINKS} />
+              <MobileNavGroup title="Products" items={productLinks} />
+              <MobileNavGroup title="Machineries" items={machineryLinks} />
+              <MobileNavGroup title="Services" items={serviceLinks} />
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                 <span className="font-semibold text-[#0a2458]">Verified GST Business Portal</span>

@@ -79,6 +79,36 @@ function wrapWasmDb(rawDb: Database): DbClient {
   };
 }
 
+import { downloadDbFromS3, uploadDbToS3 } from "./s3";
+
+let lastS3SyncMs = 0;
+
+export async function syncDbFromS3(force = false): Promise<void> {
+  const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  if (!isReadOnlyEnv) return;
+  if (!force && Date.now() - lastS3SyncMs < 12000) return;
+  try {
+    const targetPath = resolveWritableDbPath();
+    const downloaded = await downloadDbFromS3(targetPath);
+    if (downloaded) {
+      lastS3SyncMs = Date.now();
+      globalThis.__rawmetDb = undefined;
+    }
+  } catch (err) {
+    console.error("syncDbFromS3 error:", err);
+  }
+}
+
+export async function syncDbToS3(): Promise<void> {
+  try {
+    const targetPath = resolveWritableDbPath();
+    await uploadDbToS3(targetPath);
+    lastS3SyncMs = Date.now();
+  } catch (err) {
+    console.error("syncDbToS3 error:", err);
+  }
+}
+
 function resolveWritableDbPath(): string {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
   const candidateDir = isReadOnlyEnv ? path.join(os.tmpdir(), "rawmet-data") : path.join(process.cwd(), "data");
@@ -87,6 +117,14 @@ function resolveWritableDbPath(): string {
       fs.mkdirSync(candidateDir, { recursive: true });
     }
     const dbFile = path.join(candidateDir, "rawmet.db");
+    if (isReadOnlyEnv && !fs.existsSync(dbFile)) {
+      const sourceDb = path.join(process.cwd(), "data", "rawmet.db");
+      if (fs.existsSync(sourceDb)) {
+        try {
+          fs.copyFileSync(sourceDb, dbFile);
+        } catch {}
+      }
+    }
     // Clean stale lock folder if a previous serverless invocation exited unexpectedly
     const lockDir = `${dbFile}.lock`;
     if (isReadOnlyEnv && fs.existsSync(lockDir)) {

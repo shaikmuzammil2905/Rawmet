@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { getCmsMap, getSubscriptionPlans, requireRole } from "@/lib/data";
 
@@ -8,6 +8,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
+    await syncDbFromS3();
     ensureSeeded();
     const session = await requireRole(["admin"]);
     if (!session) {

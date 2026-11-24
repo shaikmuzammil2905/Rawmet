@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getCategories, getSubcategories, queryListings } from "@/lib/data";
 import { CatalogBrowser } from "@/components/CatalogBrowser";
+import { syncDbFromS3 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Explore Rubber Machineries, Plastic Extrusion & Injection lines, Metals Plants, Bio Petro Chemical Plants, and Vehicle Body Fabrication.",
 };
 
-export default function MachineriesPage() {
+export default async function MachineriesPage() {
+  await syncDbFromS3();
   const categories = getCategories("machinery");
   const subcategories = getSubcategories();
   const { items, total } = queryListings({ type: "machinery", limit: 12 });

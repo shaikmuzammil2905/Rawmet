@@ -29,6 +29,7 @@ import {
   getSubscriptionPlans,
   queryListings,
 } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { HeroSection } from "@/components/HeroSection";
 import { Reveal } from "@/components/Reveal";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
@@ -37,7 +38,8 @@ import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
+  await syncDbFromS3();
   const cms = getCmsMap();
   const { items: featuredListings } = queryListings({ limit: 6, featured: true });
   const { items: recentListings } = queryListings({ limit: 8 });

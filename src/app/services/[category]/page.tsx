@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCategories, getSubcategories, queryListings } from "@/lib/data";
 import { CatalogBrowser } from "@/components/CatalogBrowser";
+import { syncDbFromS3 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
+  await syncDbFromS3();
   const { category } = await params;
   const categories = getCategories("service");
   const cat =
@@ -26,6 +28,7 @@ export default async function ServiceCategoryPage({
 }: {
   params: Promise<{ category: string }>;
 }) {
+  await syncDbFromS3();
   const { category } = await params;
   const categories = getCategories("service");
   const active =

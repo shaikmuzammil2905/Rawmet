@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getCategories, getSubcategories, queryListings } from "@/lib/data";
 import { CatalogBrowser } from "@/components/CatalogBrowser";
+import { syncDbFromS3 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Browse GST-verified Rubber, Plastic, Metals, and Bio Petro Chemical raw material suppliers on RAWMAT MART.",
 };
 
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  await syncDbFromS3();
   const categories = getCategories("product");
   const subcategories = getSubcategories();
   const { items, total } = queryListings({ type: "product", limit: 12 });

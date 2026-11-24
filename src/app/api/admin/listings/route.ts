@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
 export async function POST(req: Request) {
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       `Listing '${body.title}' (${body.type}) created by Admin`
     );
 
+    await syncDbToS3();
     return NextResponse.json({ success: true, id: Number(res.lastInsertRowid) }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to add listing." }, { status: 500 });
@@ -134,6 +135,7 @@ export async function PATCH(req: Request) {
     body.id
   );
 
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }
 
@@ -155,5 +157,6 @@ export async function DELETE(req: Request) {
     `Listing #${id} deleted by Admin`
   );
 
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }

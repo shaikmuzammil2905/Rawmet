@@ -1,4 +1,6 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import fs from "node:fs";
+import path from "node:path";
 
 const region = process.env.AWS_REGION || "ap-southeast-2";
 const bucketName = process.env.AWS_S3_BUCKET_NAME || "rawmat-mart-storage";
@@ -43,4 +45,46 @@ export async function uploadToS3(
 
   // Return public S3 URL
   return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+}
+
+export async function uploadDbToS3(dbFilePath: string): Promise<boolean> {
+  if (!isS3Configured()) return false;
+  try {
+    if (!fs.existsSync(dbFilePath)) return false;
+    const buffer = fs.readFileSync(dbFilePath);
+    const client = getS3Client();
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: "database/rawmet.db",
+      Body: buffer,
+      ContentType: "application/x-sqlite3",
+    });
+    await client.send(command);
+    return true;
+  } catch (err) {
+    console.error("Failed to upload database to S3:", err);
+    return false;
+  }
+}
+
+export async function downloadDbFromS3(targetPath: string): Promise<boolean> {
+  if (!isS3Configured()) return false;
+  try {
+    const client = getS3Client();
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: "database/rawmet.db",
+    });
+    const res = await client.send(command);
+    if (!res.Body) return false;
+    const byteArray = await res.Body.transformToByteArray();
+    const dir = path.dirname(targetPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(targetPath, Buffer.from(byteArray));
+    return true;
+  } catch {
+    return false;
+  }
 }

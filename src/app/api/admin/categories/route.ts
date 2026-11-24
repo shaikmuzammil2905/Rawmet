@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
 export async function POST(req: Request) {
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
         slug,
         body.description || ""
       );
+      await syncDbToS3();
       return NextResponse.json({ success: true }, { status: 201 });
     }
 
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       body.imageUrl || "/images/cat-products.png"
     );
 
+    await syncDbToS3();
     return NextResponse.json({ success: true }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to save category." }, { status: 500 });
@@ -89,6 +91,7 @@ export async function PATCH(req: Request) {
     typeof body.isActive === "boolean" ? (body.isActive ? 1 : 0) : null,
     body.id
   );
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }
 
@@ -106,6 +109,7 @@ export async function DELETE(req: Request) {
   } else {
     db.prepare(`DELETE FROM categories WHERE id = ?`).run(id);
   }
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }
 
