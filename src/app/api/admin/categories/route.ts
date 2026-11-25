@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(true);
+    await syncDbFromS3(false);
     const body = (await req.json()) as {
       kind?: "category" | "subcategory";
       type?: "product" | "machinery" | "service";
@@ -24,17 +24,26 @@ export async function POST(req: Request) {
 
     // 1. Create Subcategory
     if (body.kind === "subcategory") {
-      const categoryId = Number(body.categoryId);
+      let categoryId = Number(body.categoryId);
       if (!categoryId || isNaN(categoryId)) {
         return NextResponse.json({ error: "Please select a valid parent main category." }, { status: 400 });
       }
 
-      const parent = db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(categoryId) as
+      let parent = db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(categoryId) as
         | { id: number; name: string; type: string }
         | undefined;
+
+      // Fallback: if ID was stale but type was provided, find first matching category
+      if (!parent && body.type) {
+        parent = db.prepare(`SELECT id, name, type FROM categories WHERE type = ? ORDER BY id ASC LIMIT 1`).get(body.type) as
+          | { id: number; name: string; type: string }
+          | undefined;
+        if (parent) categoryId = parent.id;
+      }
+
       if (!parent) {
         return NextResponse.json(
-          { error: `Selected parent category (ID ${categoryId}) not found in database.` },
+          { error: `Selected parent category (ID ${categoryId}) not found in database. Please reload the page.` },
           { status: 400 }
         );
       }
@@ -70,7 +79,14 @@ export async function POST(req: Request) {
 
       await syncDbToS3();
       return NextResponse.json(
-        { success: true, id: Number(res.lastInsertRowid), name, slug, categoryId },
+        {
+          success: true,
+          id: Number(res.lastInsertRowid),
+          name,
+          slug,
+          categoryId,
+          message: `Sub-category '${name}' created successfully under ${parent.name}!`,
+        },
         { status: 201 }
       );
     }
@@ -127,7 +143,7 @@ export async function PATCH(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(true);
+    await syncDbFromS3(false);
     const body = (await req.json()) as {
       kind?: "category" | "subcategory";
       id?: number;
@@ -177,7 +193,7 @@ export async function DELETE(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(true);
+    await syncDbFromS3(false);
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     const kind = searchParams.get("kind") || "category";

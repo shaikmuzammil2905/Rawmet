@@ -489,34 +489,46 @@ export function AdminDashboardClient() {
 
   async function createSubCategory(e: React.FormEvent) {
     e.preventDefault();
-    if (!newSubcatName.trim()) {
+    const cleanName = newSubcatName.trim();
+    if (!cleanName) {
       showToast("Sub-category name is required.", "error");
       return;
     }
     const categoriesForType = (data?.categories || []).filter((c) => c.type === listingTypeFilter);
-    const chosenParentId = Number(newSubcatParentId || categoriesForType[0]?.id || 0);
+    const validParentIds = new Set(categoriesForType.map((c) => c.id));
+    const chosenParentId = validParentIds.has(Number(newSubcatParentId))
+      ? Number(newSubcatParentId)
+      : (categoriesForType[0]?.id || 0);
+
     if (!chosenParentId) {
       showToast("Please select or create a parent main category first.", "error");
       return;
     }
-    const res = await fetch("/api/admin/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: "subcategory",
-        categoryId: chosenParentId,
-        name: newSubcatName.trim(),
-        description: newSubcatDesc.trim(),
-      }),
-    });
-    const out = await res.json().catch(() => ({}));
-    if (res.ok && (out.success || out.id)) {
-      showToast(out.message || `Sub-category '${newSubcatName}' created successfully!`, "success");
-      setNewSubcatName("");
-      setNewSubcatDesc("");
-      loadOverview();
-    } else {
-      showToast(out.error || out.message || "Failed to create sub-category.", "error");
+    try {
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "subcategory",
+          categoryId: chosenParentId,
+          type: listingTypeFilter,
+          name: cleanName,
+          description: newSubcatDesc.trim(),
+        }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.ok && (out.success || out.id)) {
+        showToast(out.message || `Sub-category '${cleanName}' created successfully!`, "success");
+        setNewSubcatName("");
+        setNewSubcatDesc("");
+        await loadOverview();
+      } else {
+        const errorText = out.error || out.message || (res.statusText ? `HTTP ${res.status}: ${res.statusText}` : "Failed to create sub-category.");
+        showToast(errorText, "error");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error creating subcategory.";
+      showToast(msg, "error");
     }
   }
 
@@ -1521,7 +1533,7 @@ export function AdminDashboardClient() {
                           Parent Main Category *
                         </label>
                         <select
-                          value={newSubcatParentId || (categoriesForType[0]?.id || 0)}
+                          value={categoriesForType.some((c) => c.id === newSubcatParentId) ? newSubcatParentId : (categoriesForType[0]?.id || 0)}
                           onChange={(e) => setNewSubcatParentId(Number(e.target.value))}
                           className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"
                         >

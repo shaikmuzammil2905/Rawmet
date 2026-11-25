@@ -246,21 +246,27 @@ export function LoginClient() {
             <div>
               <p className="text-xs font-semibold text-emerald-800">You are currently signed in as</p>
               <h3 className="text-base font-extrabold text-[#0a2458] mt-0.5">{currentSession.user.name}</h3>
-              <p className="text-[11px] text-slate-500">{currentSession.user.email} • {currentSession.user.role.toUpperCase()}</p>
+              <p className="text-[11px] text-slate-500 font-semibold">{currentSession.user.email} • {String(currentSession.user.role).toUpperCase()}</p>
+              {(currentSession.user.role || "").toLowerCase() === "admin" && (
+                <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-extrabold text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-full">
+                  <ShieldCheck className="h-3 w-3" />
+                  <span>Master Administrator Access</span>
+                </span>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <Link
                 href={getDestination(currentSession.user.role)}
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold shadow transition-all text-white ${
-                  currentSession.user.role === "admin"
-                    ? "bg-[#f97316] hover:bg-[#ea580c] ring-2 ring-orange-400/40"
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-extrabold shadow transition-all text-white ${
+                  (currentSession.user.role || "").toLowerCase() === "admin"
+                    ? "bg-[#f97316] hover:bg-[#ea580c] ring-2 ring-orange-400/40 text-sm py-3"
                     : "bg-[#0a2458] hover:bg-[#06183d]"
                 }`}
               >
                 <span>
-                  {currentSession.user.role === "admin"
+                  {(currentSession.user.role || "").toLowerCase() === "admin"
                     ? "Go to Admin Panel"
-                    : currentSession.user.role === "vendor"
+                    : (currentSession.user.role || "").toLowerCase() === "vendor"
                     ? "Go to Seller Dashboard"
                     : "Go to Dashboard"}
                 </span>

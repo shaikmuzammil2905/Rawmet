@@ -257,8 +257,9 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                     Login
                   </Link>
                   <span className="text-white/25">|</span>
-                  <Link href="/admin/login" className="text-slate-400 hover:text-orange-300 transition-colors text-xs font-semibold">
-                    Admin
+                  <Link href="/admin" className="text-orange-300 hover:text-white transition-colors text-xs font-bold inline-flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    <span>Admin Panel</span>
                   </Link>
                 </>
               )}
@@ -416,12 +417,12 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                     <span>Login</span>
                   </Link>
                   <Link
-                    href="/admin/login"
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-600 hover:text-[#0a2458] px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs"
-                    title="Super Admin Login Portal"
+                    href="/admin"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-4 py-2 text-xs sm:text-sm font-extrabold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                    title="RAWMAT MART Admin Panel"
                   >
-                    <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Admin</span>
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>Admin Panel</span>
                   </Link>
                 </div>
               )}
@@ -430,22 +431,19 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             {/* Mobile Right Controls */}
             <div className="flex xl:hidden items-center gap-2">
               <Link
-                href={session.authenticated ? dashboardHref : "/login"}
-                className={`inline-flex items-center gap-1.5 rounded-full text-white px-3.5 py-1.5 text-xs font-semibold ${
-                  session.user?.role === "admin" ? "bg-[#f97316]" : "bg-[#0a2458]"
-                }`}
+                href="/admin"
+                className="inline-flex items-center gap-1 rounded-full bg-[#f97316] text-white px-2.5 py-1.5 text-xs font-bold"
+                title="Admin Panel"
               >
-                {session.user?.role === "admin" ? (
-                  <>
-                    <ShieldCheck className="h-3.5 w-3.5 text-white" />
-                    <span>Admin</span>
-                  </>
-                ) : (
-                  <>
-                    <User className="h-3.5 w-3.5 text-[#f97316]" />
-                    <span>{session.authenticated ? (session.user?.name ? session.user.name.split(" ")[0] : "Account") : "Login"}</span>
-                  </>
-                )}
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Admin</span>
+              </Link>
+              <Link
+                href={session.authenticated ? dashboardHref : "/login"}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3 py-1.5 text-xs font-semibold"
+              >
+                <User className="h-3.5 w-3.5 text-[#f97316]" />
+                <span>{session.authenticated ? (session.user?.name ? session.user.name.split(" ")[0] : "Account") : "Login"}</span>
               </Link>
               <button
                 type="button"
@@ -463,13 +461,20 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
         {mobileOpen && (
           <div className="xl:hidden border-t border-slate-200 bg-white max-h-[calc(100vh-70px)] overflow-y-auto shadow-xl">
             <div className="px-4 py-4 space-y-3">
-              <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-100">
+              <div className="flex flex-col gap-2 pb-2 border-b border-slate-100">
                 <Link
-                  href="/login"
+                  href={session.authenticated ? dashboardHref : "/login"}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold shadow"
                 >
                   <User className="h-4 w-4" />
-                  <span>Login</span>
+                  <span>{session.authenticated ? (session.user?.name || "My Account") : "Login"}</span>
+                </Link>
+                <Link
+                  href="/admin"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-4 py-2.5 text-sm font-extrabold shadow"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Admin Panel</span>
                 </Link>
               </div>
 

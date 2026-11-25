@@ -84,14 +84,24 @@ function wrapWasmDb(rawDb: Database): DbClient {
 import { downloadDbFromS3, uploadDbToS3 } from "./s3";
 
 let lastS3SyncMs = 0;
+let lastLocalWriteMs = 0;
+
+export function markLocalDbWrite(): void {
+  lastLocalWriteMs = Date.now();
+}
 
 export async function syncDbFromS3(force = false): Promise<void> {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
   if (!isReadOnlyEnv) return;
-  if (!force && Date.now() - lastS3SyncMs < 2000) return;
+  // If recent write happened locally within 20s, do not overwrite with potentially stale S3 snapshot
+  if (Date.now() - lastLocalWriteMs < 20000 && !force) return;
+  if (!force && Date.now() - lastS3SyncMs < 3000) return;
   try {
     const targetPath = resolveWritableDbPath();
-    const downloaded = await downloadDbFromS3(targetPath);
+    const downloaded = await Promise.race([
+      downloadDbFromS3(targetPath),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000)),
+    ]);
     if (downloaded) {
       lastS3SyncMs = Date.now();
       if (globalThis.__rawmetRawDb) {
@@ -108,6 +118,7 @@ export async function syncDbFromS3(force = false): Promise<void> {
 }
 
 export async function syncDbToS3(): Promise<void> {
+  markLocalDbWrite();
   try {
     const targetPath = resolveWritableDbPath();
     // Non-blocking upload with timeout protection
