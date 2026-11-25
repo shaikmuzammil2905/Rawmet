@@ -10,6 +10,20 @@ function getSmtpTransporter() {
     Buffer.from("Y2NhZ2J0dGZ0ZGx2Z2NyeA==", "base64").toString("utf-8"); // ccagbttftdlvgcrx
   const pass = rawPass.replace(/\s+/g, "");
 
+  // For Gmail, service: 'gmail' automatically uses optimal ports and SSL settings
+  if (host.includes("gmail.com") || process.env.SMTP_SERVICE === "gmail") {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user,
+        pass,
+      },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+    });
+  }
+
   return nodemailer.createTransport({
     host,
     port,
@@ -18,9 +32,9 @@ function getSmtpTransporter() {
       user,
       pass,
     },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 8000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 }
 

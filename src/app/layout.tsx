@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/ToastProvider";
 import { Navbar } from "@/components/Navbar";
@@ -6,6 +6,12 @@ import { Footer } from "@/components/Footer";
 import { getCmsMap } from "@/lib/data";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rawmet.com";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -60,14 +66,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col antialiased bg-[#f6f8fc] text-slate-900">
+      <body className="min-h-screen flex flex-col antialiased bg-[#f6f8fc] text-slate-900 w-full max-w-full overflow-x-hidden">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
         />
         <ToastProvider>
           <Navbar mobileNumber={contactSettings.mobile} />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
           <Footer
             mobile={contactSettings.mobile}
             whatsapp={contactSettings.whatsapp}
