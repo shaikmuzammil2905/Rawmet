@@ -114,9 +114,42 @@ export async function POST(req: Request) {
 
     const businessName = (body.businessName || "").trim();
     const primaryCategory = (body.primaryCategory || body.businessCategory || "Products").trim();
-    const businessProofType = (body.businessProofType || body.idProofType || "GST Registration").trim();
+    const businessProofType = (body.businessProofType || body.idProofType || "GST Registration Certificate").trim();
     const businessProofNumber = (body.businessProofNumber || body.gstNumber || "").trim().toUpperCase();
+    const legalName = ((body as { legalName?: string }).legalName || businessName).trim();
     const gstNumber = businessProofNumber; // Backward compatibility
+
+    // Format validation based on selected verification document type
+    if (businessProofType === "GST Registration Certificate") {
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(businessProofNumber)) {
+        return NextResponse.json(
+          {
+            error:
+              "Invalid GSTIN format. Indian GSTIN must be a 15-character alphanumeric identifier (e.g. 36AABCU9603R1ZM).",
+          },
+          { status: 400 }
+        );
+      }
+    } else if (businessProofType === "PAN Card") {
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(businessProofNumber)) {
+        return NextResponse.json(
+          { error: "Invalid PAN format. Indian PAN must be 10 characters (e.g. ABCDE1234F)." },
+          { status: 400 }
+        );
+      }
+    } else if (businessProofType === "Udyam / MSME Registration") {
+      if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(businessProofNumber)) {
+        return NextResponse.json(
+          { error: "Invalid Udyam Registration Number format (e.g. UDYAM-TS-02-0012345)." },
+          { status: 400 }
+        );
+      }
+    } else if (businessProofNumber.length < 4) {
+      return NextResponse.json(
+        { error: "Please enter a valid Document Identification Number (min 4 characters)." },
+        { status: 400 }
+      );
+    }
 
     const country = (body.country || "India").trim();
     const city = (body.city || "").trim();
@@ -160,7 +193,7 @@ export async function POST(req: Request) {
           product_details = ?, verification_status = 'pending', rejection_reason = '',
           whatsapp_opt_in = ?, whatsapp_categories = ?, business_type = ?,
           country = ?, door_no = ?, address_line1 = ?, address_line2 = ?, pincode = ?,
-          business_proof_type = ?, business_proof_number = ?, primary_category = ?,
+          business_proof_type = ?, business_proof_number = ?, primary_category = ?, legal_name = ?,
           updated_at = datetime('now')
          WHERE id = ?`
       ).run(
@@ -191,6 +224,7 @@ export async function POST(req: Request) {
         businessProofType,
         businessProofNumber,
         primaryCategory,
+        legalName,
         existingRejected.id
       );
       vendorId = existingRejected.id;
@@ -203,8 +237,8 @@ export async function POST(req: Request) {
             id_proof_url, logo_url, address, city, state, description, product_details,
             verification_status, whatsapp_opt_in, whatsapp_categories, business_type,
             country, door_no, address_line1, address_line2, pincode,
-            business_proof_type, business_proof_number, primary_category, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+            business_proof_type, business_proof_number, primary_category, legal_name, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
         )
         .run(
           userId,
@@ -234,15 +268,26 @@ export async function POST(req: Request) {
           pincode,
           businessProofType,
           businessProofNumber,
-          primaryCategory
+          primaryCategory,
+          legalName
         );
       vendorId = Number(vendorIns.lastInsertRowid);
     }
 
+    const savedVendor = db.prepare(`SELECT * FROM vendors WHERE id = ?`).get(vendorId);
+
     db.prepare(
-      `INSERT INTO audit_logs (user_id, user_email, action, details)
-       VALUES (?, ?, 'vendor_application_submitted', ?)`
-    ).run(userId, email, `Seller application #${vendorId} (${businessName}) submitted as pending.`);
+      `INSERT INTO audit_logs (
+         user_id, user_email, action, entity_type, entity_id, target_user_id, previous_status, new_status, details
+       ) VALUES (?, ?, 'Seller Application Submitted', 'vendor', ?, ?, ?, 'pending', ?)`
+    ).run(
+      userId,
+      email,
+      vendorId,
+      userId,
+      existingRejected ? "rejected" : "none",
+      `Business: ${businessName} • Type: ${businessType} • Doc: ${businessProofType} (${businessProofNumber})`
+    );
 
     await syncDbToS3();
 
@@ -256,6 +301,7 @@ export async function POST(req: Request) {
         success: true,
         vendorId,
         status: "pending",
+        vendor: savedVendor,
         message:
           "Your seller application has been submitted successfully! It is now under admin verification.",
       },

@@ -118,8 +118,11 @@ export function UnifiedSellerPageClient() {
   const [regBusinessName, setRegBusinessName] = useState("");
   const [regPrimaryCategory, setRegPrimaryCategory] = useState<"Products" | "Industries" | "Services">("Products");
   const [regBusinessType, setRegBusinessType] = useState("Manufacturer");
+  const [regCustomBusinessType, setRegCustomBusinessType] = useState("");
   const [regBusinessProofType, setRegBusinessProofType] = useState("GST Registration Certificate");
   const [regBusinessProofNumber, setRegBusinessProofNumber] = useState("");
+  const [regLegalName, setRegLegalName] = useState("");
+  const [regCustomDocType, setRegCustomDocType] = useState("");
   const [regIdProofUrl, setRegIdProofUrl] = useState("");
 
   // Address Breakdown
@@ -292,8 +295,38 @@ export function UnifiedSellerPageClient() {
       showToast("Please enter your registered business name.", "error");
       return;
     }
-    if (!regBusinessProofNumber.trim()) {
+    const effectiveBusinessType =
+      regBusinessType === "Other" ? regCustomBusinessType.trim() : regBusinessType;
+    if (!effectiveBusinessType) {
+      showToast("Please specify your business type.", "error");
+      return;
+    }
+
+    const proofNum = regBusinessProofNumber.trim().toUpperCase();
+    if (!proofNum) {
       showToast(`Please enter your ${regBusinessProofType} number.`, "error");
+      return;
+    }
+    if (
+      regBusinessProofType === "GST Registration Certificate" &&
+      !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(proofNum)
+    ) {
+      showToast("Invalid GSTIN format. Must be 15 alphanumeric characters (e.g. 36AABCU9603R1ZM).", "error");
+      return;
+    }
+    if (regBusinessProofType === "PAN Card" && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(proofNum)) {
+      showToast("Invalid PAN format. Must be 10 characters (e.g. ABCDE1234F).", "error");
+      return;
+    }
+    if (
+      regBusinessProofType === "Udyam / MSME Registration" &&
+      !/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(proofNum)
+    ) {
+      showToast("Invalid Udyam number format (e.g. UDYAM-TS-02-0012345).", "error");
+      return;
+    }
+    if (regBusinessProofType === "Other Authentic Business ID" && !regCustomDocType.trim()) {
+      showToast("Please specify the Document Type.", "error");
       return;
     }
     if (!regCity.trim() || !regAddressLine1.trim()) {
@@ -328,12 +361,16 @@ export function UnifiedSellerPageClient() {
           mobile: user?.mobile || regMobile.trim(),
           password: regPassword,
           businessName: regBusinessName.trim(),
-          businessType: regBusinessType,
+          businessType: effectiveBusinessType,
           businessCategory: regPrimaryCategory,
           primaryCategory: regPrimaryCategory,
-          businessProofType: regBusinessProofType,
-          businessProofNumber: regBusinessProofNumber.trim(),
-          gstNumber: regBusinessProofNumber.trim(),
+          businessProofType:
+            regBusinessProofType === "Other Authentic Business ID"
+              ? regCustomDocType.trim()
+              : regBusinessProofType,
+          businessProofNumber: proofNum,
+          gstNumber: proofNum,
+          legalName: regLegalName.trim() || regBusinessName.trim(),
           country: regCountry.trim() || "India",
           city: regCity.trim(),
           state: regState.trim(),
@@ -353,9 +390,12 @@ export function UnifiedSellerPageClient() {
         return;
       }
 
+      if (data.vendor) {
+        setVendor(data.vendor);
+      }
       showToast(data.message || "Seller application submitted! Status: Pending Approval", "success");
       setResubmitMode(false);
-      loadData();
+      await loadData();
     } catch {
       showToast("Registration error. Please try again.", "error");
     } finally {
@@ -646,68 +686,130 @@ export function UnifiedSellerPageClient() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Business Constitution / Type *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Business Type *</label>
                 <select
                   value={regBusinessType}
                   onChange={(e) => setRegBusinessType(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium focus:border-[#0a2458] focus:outline-none"
                 >
                   <option value="Manufacturer">Manufacturer</option>
-                  <option value="Bulk Supplier">Bulk Supplier / Trader</option>
-                  <option value="Turnkey Plant OEM">Turnkey Plant OEM</option>
-                  <option value="Distributor">Distributor / Stockist</option>
+                  <option value="Bulk Supplier">Bulk Supplier</option>
+                  <option value="Manufacturer & Bulk Supplier">Manufacturer & Bulk Supplier</option>
+                  <option value="Distributor">Distributor</option>
                   <option value="Wholesaler">Wholesaler</option>
-                  <option value="Service Provider">Industrial Service Provider</option>
+                  <option value="Retailer">Retailer</option>
+                  <option value="Trader">Trader</option>
+                  <option value="Service Provider">Service Provider</option>
+                  <option value="Industrial Machinery Supplier">Industrial Machinery Supplier</option>
+                  <option value="Other">Other</option>
                 </select>
+                {regBusinessType === "Other" && (
+                  <input
+                    type="text"
+                    required
+                    value={regCustomBusinessType}
+                    onChange={(e) => setRegCustomBusinessType(e.target.value)}
+                    placeholder="Specify your business type..."
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm focus:border-[#0a2458] focus:outline-none"
+                  />
+                )}
               </div>
             </div>
           </div>
 
-          {/* 4. Business Proof & Verification Documents */}
+          {/* 4. Business Verification Document Type */}
           <div className="border-t border-slate-100 pt-5">
             <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-2 flex items-center gap-2">
               <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">4</span>
-              <span>Business Proof & Verification</span>
+              <span>Business Verification Details</span>
             </h3>
             <p className="text-xs text-slate-500 mb-3">
-              Select your business registration type and enter the corresponding verification number:
+              Select your business verification document type. All documents are reviewed by our Super Admin team prior to activation.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Select Business Proof Type *</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Select Business Verification Type *</label>
                 <select
                   value={regBusinessProofType}
-                  onChange={(e) => setRegBusinessProofType(e.target.value)}
+                  onChange={(e) => {
+                    setRegBusinessProofType(e.target.value);
+                    setRegBusinessProofNumber("");
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
                 >
-                  <option value="GST Registration Certificate">GST Registration Certificate (GSTIN)</option>
-                  <option value="MSME / Udyam Certificate">MSME / Udyam Registration Certificate</option>
-                  <option value="Shop & Establishment License">Shop & Establishment License</option>
-                  <option value="Trade License / Factory License">Trade License / Factory License</option>
-                  <option value="Certificate of Incorporation (CIN)">Certificate of Incorporation (CIN / MCA)</option>
-                  <option value="Partnership Deed / LLP">Partnership Deed / LLP Agreement</option>
-                  <option value="Business PAN / Proprietorship Proof">Business PAN / Proprietorship Proof</option>
+                  <option value="GST Registration Certificate">GST Registration Certificate</option>
+                  <option value="Udyam / MSME Registration">Udyam / MSME Registration</option>
+                  <option value="PAN Card">PAN Card</option>
+                  <option value="Other Authentic Business ID">Other Authentic Business ID</option>
                 </select>
               </div>
 
+              {regBusinessProofType === "Other Authentic Business ID" && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Document Type *</label>
+                  <input
+                    type="text"
+                    required
+                    value={regCustomDocType}
+                    onChange={(e) => setRegCustomDocType(e.target.value)}
+                    placeholder="e.g. Trade License / Shop Act / CIN"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {regBusinessProofType} Number *
+                  {regBusinessProofType === "GST Registration Certificate"
+                    ? "GSTIN Number (15-Char Alphanumeric) *"
+                    : regBusinessProofType === "PAN Card"
+                    ? "PAN Number (10-Char) *"
+                    : regBusinessProofType === "Udyam / MSME Registration"
+                    ? "Udyam Registration Number *"
+                    : "Document Identification Number *"}
                 </label>
                 <input
                   type="text"
                   required
                   value={regBusinessProofNumber}
                   onChange={(e) => setRegBusinessProofNumber(e.target.value.toUpperCase())}
-                  placeholder="e.g. 36AABCU9603R1ZM / UDYAM-XX-00-0000000"
+                  placeholder={
+                    regBusinessProofType === "GST Registration Certificate"
+                      ? "e.g. 36AABCU9603R1ZM"
+                      : regBusinessProofType === "PAN Card"
+                      ? "e.g. ABCDE1234F"
+                      : regBusinessProofType === "Udyam / MSME Registration"
+                      ? "e.g. UDYAM-TS-02-0012345"
+                      : "Enter document ID number"
+                  }
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm uppercase font-mono font-bold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
                 />
               </div>
 
+              {regBusinessProofType !== "Other Authentic Business ID" && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    {regBusinessProofType === "GST Registration Certificate"
+                      ? "Business Legal Name *"
+                      : regBusinessProofType === "PAN Card"
+                      ? "Business / Individual Name *"
+                      : "Registered Business Name *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regLegalName}
+                    onChange={(e) => setRegLegalName(e.target.value)}
+                    placeholder="As printed on official document"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                  />
+                </div>
+              )}
+
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Upload Your Business ID Proof ({regBusinessProofType})
+                  Verification Document / Certificate ({regBusinessProofType})
                 </label>
                 <label className="flex items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 p-4 text-xs font-bold text-[#0a2458] cursor-pointer hover:bg-blue-100/60 transition-colors">
                   <FileUp className="h-5 w-5 text-[#f97316]" />
@@ -715,8 +817,8 @@ export function UnifiedSellerPageClient() {
                     {uploadingDoc
                       ? "Uploading document..."
                       : regIdProofUrl
-                      ? "Business ID Proof Uploaded Successfully ✓"
-                      : "Upload Business ID Proof Document (PDF / JPG / PNG)"}
+                      ? "Verification Document Uploaded Successfully ✓"
+                      : "Upload Verification Document / Certificate (PDF / JPG / PNG)"}
                   </span>
                   <input
                     type="file"

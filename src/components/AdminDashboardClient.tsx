@@ -183,6 +183,24 @@ const NAV_ITEMS = [
 
 type DateFilter = "all" | "today" | "yesterday" | "7d" | "30d" | "month";
 
+function matchesDateFilter(dateStr: string | undefined, filter: DateFilter): boolean {
+  if (filter === "all" || !dateStr) return true;
+  const parsed = new Date(dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z");
+  if (Number.isNaN(parsed.getTime())) return true;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (filter === "today") return parsed >= startOfToday;
+  if (filter === "yesterday") {
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    return parsed >= startOfYesterday && parsed < startOfToday;
+  }
+  if (filter === "7d") return parsed >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  if (filter === "30d") return parsed >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  if (filter === "month") return parsed.getFullYear() === now.getFullYear() && parsed.getMonth() === now.getMonth();
+  return true;
+}
+
 function exportToCsv(filename: string, rows: Record<string, unknown>[]) {
   if (!rows || rows.length === 0) {
     alert("No records to export.");
@@ -326,35 +344,44 @@ export function AdminDashboardClient() {
   const [listingSearch, setListingSearch] = useState("");
   const [listingCatFilter, setListingCatFilter] = useState("all");
 
-  async function loadOverview() {
-    setLoading(true);
+  async function loadOverview(silent = false) {
+    if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/admin/overview");
+      const res = await fetch("/api/admin/overview", { cache: "no-store" });
       if (res.status === 401 || res.status === 403) {
         router.push("/admin/login");
         return;
       }
       if (!res.ok) {
-        showToast("Unable to load overview data from server.", "error");
+        if (!silent) showToast("Unable to load overview data from server.", "error");
         return;
       }
       const d = await res.json();
       if (!d || !d.kpi) {
-        showToast(d?.error || "Invalid overview data.", "error");
+        if (!silent) showToast(d?.error || "Invalid overview data.", "error");
         return;
       }
       setData(d);
     } catch (err) {
       console.error("Dashboard loadOverview error:", err);
-      showToast("Network error loading dashboard.", "error");
+      if (!silent) showToast("Network error loading dashboard.", "error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadOverview();
   }, []);
+
+  // Auto-sync when opening Sellers or Audit Logs, plus 15s live refresh
+  useEffect(() => {
+    if (activeTab === "vendors" || activeTab === "audit_logs") {
+      loadOverview(true);
+      const timer = setInterval(() => loadOverview(true), 15000);
+      return () => clearInterval(timer);
+    }
+  }, [activeTab]);
 
   async function handleS3Upload(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -394,17 +421,28 @@ export function AdminDashboardClient() {
     });
     const out = await res.json().catch(() => ({}));
     if (res.ok) {
-      const label =
-        verificationStatus === "suspended"
-          ? "deactivated"
-          : verificationStatus === "pending"
-          ? "moved to Pending Review"
-          : verificationStatus;
-      showToast(`Seller ${label} successfully!`, "success");
+      showToast(out.message || `Seller status updated to ${verificationStatus}.`, "success");
       loadOverview();
     } else {
       showToast(out.error || "Failed to update seller status.", "error");
     }
+  }
+
+  function handleViewVendor(v: VendorRecord) {
+    setViewingVendor(v);
+    fetch("/api/admin/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "Seller Application Viewed",
+        entityType: "vendor",
+        entityId: v.id,
+        targetUserId: v.user_id,
+        previousStatus: v.verification_status,
+        newStatus: v.verification_status,
+        details: `Admin inspected Seller #${v.id} (${v.business_name})`,
+      }),
+    }).catch(() => {});
   }
 
   function openEditVendorModal(v: VendorRecord) {
@@ -707,7 +745,7 @@ export function AdminDashboardClient() {
         <p className="text-sm font-bold text-[#0a2458]">Loading Super Admin Control Center...</p>
         {!loading && (!data || !data.kpi) && (
           <button
-            onClick={loadOverview}
+            onClick={() => loadOverview()}
             className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold px-5 py-2 mt-2 shadow transition-all"
           >
             Retry Loading Dashboard
@@ -765,7 +803,7 @@ export function AdminDashboardClient() {
             Website
           </Link>
           <button
-            onClick={loadOverview}
+            onClick={() => loadOverview()}
             className="rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 transition-colors"
           >
             Refresh
@@ -1127,7 +1165,8 @@ export function AdminDashboardClient() {
                 (v.city || "").toLowerCase().includes(q) ||
                 (v.country || "").toLowerCase().includes(q) ||
                 (v.state || "").toLowerCase().includes(q);
-              return matchesStatus && matchesSearch;
+              const matchesDate = matchesDateFilter(v.created_at, dateFilter);
+              return matchesStatus && matchesSearch && matchesDate;
             });
 
             return (
@@ -1272,7 +1311,7 @@ export function AdminDashboardClient() {
 
                         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
                           <button
-                            onClick={() => setViewingVendor(v)}
+                            onClick={() => handleViewVendor(v)}
                             className="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 text-[11px] font-bold transition-all"
                           >
                             View
@@ -1438,7 +1477,7 @@ export function AdminDashboardClient() {
                             <td className="p-3 whitespace-nowrap">
                               <div className="flex flex-wrap gap-1">
                                 <button
-                                  onClick={() => setViewingVendor(v)}
+                                  onClick={() => handleViewVendor(v)}
                                   className="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 font-bold text-[11px]"
                                 >
                                   View
@@ -2610,13 +2649,25 @@ export function AdminDashboardClient() {
           {/* TAB 12: AUDIT LOGS */}
           {activeTab === "audit_logs" && (
             <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm space-y-3">
-              <h3 className="font-extrabold text-[#0a2458]">System Activity & Audit Trail</h3>
-              <table className="w-full text-xs text-left min-w-[500px]">
-                <thead className="bg-slate-50 uppercase font-bold border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-extrabold text-[#0a2458]">System Activity & Immutable Audit Trail</h3>
+                  <p className="text-xs text-slate-500">
+                    Real-time backend security & verification events. Records are append-only and cannot be edited or deleted.
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-700">
+                  {(data.auditLogs || []).length} Events Recorded
+                </span>
+              </div>
+              <table className="w-full text-xs text-left min-w-[720px]">
+                <thead className="bg-slate-50 uppercase font-bold border-b text-slate-700">
                   <tr>
-                    <th className="p-3">ID / Time</th>
-                    <th className="p-3">User</th>
-                    <th className="p-3">Action</th>
+                    <th className="p-3">Audit ID / Timestamp</th>
+                    <th className="p-3">Action Type</th>
+                    <th className="p-3">Entity / Target</th>
+                    <th className="p-3">Status Transition</th>
+                    <th className="p-3">Actor / Admin</th>
                     <th className="p-3">Event Details</th>
                   </tr>
                 </thead>
@@ -2624,20 +2675,39 @@ export function AdminDashboardClient() {
                   {(data.auditLogs || []).map((a) => (
                     <tr key={a.id} className="hover:bg-slate-50">
                       <td className="p-3 text-slate-500 whitespace-nowrap">
-                        #{a.id} • {a.created_at}
+                        <div className="font-bold text-slate-700">#{a.id}</div>
+                        <div className="text-[10px]">{a.created_at}</div>
                       </td>
-                      <td className="p-3 font-semibold text-slate-700">{a.user_email || "System"}</td>
                       <td className="p-3">
-                        <span className="rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[10px] font-bold uppercase">
+                        <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-[10px] font-bold uppercase whitespace-nowrap">
                           {a.action}
                         </span>
                       </td>
-                      <td className="p-3 text-slate-800 font-sans text-xs">{a.details}</td>
+                      <td className="p-3 text-slate-700 whitespace-nowrap">
+                        {a.entity_type ? `${a.entity_type.toUpperCase()} #${a.entity_id ?? "-"}` : "-"}
+                        {a.target_user_id ? <div className="text-[10px] text-slate-400">User #{a.target_user_id}</div> : null}
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        {a.previous_status || a.new_status ? (
+                          <span className="text-[10px] font-bold">
+                            <span className="text-slate-500 uppercase">{a.previous_status || "none"}</span>
+                            {" → "}
+                            <span className="text-[#0a2458] uppercase">{a.new_status || "-"}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-700">
+                        <div>{a.user_email || "System"}</div>
+                        {a.admin_id ? <div className="text-[10px] text-slate-400">Admin #{a.admin_id}</div> : null}
+                      </td>
+                      <td className="p-3 text-slate-800 font-sans text-xs max-w-md">{a.details}</td>
                     </tr>
                   ))}
                   {(data.auditLogs || []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-slate-400 font-sans">
+                      <td colSpan={6} className="p-6 text-center text-slate-400 font-sans">
                         No audit events recorded yet.
                       </td>
                     </tr>

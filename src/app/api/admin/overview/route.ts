@@ -201,26 +201,33 @@ export async function GET() {
   const plans = getSubscriptionPlans(true);
   const cms = getCmsMap();
 
-    return NextResponse.json({
-      kpi,
-      categoryBreakdown,
-      vendors,
-      users,
-      listings,
-      categories,
-      subcategories,
-      requirements,
-      enquiries,
-      subscriptions,
-      payments,
-      gallery,
-      whatsappNotifications,
-      referrals,
-      subscriptionForms,
-      auditLogs,
-      plans,
-      cms,
-    });
+    return NextResponse.json(
+      {
+        kpi,
+        categoryBreakdown,
+        vendors,
+        users,
+        listings,
+        categories,
+        subcategories,
+        requirements,
+        enquiries,
+        subscriptions,
+        payments,
+        gallery,
+        whatsappNotifications,
+        referrals,
+        subscriptionForms,
+        auditLogs,
+        plans,
+        cms,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (err) {
     console.error("Admin overview error:", err);
     return NextResponse.json({ error: "Failed to generate admin overview." }, { status: 500 });

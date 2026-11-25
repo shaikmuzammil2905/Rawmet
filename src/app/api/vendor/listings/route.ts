@@ -159,12 +159,16 @@ export async function POST(req: Request) {
       );
 
     db.prepare(`
-      INSERT INTO audit_logs (user_id, user_email, action, details)
-      VALUES (?, ?, 'vendor_published_listing', ?)
+      INSERT INTO audit_logs (
+        user_id, user_email, action, entity_type, entity_id,
+        target_user_id, previous_status, new_status, details
+      ) VALUES (?, ?, 'Seller Listing Created', 'listing', ?, ?, 'none', 'approved', ?)
     `).run(
       session.user.id,
       session.user.email,
-      `Vendor #${session.vendor.id} published listing '${master.title}' @ ${priceDisplay}`
+      Number(res.lastInsertRowid),
+      session.user.id,
+      `Vendor #${session.vendor.id} (${session.vendor.business_name}) created listing '${master.title}' @ ${priceDisplay}`
     );
 
     await syncDbToS3();
@@ -261,6 +265,23 @@ export async function PATCH(req: Request) {
       isPubVal,
       body.id,
       session.vendor.id
+    );
+
+    const actionName = isPubVal === 0 ? "Seller Listing Deactivated" : "Seller Listing Updated";
+    db.prepare(`
+      INSERT INTO audit_logs (
+        user_id, user_email, action, entity_type, entity_id,
+        target_user_id, previous_status, new_status, details
+      ) VALUES (?, ?, ?, 'listing', ?, ?, ?, ?, ?)
+    `).run(
+      session.user.id,
+      session.user.email,
+      actionName,
+      body.id,
+      session.user.id,
+      existing.status,
+      isPubVal === 0 ? "deactivated" : existing.status,
+      `Vendor #${session.vendor.id} updated listing #${body.id}`
     );
 
     await syncDbToS3();

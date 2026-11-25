@@ -120,18 +120,23 @@ export async function syncDbFromS3(force = false): Promise<void> {
 export async function syncDbToS3(): Promise<void> {
   markLocalDbWrite();
   try {
+    const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (!isReadOnlyEnv) return;
     const targetPath = resolveWritableDbPath();
-    // Non-blocking upload with timeout protection
-    Promise.race([
+    // Flush any pending SQLite journal/cache before reading bytes for S3
+    if (globalThis.__rawmetRawDb) {
+      try {
+        globalThis.__rawmetRawDb.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+      } catch {}
+    }
+    // MUST await so Vercel/Lambda does not freeze the container before S3 upload completes
+    const uploaded = await Promise.race([
       uploadDbToS3(targetPath),
-      new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("S3 sync timeout")), 4000)),
-    ])
-      .then((uploaded) => {
-        if (uploaded) lastS3SyncMs = Date.now();
-      })
-      .catch((err) => {
-        console.error("syncDbToS3 non-blocking error:", err);
-      });
+      new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("S3 sync timeout")), 6000)),
+    ]);
+    if (uploaded) {
+      lastS3SyncMs = Date.now();
+    }
   } catch (err) {
     console.error("syncDbToS3 error:", err);
   }
@@ -446,6 +451,13 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE vendors ADD COLUMN rejected_at TEXT DEFAULT ''",
     "ALTER TABLE vendors ADD COLUMN reviewed_by_admin_id INTEGER DEFAULT NULL",
     "ALTER TABLE vendors ADD COLUMN updated_at TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN legal_name TEXT DEFAULT ''",
+    "ALTER TABLE audit_logs ADD COLUMN entity_type TEXT DEFAULT ''",
+    "ALTER TABLE audit_logs ADD COLUMN entity_id INTEGER DEFAULT NULL",
+    "ALTER TABLE audit_logs ADD COLUMN target_user_id INTEGER DEFAULT NULL",
+    "ALTER TABLE audit_logs ADD COLUMN admin_id INTEGER DEFAULT NULL",
+    "ALTER TABLE audit_logs ADD COLUMN previous_status TEXT DEFAULT ''",
+    "ALTER TABLE audit_logs ADD COLUMN new_status TEXT DEFAULT ''",
   ];
   for (const sql of migrations) {
     try {

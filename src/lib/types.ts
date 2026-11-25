@@ -45,6 +45,7 @@ export interface VendorRecord {
   business_proof_type?: string;
   business_proof_number?: string;
   primary_category?: string;
+  legal_name?: string;
   whatsapp_opt_in: number;
   whatsapp_categories: string;
   created_at: string;
@@ -170,6 +171,12 @@ export interface AuditLogRecord {
   user_id: number | null;
   user_email: string;
   action: string;
+  entity_type?: string;
+  entity_id?: number | null;
+  target_user_id?: number | null;
+  admin_id?: number | null;
+  previous_status?: string;
+  new_status?: string;
   details: string;
   ip_address: string;
   created_at: string;

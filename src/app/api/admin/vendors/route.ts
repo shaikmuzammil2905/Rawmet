@@ -40,12 +40,24 @@ export async function PATCH(req: Request) {
     }
 
     const status = body.verificationStatus;
+    const prevStatus = String(vendor.verification_status || "pending");
     const reasonText =
       status === "rejected"
         ? (body.rejectionReason || "Your seller application has not been approved. Please contact RAWMAT MART support for further information.").trim()
         : status === "suspended"
         ? (body.rejectionReason || "Seller account temporarily deactivated by Admin.").trim()
         : "";
+
+    const actionLabel =
+      status === "approved"
+        ? prevStatus === "suspended"
+          ? "Seller Reactivated"
+          : "Seller Application Approved"
+        : status === "rejected"
+        ? "Seller Application Rejected"
+        : status === "suspended"
+        ? "Seller Deactivated"
+        : "Seller Application Reconsidered";
 
     const approvedAtClause = status === "approved" ? "datetime('now')" : "approved_at";
     const rejectedAtClause = status === "rejected" ? "datetime('now')" : "rejected_at";
@@ -69,14 +81,22 @@ export async function PATCH(req: Request) {
         db.prepare(`UPDATE users SET role = ? WHERE id = ?`).run(nextRole, vendor.user_id);
       }
 
-      // Audit log
+      // Structured Audit Log
       db.prepare(`
-        INSERT INTO audit_logs (user_id, user_email, action, details)
-        VALUES (?, ?, 'vendor_status_update', ?)
+        INSERT INTO audit_logs (
+          user_id, user_email, action, entity_type, entity_id,
+          target_user_id, admin_id, previous_status, new_status, details
+        ) VALUES (?, ?, ?, 'vendor', ?, ?, ?, ?, ?, ?)
       `).run(
         session.user.id,
         session.user.email,
-        `Vendor #${body.vendorId} (${vendor.business_name}) status set to ${status}${reasonText ? ` (Reason: ${reasonText})` : ""}`
+        actionLabel,
+        body.vendorId,
+        vendor.user_id ?? null,
+        session.user.id,
+        prevStatus,
+        status,
+        `Business: ${vendor.business_name} • Action By: Admin #${session.user.id}${reasonText ? ` • Remarks: ${reasonText}` : ""}`
       );
       db.exec("COMMIT");
     } catch (txErr) {
@@ -98,10 +118,21 @@ export async function PATCH(req: Request) {
       ).catch((e) => console.error("Vendor status email dispatch error:", e));
     }
 
+    const successMessage =
+      status === "approved"
+        ? prevStatus === "suspended"
+          ? "Seller Reactivated Successfully."
+          : "Seller Application Approved Successfully."
+        : status === "rejected"
+        ? "Seller Application Rejected Successfully."
+        : status === "suspended"
+        ? "Seller Deactivated Successfully."
+        : "Seller Application Moved to Pending Review.";
+
     return NextResponse.json({
       success: true,
       status,
-      message: `Seller status updated to ${status}.`,
+      message: successMessage,
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to update vendor.";
@@ -219,12 +250,19 @@ export async function PUT(req: Request) {
     );
 
     db.prepare(
-      `INSERT INTO audit_logs (user_id, user_email, action, details)
-       VALUES (?, ?, 'vendor_details_updated', ?)`
+      `INSERT INTO audit_logs (
+         user_id, user_email, action, entity_type, entity_id,
+         target_user_id, admin_id, previous_status, new_status, details
+       ) VALUES (?, ?, 'Seller Details Updated', 'vendor', ?, ?, ?, ?, ?, ?)`
     ).run(
       session.user.id,
       session.user.email,
-      `Admin updated details for Seller #${body.vendorId} (${body.business_name || existing.business_name})`
+      body.vendorId,
+      existing.user_id ?? null,
+      session.user.id,
+      String(existing.verification_status || ""),
+      String(existing.verification_status || ""),
+      `Business: ${body.business_name || existing.business_name} • Updated by Admin #${session.user.id}`
     );
 
     await syncDbToS3();
