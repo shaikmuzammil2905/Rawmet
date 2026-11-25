@@ -11,7 +11,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const rawCat = (await params).category || "";
   const normalized = decodeURIComponent(rawCat).toLowerCase().trim();
   const categories = getCategories("machinery");
@@ -24,8 +24,8 @@ export async function generateMetadata({
     categories.find((c) => rawCat === "vehicle-fabrication" && c.slug === "coconut-process-machinery");
 
   return {
-    title: cat ? `${cat.name}` : `${decodeURIComponent(rawCat).replace(/[-_]/g, " ")} Machineries`,
-    description: cat?.description || "Industrial machineries on RAWMAT MART",
+    title: cat ? `${cat.name} Industry & Machinery` : `${decodeURIComponent(rawCat).replace(/[-_]/g, " ")} Industry`,
+    description: cat?.description || "Industrial equipment & machinery on RAWMAT MART",
   };
 }
 
@@ -34,7 +34,7 @@ export default async function MachineryCategoryPage({
 }: {
   params: Promise<{ category: string }>;
 }) {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const rawCat = (await params).category || "";
   const normalized = decodeURIComponent(rawCat).toLowerCase().trim();
   const categories = getCategories("machinery");

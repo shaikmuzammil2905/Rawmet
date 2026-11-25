@@ -4,8 +4,8 @@ import path from "node:path";
 
 const region = process.env.AWS_REGION || "ap-southeast-2";
 const bucketName = process.env.AWS_S3_BUCKET_NAME || "rawmat-mart-storage";
-const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID || "";
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || "";
 
 export function isS3Configured(): boolean {
   return Boolean(bucketName && accessKeyId && secretAccessKey);
@@ -84,7 +84,8 @@ export async function downloadDbFromS3(targetPath: string): Promise<boolean> {
     }
     fs.writeFileSync(targetPath, Buffer.from(byteArray));
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Failed to download database from S3:", err);
     return false;
   }
 }

@@ -161,7 +161,7 @@ export function AdminCategoriesPanel({
                 className="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white text-slate-800"
               >
                 <option value="product">Product Category</option>
-                <option value="machinery">Machinery Category</option>
+                <option value="machinery">Industry Category</option>
                 <option value="service">Service Category</option>
               </select>
               <input

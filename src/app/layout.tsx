@@ -14,17 +14,17 @@ export const metadata: Metadata = {
     template: "%s | RAWMAT MART",
   },
   description:
-    "India's trusted multi-vendor B2B industrial marketplace by Sriñidhi Enterprises for Rubber, Plastic, Metals, Bio Petro Chemical products, industrial machineries, turnkey plants, and business services.",
+    "India's trusted multi-vendor B2B industrial marketplace by Sirrinidhi Enterprises for Rubber, Plastic, Metals, Bio Petro Chemical products, industry, turnkey plants, and business services.",
   keywords: [
     "RAWMAT MART",
     "RAWMAT",
-    "Sriñidhi Enterprises",
+    "Sirrinidhi Enterprises",
     "B2B industrial marketplace India",
     "rubber raw materials",
     "plastic granules HDPE PP",
     "stainless steel pipes metals",
     "bio petro chemical",
-    "industrial machineries",
+    "industry",
     "real-time business portal",
   ],
   openGraph: {
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     siteName: "RAWMAT MART",
     title: "RAWMAT MART — Your Trusted Platform for Industrial Business Solutions",
     description:
-      "Products | Machineries | Services — Connect with GST-verified industrial vendors and real-time business opportunities.",
+      "Products | Industry | Services — Connect with GST-verified industrial vendors and real-time business opportunities.",
     images: [{ url: "/images/hero-desktop-1.png", width: 2048, height: 768, alt: "RAWMAT MART Industrial Portal" }],
   },
   alternates: {
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const orgSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "RAWMAT MART — Sriñidhi Enterprises",
+    name: "RAWMAT MART — Sirrinidhi Enterprises",
     url: siteUrl,
     logo: `${siteUrl}/images/rawmet-logo.png`,
     telephone: contactSettings.mobile,

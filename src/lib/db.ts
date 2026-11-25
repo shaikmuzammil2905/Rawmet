@@ -86,7 +86,7 @@ let lastS3SyncMs = 0;
 export async function syncDbFromS3(force = false): Promise<void> {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
   if (!isReadOnlyEnv) return;
-  if (!force && Date.now() - lastS3SyncMs < 12000) return;
+  if (!force && Date.now() - lastS3SyncMs < 2000) return;
   try {
     const targetPath = resolveWritableDbPath();
     const downloaded = await downloadDbFromS3(targetPath);

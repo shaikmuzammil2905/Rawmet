@@ -502,12 +502,12 @@ export function ensureSeeded(): void {
     ];
 
     const aboutContent: AboutContent = {
-      headline: "About Sriñidhi Enterprises",
-      subheadline: "Connecting Industrial India through RAWMAT MART — Online Real-time Business Portal",
+      headline: "About Sirrinidhi Enterprises",
+      subheadline: "Connecting Industrial India through RAWMAT MART — Online Real-time B2B, B2C, C2C, D2C Portal",
       summary:
         "A leading multi-vendor platform for Rubber, Plastic, Metals and Bio Petro Chemical industries. We connect businesses with trusted vendors and provide real-time business opportunities.",
       fullStory:
-        "Operated by Sriñidhi Enterprises, RAWMAT MART is built specifically for India's industrial manufacturing ecosystem. From raw polymers, natural & synthetic rubber, stainless steel alloys, and bio-petrochemicals to turnkey industrial plants and essential plant services, our portal eliminates middlemen friction by verifying every supplier via GST / authentic business ID and matching real-time buyer requirements directly to eligible vendors via instant WhatsApp and dashboard alerts.",
+        "Operated by Sirrinidhi Enterprises, RAWMAT MART is built specifically for India's industrial manufacturing ecosystem. From raw polymers, natural & synthetic rubber, stainless steel alloys, and bio-petrochemicals to turnkey industrial plants and essential plant services, our portal eliminates middlemen friction by verifying every supplier via GST / authentic business ID and matching real-time buyer requirements directly to eligible vendors via instant WhatsApp and dashboard alerts.",
       mission:
         "To empower MSMEs, manufacturers, fabricators, and industrial buyers across India with transparent, GST-verified sourcing, free verified listings, and real-time trade matchmaking.",
       vision:
@@ -536,7 +536,7 @@ export function ensureSeeded(): void {
     };
 
     const contactSettings: ContactSettings = {
-      companyName: "Sriñidhi Enterprises",
+      companyName: "Sirrinidhi Enterprises",
       portalName: "RAWMAT MART",
       mobile: "+91 7382177653",
       whatsapp: "917382177653",

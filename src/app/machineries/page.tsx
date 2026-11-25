@@ -6,8 +6,8 @@ import { syncDbFromS3 } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Industrial Machineries & Turnkey Plants",
-  description: "Explore Rubber Machineries, Plastic Extrusion & Injection lines, Metals Plants, Bio Petro Chemical Plants, and Vehicle Body Fabrication.",
+  title: "Industry & Turnkey Plants",
+  description: "Explore Industry, Rubber Machinery, Plastic Extrusion & Injection lines, Metals Plants, Bio Petro Chemical Plants, and Vehicle Body Fabrication.",
 };
 
 export default async function MachineriesPage() {
@@ -19,7 +19,7 @@ export default async function MachineriesPage() {
   return (
     <CatalogBrowser
       type="machinery"
-      title="Industrial Machineries & Turnkey Plants"
+      title="Industry & Turnkey Plants"
       subtitle="Rubber, Plastic, Metals – Plants, Bio Petro Chemical Plants, and Commercial Vehicle Fabrication & Bodybuilders."
       categories={categories}
       subcategories={subcategories}

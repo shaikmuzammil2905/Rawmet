@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    await syncDbFromS3();
+    await syncDbFromS3(true);
     ensureSeeded();
     const session = await requireRole(["admin"]);
     if (!session) {

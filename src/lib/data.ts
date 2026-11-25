@@ -110,7 +110,7 @@ export function getCmsMap(): {
   return {
     heroSlides: parse("hero_slides", []),
     aboutContent: parse("about_content", {
-      headline: "About Sriñidhi Enterprises",
+      headline: "About Sirrinidhi Enterprises",
       subheadline: "RAWMAT MART",
       summary: "",
       fullStory: "",
@@ -128,7 +128,7 @@ export function getCmsMap(): {
       highlights: [],
     }),
     contactSettings: parse("contact_settings", {
-      companyName: "Sriñidhi Enterprises",
+      companyName: "Sirrinidhi Enterprises",
       portalName: "RAWMAT MART",
       mobile: "+91 7382177653",
       whatsapp: "917382177653",

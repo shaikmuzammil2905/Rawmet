@@ -45,10 +45,10 @@ export function HeroSection({ slides }: { slides: HeroSlide[] }) {
       : [
           {
             id: "default",
-            eyebrow: "Online Real-time Business Portal",
+            eyebrow: "Online Real-time B2B, B2C, C2C, D2C Portal",
             headlinePrefix: "Your Trusted Platform for\nIndustrial Business",
             headlineHighlight: "Solutions",
-            subcategoriesLine: "Products  |  Machineries  |  Services",
+            subcategoriesLine: "Products  |  Industry  |  Services",
             desktopImage: "/images/hero-desktop-1.png",
             mobileImage: "/images/hero-mobile-1.png",
             ctaLabel: "Explore",
@@ -206,8 +206,8 @@ export function HeroSection({ slides }: { slides: HeroSlide[] }) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search products, machineries, services..."
-                aria-label="Search for products, machineries or services"
+                placeholder="Search products, industry, services..."
+                aria-label="Search for products, industry or services"
                 className="w-full min-w-0 bg-transparent px-2.5 sm:px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
               />
               <button

@@ -30,7 +30,7 @@ interface CatalogBrowserProps {
 
 const SHOP_SECTIONS = [
   { key: "product" as const, label: "Products", href: "/products", icon: Package },
-  { key: "machinery" as const, label: "Machinery", href: "/machineries", icon: Cog },
+  { key: "machinery" as const, label: "Industry", href: "/machineries", icon: Cog },
   { key: "service" as const, label: "Services", href: "/services", icon: Handshake },
 ];
 
@@ -169,7 +169,7 @@ export function CatalogBrowser({
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search for products, machinery or services..."
+          placeholder="Search for products, industry or services..."
           aria-label="Search catalog"
           className="w-full min-w-0 bg-transparent px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
         />
@@ -266,27 +266,6 @@ export function CatalogBrowser({
               </Link>
             );
           })}
-
-          {/* MORE / ALL Card */}
-          <button
-            type="button"
-            onClick={() => {
-              handleReset();
-              router.push(basePath);
-            }}
-            className={`group w-full rounded-xl sm:rounded-2xl p-2 sm:p-3 border transition-all flex flex-col items-center justify-center text-center shadow-xs hover:shadow-md ${
-              !category
-                ? "bg-[#eef4ff] border-[#1652b8]/30"
-                : "bg-slate-50 border-slate-200 hover:bg-[#eef4ff]"
-            }`}
-          >
-            <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-[#0a2458] group-hover:bg-[#f97316] text-white flex items-center justify-center shadow-sm mb-1 sm:mb-2 transition-colors shrink-0">
-              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 transition-transform group-hover:translate-x-0.5" />
-            </div>
-            <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wide text-[#0a2458]">
-              All Options
-            </span>
-          </button>
         </div>
       </section>
 

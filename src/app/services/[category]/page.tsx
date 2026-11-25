@@ -11,7 +11,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const rawCat = (await params).category || "";
   const normalized = decodeURIComponent(rawCat).toLowerCase().trim();
   const categories = getCategories("service");
@@ -33,7 +33,7 @@ export default async function ServiceCategoryPage({
 }: {
   params: Promise<{ category: string }>;
 }) {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const rawCat = (await params).category || "";
   const normalized = decodeURIComponent(rawCat).toLowerCase().trim();
   const categories = getCategories("service");

@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./node_modules/node-sqlite3-wasm/dist/**/*"],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/industry",
+        destination: "/machineries",
+      },
+      {
+        source: "/industry/:category",
+        destination: "/machineries/:category",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

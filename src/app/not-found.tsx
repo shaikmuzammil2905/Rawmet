@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="text-sm font-extrabold uppercase tracking-wider text-[#f97316]">404 — Page Not Found</p>
       <h1 className="mt-2 text-3xl font-extrabold text-[#0a2458]">We couldn&apos;t find that industrial page</h1>
       <p className="mt-2 text-sm text-slate-600">
-        Explore our verified Products, Machineries, Services, or search the RAWMAT MART portal directly.
+        Explore our verified Products, Industry, Services, or search the RAWMAT MART portal directly.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link

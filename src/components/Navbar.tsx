@@ -39,7 +39,7 @@ const PRODUCT_LINKS = [
 ];
 
 const MACHINERY_LINKS = [
-  { label: "All Machineries", href: "/machineries" },
+  { label: "All Industry", href: "/machineries" },
   { label: "Rubber", href: "/machineries/rubber-machineries" },
   { label: "Plastic", href: "/machineries/plastic-machineries" },
   { label: "Metals – Plants", href: "/machineries/metals-plants" },
@@ -67,12 +67,12 @@ const SERVICE_LINKS = [
 
 const SHOP_LINKS = [
   { label: "Products Catalog (Rubber, Plastic, Metals...)", href: "/products" },
-  { label: "Industrial Machineries & Turnkey Plants", href: "/machineries" },
+  { label: "Industry & Turnkey Plants", href: "/machineries" },
   { label: "Industrial Services (AMC, Logistics, Loans...)", href: "/services" },
 ];
 
 const ABOUT_LINKS = [
-  { label: "About Sriñidhi Enterprises", href: "/about" },
+  { label: "About Sirrinidhi Enterprises", href: "/about" },
   { label: "Our Mission & Verification Standards", href: "/about#standards" },
   { label: "Management & Corporate Office", href: "/about#office" },
   { label: "Contact Customer Support", href: "/about#contact" },
@@ -108,7 +108,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
         }
         if (mach.length > 0) {
           setMachineryLinks([
-            { label: "All Machineries", href: "/machineries" },
+            { label: "All Industry", href: "/machineries" },
             ...mach.map((c: { name: string; slug: string }) => ({ label: c.name, href: `/machineries/${c.slug}` })),
           ]);
         }
@@ -219,12 +219,12 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             >
               <img
                 src="/images/rawmet-logo.png"
-                alt="RAWMAT MART - Online Real-time Business Portal"
+                alt="RAWMAT MART - Online Real-time B2B, B2C, C2C, D2C Portal"
                 className="h-10 sm:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.01]"
               />
             </Link>
 
-            {/* Desktop Center Nav: featuring Home, Shop, Sell, About Us, Products, Machineries, Services, Requirements, Gallery */}
+            {/* Desktop Center Nav: featuring Home, Shop, Sell, About Us, Products, Industry, Services, Requirements, Gallery */}
             <nav className="hidden xl:flex items-center gap-1" aria-label="Main navigation">
               <Link
                 href="/"
@@ -265,7 +265,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
 
               <NavDropdown
-                label="Machineries"
+                label="Industry"
                 active={pathname.startsWith("/machineries")}
                 items={machineryLinks}
                 isOpen={openDropdown === "machineries"}
@@ -372,17 +372,17 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 title="Main Navigation"
                 items={[
                   { label: "Home", href: "/" },
-                  { label: "Shop (All Products, Machineries, Services)", href: "/products" },
+                  { label: "Shop (All Products, Industry, Services)", href: "/products" },
                   { label: "Sell on RAWMAT", href: "/vendor/register" },
                   { label: "Real-Time Requirements", href: "/requirements" },
                   { label: "Subscription Plans & Offers", href: "/subscriptions" },
                   { label: "Gallery", href: "/gallery" },
-                  { label: "About Sriñidhi Enterprises", href: "/about" },
+                  { label: "About Sirrinidhi Enterprises", href: "/about" },
                   { label: "Promote Us • Grow With Us", href: "/promote" },
                 ]}
               />
               <MobileNavGroup title="Products" items={productLinks} />
-              <MobileNavGroup title="Machineries" items={machineryLinks} />
+              <MobileNavGroup title="Industry" items={machineryLinks} />
               <MobileNavGroup title="Services" items={serviceLinks} />
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">

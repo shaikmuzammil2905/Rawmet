@@ -164,7 +164,7 @@ const NAV_ITEMS = [
   { id: "vendors", label: "Sellers", icon: Store, group: "Core" },
   { id: "users", label: "Users", icon: Users, group: "Core" },
   { id: "products", label: "Products", icon: Package, group: "Catalog" },
-  { id: "machineries", label: "Machineries", icon: Cog, group: "Catalog" },
+  { id: "machineries", label: "Industry", icon: Cog, group: "Catalog" },
   { id: "services", label: "Services", icon: Wrench, group: "Catalog" },
   { id: "requirements", label: "Requirements", icon: FileText, group: "Operations" },
   { id: "enquiries", label: "Enquiries", icon: MessageSquare, group: "Operations" },
@@ -710,7 +710,7 @@ export function AdminDashboardClient() {
               { id: "dashboard", label: "Dashboard" },
               { id: "subscription_forms", label: "Forms", badge: data.kpi?.pendingFormsCount },
               { id: "products", label: "Products" },
-              { id: "machineries", label: "Machinery" },
+              { id: "machineries", label: "Industry" },
               { id: "services", label: "Services" },
               { id: "vendors", label: "Sellers", badge: data.kpi?.pendingVendors },
               { id: "content", label: "Hero CMS" },
@@ -832,7 +832,7 @@ export function AdminDashboardClient() {
                   { label: "Total Products", value: data.kpi.totalProducts, color: "text-[#1652b8]" },
                   { label: "Approved Products", value: data.kpi.approvedProducts, color: "text-emerald-600" },
                   { label: "Pending Products", value: data.kpi.pendingProducts, color: "text-amber-600" },
-                  { label: "Machinery Listings", value: data.kpi.totalMachineryListings, color: "text-[#0a2458]" },
+                  { label: "Industry Listings", value: data.kpi.totalMachineryListings, color: "text-[#0a2458]" },
                   { label: "Service Listings", value: data.kpi.totalServiceListings, color: "text-[#0a2458]" },
                   { label: "Live Requirements", value: data.kpi.totalRequirements, color: "text-[#0a2458]" },
                   { label: "Active Subscriptions", value: data.kpi.activeSubscriptions, color: "text-emerald-600" },
@@ -1281,7 +1281,7 @@ export function AdminDashboardClient() {
 
           {/* TAB 5: PRODUCTS / MACHINERIES / SERVICES (Full View: Step 1 Main Category -> Step 2 Sub Category -> Step 3 Listing Create -> Past Listings) */}
           {(activeTab === "products" || activeTab === "machineries" || activeTab === "services") && (() => {
-            const typeLabel = activeTab === "products" ? "Product" : activeTab === "machineries" ? "Machinery" : "Service";
+            const typeLabel = activeTab === "products" ? "Product" : activeTab === "machineries" ? "Industry" : "Service";
             const categoriesForType = data.categories.filter((c) => c.type === listingTypeFilter);
             const subcategoriesForType = data.subcategories.filter((s) => s.category_type === listingTypeFilter || categoriesForType.some((c) => c.id === s.category_id));
 
@@ -1349,7 +1349,7 @@ export function AdminDashboardClient() {
                             listingTypeFilter === "product"
                               ? "Rubber Products, Plastic Materials"
                               : listingTypeFilter === "machinery"
-                              ? "Rubber Machineries, Turnkey Plants"
+                              ? "Rubber Industry, Turnkey Plants"
                               : "Logistics Services, AMC Services"
                           }`}
                           className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white focus:border-[#0a2458] focus:outline-none"

@@ -39,7 +39,7 @@ import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const cms = getCmsMap();
   const { items: featuredListings } = queryListings({ limit: 6, featured: true });
   const { items: recentListings } = queryListings({ limit: 8 });
@@ -57,7 +57,7 @@ export default async function HomePage() {
       icon: Package,
     },
     {
-      title: "Machineries",
+      title: "Industry",
       subtitle: "Rubber, Plastic, Metals - Plants & More",
       href: "/machineries",
       image: "/images/cat-machineries.png",
@@ -161,7 +161,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 3. About Sriñidhi Enterprises + Animated Counters + Launching Offer */}
+      {/* 3. About Sirrinidhi Enterprises + Animated Counters + Launching Offer */}
       <section className="mx-auto max-w-[1400px] px-4 sm:px-6 py-8 sm:py-10">
         <div className="rounded-3xl bg-white border border-slate-200/80 p-5 sm:p-7 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           {/* About Block */}
@@ -358,7 +358,7 @@ export default async function HomePage() {
               Verified GST Marketplace
             </p>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0a2458] mt-1">
-              Featured Products, Machineries &amp; Plants
+              Featured Products, Industry &amp; Plants
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -366,7 +366,7 @@ export default async function HomePage() {
               All Products
             </Link>
             <Link href="/machineries" className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-bold text-[#0a2458] hover:border-[#0a2458]">
-              All Machineries
+              All Industry
             </Link>
             <Link href="/services" className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-bold text-[#0a2458] hover:border-[#0a2458]">
               All Services
