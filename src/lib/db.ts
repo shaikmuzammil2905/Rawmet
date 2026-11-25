@@ -440,6 +440,12 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE vendors ADD COLUMN business_proof_type TEXT DEFAULT 'GST Registration'",
     "ALTER TABLE vendors ADD COLUMN business_proof_number TEXT DEFAULT ''",
     "ALTER TABLE vendors ADD COLUMN primary_category TEXT DEFAULT 'Products'",
+    "ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1",
+    "ALTER TABLE users ADD COLUMN reset_requested_at TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN approved_at TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN rejected_at TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN reviewed_by_admin_id INTEGER DEFAULT NULL",
+    "ALTER TABLE vendors ADD COLUMN updated_at TEXT DEFAULT ''",
   ];
   for (const sql of migrations) {
     try {

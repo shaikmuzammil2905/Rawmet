@@ -221,7 +221,7 @@ export async function sendPasswordResetEmail(
   try {
     const transporter = getSmtpTransporter();
 
-    const subject = "RAWMAT MART – Reset Your Password";
+    const subject = "RAWMAT MART – Password Reset Request";
 
     const textContent = `Hello,
 
@@ -230,13 +230,12 @@ We received a request to reset your RAWMAT MART account password.
 Click the link below to create a new password:
 ${resetLink}
 
-This link expires in 30 minutes and can only be used once.
+This link is valid for 30 minutes and can only be used once.
 
-If you did not request a password reset, please ignore this email.
+If you did not request this change, please ignore this email.
 
 Regards,
-RAWMAT MART
-Online Real-time Business Portal`;
+RAWMAT MART Team.`;
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -270,7 +269,8 @@ Online Real-time Business Portal`;
                       Hello,
                     </p>
                     <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
-                      We received a request to reset your RAWMAT MART account password.
+                      We received a request to reset your RAWMAT MART account password.<br /><br />
+                      Click the button below to create a new password.
                     </p>
 
                     <!-- CTA Button -->
@@ -289,17 +289,16 @@ Online Real-time Business Portal`;
                     </p>
 
                     <p style="color: #b45309; font-size: 13px; font-weight: 600; line-height: 1.5; margin: 0 0 16px 0; background-color: #fffbeb; padding: 10px 14px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                      ⏳ This link expires in 30 minutes and can only be used once.
+                      ⏳ This link is valid for 30 minutes and can only be used once.
                     </p>
 
                     <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 24px 0;">
-                      If you did not request a password reset, please ignore this email.
+                      If you did not request this change, please ignore this email.
                     </p>
 
-                    <p style="color: #334155; font-size: 13px; line-height: 1.5; margin: 0; border-top: 1px solid #f1f5f9; pt: 16px;">
+                    <p style="color: #334155; font-size: 13px; line-height: 1.5; margin: 0; border-top: 1px solid #f1f5f9; padding-top: 16px;">
                       Regards,<br />
-                      <strong>RAWMAT MART</strong><br />
-                      <span style="color: #64748b; font-size: 12px;">Online Real-time Business Portal</span>
+                      <strong>RAWMAT MART Team.</strong>
                     </p>
                   </td>
                 </tr>
@@ -497,6 +496,122 @@ Sirrinidhi Enterprises`;
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error("sendWelcomeRegistrationEmail error:", errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * 4. SELLER APPLICATION LIFECYCLE EMAILS (Received, Approved, Declined, Deactivated)
+ */
+export async function sendSellerApplicationEmail(
+  toEmail: string,
+  ownerName: string,
+  businessName: string,
+  status: "received" | "approved" | "rejected" | "suspended",
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!toEmail) return { success: false, error: "Recipient email missing." };
+    const transporter = getSmtpTransporter();
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://rawmet-pme3.vercel.app").replace(/\/$/, "");
+
+    let subject = "";
+    let headline = "";
+    let messageBody = "";
+    let badgeColor = "#0a2458";
+    let ctaText = "Open Seller Page";
+    let ctaLink = `${siteUrl}/seller`;
+
+    if (status === "received") {
+      subject = "RAWMAT MART – Seller Application Received";
+      headline = "Seller Application Under Review";
+      messageBody = `We have received your seller application for <strong>${businessName}</strong>. Your application is currently under admin verification. You will be notified once an administrator reviews your details.`;
+      badgeColor = "#d97706";
+    } else if (status === "approved") {
+      subject = "RAWMAT MART – Your Seller Account Has Been Approved!";
+      headline = "Seller Account Approved!";
+      messageBody = `Congratulations! Your RAWMAT MART Vendor Account for <strong>${businessName}</strong> has been approved. Kindly start listing your products and services.`;
+      badgeColor = "#059669";
+      ctaText = "Start Listing Products";
+    } else if (status === "rejected") {
+      subject = "RAWMAT MART – Seller Application Status Update";
+      headline = "Seller Application Declined";
+      messageBody = `Your seller application for <strong>${businessName}</strong> has not been approved. Please contact RAWMAT MART support for further information.${reason ? `<br/><br/><strong>Remarks:</strong> ${reason}` : ""}`;
+      badgeColor = "#dc2626";
+      ctaText = "View Application Status";
+    } else {
+      subject = "RAWMAT MART – Seller Account Status Update";
+      headline = "Seller Account Deactivated";
+      messageBody = `Your RAWMAT MART seller account for <strong>${businessName}</strong> has been temporarily deactivated by the administrator.${reason ? `<br/><br/><strong>Remarks:</strong> ${reason}` : ""} Please contact RAWMAT MART support for assistance.`;
+      badgeColor = "#475569";
+    }
+
+    const textContent = `Hello ${ownerName || "Seller"},
+
+${messageBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+
+Visit: ${ctaLink}
+
+Regards,
+RAWMAT MART Team`;
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>${subject}</title></head>
+      <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:30px 15px;">
+          <tr><td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+              <tr>
+                <td style="background-color:#0a2458;padding:24px 30px;text-align:center;">
+                  <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:800;">RAWMAT <span style="color:#f97316;">MART</span></h1>
+                  <p style="color:#cbd5e1;margin:4px 0 0 0;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Seller Verification Portal</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:32px 30px;">
+                  <div style="display:inline-block;background-color:${badgeColor};color:#ffffff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;margin-bottom:14px;">${headline}</div>
+                  <p style="color:#0f172a;font-size:15px;margin:0 0 14px 0;font-weight:600;">Hello ${ownerName || "Partner"},</p>
+                  <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 24px 0;">${messageBody}</p>
+                  <div style="text-align:center;margin:24px 0;">
+                    <a href="${ctaLink}" style="display:inline-block;background-color:#f97316;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:50px;font-size:13px;font-weight:800;">${ctaText}</a>
+                  </div>
+                  <p style="color:#334155;font-size:13px;line-height:1.5;margin:0;border-top:1px solid #f1f5f9;padding-top:16px;">
+                    Regards,<br /><strong>RAWMAT MART Team</strong>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td></tr>
+        </table>
+      </body>
+    </html>`;
+
+    try {
+      await transporter.sendMail({
+        from: getSenderAddress(false),
+        to: toEmail,
+        subject,
+        text: textContent,
+        html: htmlContent,
+      });
+      return { success: true };
+    } catch (primaryErr) {
+      console.warn("Primary SMTP failed for seller status email, trying fallback:", primaryErr);
+      const fallbackTransporter = getSmtpTransporter(true);
+      await fallbackTransporter.sendMail({
+        from: getSenderAddress(true),
+        to: toEmail,
+        subject,
+        text: textContent,
+        html: htmlContent,
+      });
+      return { success: true };
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("sendSellerApplicationEmail error:", errorMsg);
     return { success: false, error: errorMsg };
   }
 }

@@ -190,7 +190,7 @@ export function SellerLoginClient() {
     }
   }
 
-  // 4. Forgot Password - Request OTP
+  // 4. Unified Forgot Password - Send Real Reset Link
   async function handleForgotRequestOtp(e: React.FormEvent) {
     e.preventDefault();
     if (!forgotEmail) {
@@ -200,11 +200,10 @@ export function SellerLoginClient() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/seller/forgot-password", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "request_otp",
           email: forgotEmail.trim(),
         }),
       });
@@ -212,15 +211,14 @@ export function SellerLoginClient() {
       const data = await res.json();
 
       if (!res.ok) {
-        showToast(data.error || "Failed to send reset code.", "error");
+        showToast(data.error || "Failed to send password reset link.", "error");
         return;
       }
 
       setForgotOtpSent(true);
-      startOtpTimer(60);
-      showToast(data.message || "Reset OTP sent to your email!", "success");
+      showToast(data.message || "Password reset link sent to your email!", "success");
     } catch {
-      showToast("Unable to send reset code. Please try again.", "error");
+      showToast("Unable to send password reset link. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -601,7 +599,7 @@ export function SellerLoginClient() {
                   ) : (
                     <>
                       <KeyRound className="h-4 w-4" />
-                      <span>Send Password Reset OTP</span>
+                      <span>Send Reset Link</span>
                     </>
                   )}
                 </button>
@@ -617,101 +615,27 @@ export function SellerLoginClient() {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="rounded-xl bg-blue-50/70 border border-blue-200 p-3 text-xs text-blue-900 flex items-center justify-between">
-                  <span className="truncate">
-                    Reset code sent to: <strong>{forgotEmail}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setForgotOtpSent(false)}
-                    className="font-bold underline text-[#0a2458] ml-2 shrink-0"
-                  >
-                    Change
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Enter 6-Digit Email OTP *
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    required
-                    value={forgotOtp}
-                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
-                    placeholder="123456"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base font-mono tracking-widest text-center text-[#0a2458] font-bold focus:border-[#0a2458] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    New Password (min 6 characters) *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type={showNewPassword ? "text" : "password"}
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-10 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
-                    >
-                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs text-emerald-900 space-y-2">
+                  <div className="font-extrabold flex items-center gap-2 text-emerald-800">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Password Reset Link Sent!</span>
                   </div>
+                  <p className="leading-relaxed text-emerald-800">
+                    If an account exists for <strong>{forgotEmail}</strong>, a password reset link valid for 30 minutes has been sent to your email. Please open your inbox and click <strong>RESET MY PASSWORD</strong>.
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Confirm New Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type={showNewPassword ? "text" : "password"}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
-                      className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
                 <button
-                  type="submit"
-                  disabled={loading || forgotOtp.length < 6 || newPassword.length < 6}
-                  className="w-full rounded-full bg-[#0a2458] hover:bg-[#1652b8] disabled:opacity-60 text-white py-3.5 text-sm font-extrabold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  type="button"
+                  onClick={() => {
+                    setForgotOtpSent(false);
+                    setViewMode("login");
+                  }}
+                  className="w-full rounded-full bg-[#0a2458] hover:bg-[#1652b8] text-white py-3 text-sm font-extrabold transition-all"
                 >
-                  {loading ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      <span>Save New Password & Sign In</span>
-                    </>
-                  )}
+                  Return to Sign In
                 </button>
-
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("login")}
-                    className="text-xs font-bold text-slate-600 hover:text-[#0a2458] hover:underline"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+              </div>
             )}
           </div>
         )}

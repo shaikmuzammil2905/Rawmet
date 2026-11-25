@@ -31,13 +31,15 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 interface SessionPayload {
   uid: number;
   role: UserRole;
+  sv?: number;
   exp: number;
 }
 
-export function signSessionToken(uid: number, role: UserRole, ttlSeconds = 60 * 60 * 24 * 7): string {
+export function signSessionToken(uid: number, role: UserRole, sv = 1, ttlSeconds = 60 * 60 * 24 * 7): string {
   const payload: SessionPayload = {
     uid,
     role,
+    sv,
     exp: Math.floor(Date.now() / 1000) + ttlSeconds,
   };
   const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
@@ -91,8 +93,8 @@ export function verifyPaymentOrderToken(
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export async function setSessionCookie(uid: number, role: UserRole): Promise<void> {
-  const token = signSessionToken(uid, role);
+export async function setSessionCookie(uid: number, role: UserRole, sv = 1): Promise<void> {
+  const token = signSessionToken(uid, role, sv);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,

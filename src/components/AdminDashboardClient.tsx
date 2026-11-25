@@ -296,6 +296,33 @@ export function AdminDashboardClient() {
   // Filter and search states
   const [sellerSearch, setSellerSearch] = useState("");
   const [sellerStatusFilter, setSellerStatusFilter] = useState("all");
+  const [viewingVendor, setViewingVendor] = useState<VendorRecord | null>(null);
+  const [editingVendor, setEditingVendor] = useState<VendorRecord | null>(null);
+  const [editVendorForm, setEditVendorForm] = useState({
+    business_name: "",
+    owner_name: "",
+    mobile: "",
+    whatsapp: "",
+    email: "",
+    business_type: "",
+    primary_category: "",
+    business_proof_type: "",
+    business_proof_number: "",
+    door_no: "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "",
+    description: "",
+  });
+  const [savingVendorEdit, setSavingVendorEdit] = useState(false);
+  const [confirmVendorAction, setConfirmVendorAction] = useState<{
+    vendorId: number;
+    businessName: string;
+    action: "approved" | "pending" | "suspended";
+  } | null>(null);
   const [listingSearch, setListingSearch] = useState("");
   const [listingCatFilter, setListingCatFilter] = useState("all");
 
@@ -357,7 +384,7 @@ export function AdminDashboardClient() {
 
   async function updateVendor(
     vendorId: number,
-    verificationStatus: "approved" | "rejected" | "suspended",
+    verificationStatus: "pending" | "approved" | "rejected" | "suspended",
     rejectionReason?: string
   ) {
     const res = await fetch("/api/admin/vendors", {
@@ -365,9 +392,66 @@ export function AdminDashboardClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vendorId, verificationStatus, rejectionReason }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
-      showToast(`Seller marked ${verificationStatus}.`, "success");
+      const label =
+        verificationStatus === "suspended"
+          ? "deactivated"
+          : verificationStatus === "pending"
+          ? "moved to Pending Review"
+          : verificationStatus;
+      showToast(`Seller ${label} successfully!`, "success");
       loadOverview();
+    } else {
+      showToast(out.error || "Failed to update seller status.", "error");
+    }
+  }
+
+  function openEditVendorModal(v: VendorRecord) {
+    setEditingVendor(v);
+    setEditVendorForm({
+      business_name: v.business_name || "",
+      owner_name: v.owner_name || "",
+      mobile: v.mobile || "",
+      whatsapp: v.whatsapp || "",
+      email: v.email || "",
+      business_type: v.business_type || "Manufacturer & Bulk Supplier",
+      primary_category: v.primary_category || v.business_category || "Products",
+      business_proof_type: v.business_proof_type || v.id_proof_type || "GST Registration",
+      business_proof_number: v.business_proof_number || v.gst_number || "",
+      door_no: v.door_no || "",
+      address_line1: v.address_line1 || "",
+      address_line2: v.address_line2 || "",
+      city: v.city || "",
+      state: v.state || "",
+      pincode: v.pincode || "",
+      country: v.country || "India",
+      description: v.description || "",
+    });
+  }
+
+  async function saveEditedVendor(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingVendor) return;
+    setSavingVendorEdit(true);
+    try {
+      const res = await fetch("/api/admin/vendors", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vendorId: editingVendor.id, ...editVendorForm }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast("Seller details updated successfully!", "success");
+        setEditingVendor(null);
+        loadOverview();
+      } else {
+        showToast(out.error || "Failed to update seller details.", "error");
+      }
+    } catch {
+      showToast("Network error updating seller details.", "error");
+    } finally {
+      setSavingVendorEdit(false);
     }
   }
 
@@ -1060,17 +1144,23 @@ export function AdminDashboardClient() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {(["all", "approved", "pending", "rejected"] as const).map((st) => (
+                      {([
+                        { id: "all", label: "All Applications" },
+                        { id: "pending", label: "Pending Applications" },
+                        { id: "approved", label: "Approved Sellers" },
+                        { id: "rejected", label: "Declined / Rejected" },
+                        { id: "suspended", label: "Deactivated" },
+                      ] as const).map((st) => (
                         <button
-                          key={st}
-                          onClick={() => setSellerStatusFilter(st)}
-                          className={`rounded-full px-3 py-1 text-xs font-bold uppercase transition-colors ${
-                            sellerStatusFilter === st
+                          key={st.id}
+                          onClick={() => setSellerStatusFilter(st.id)}
+                          className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+                            sellerStatusFilter === st.id
                               ? "bg-[#0a2458] text-white shadow-sm"
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
                         >
-                          {st}
+                          {st.label}
                         </button>
                       ))}
                     </div>
@@ -1120,14 +1210,20 @@ export function AdminDashboardClient() {
                                 ? "bg-emerald-100 text-emerald-800"
                                 : v.verification_status === "rejected"
                                 ? "bg-rose-100 text-rose-800"
+                                : v.verification_status === "suspended"
+                                ? "bg-slate-200 text-slate-700"
                                 : "bg-amber-100 text-amber-800"
                             }`}
                           >
-                            {v.verification_status}
+                            {v.verification_status === "suspended" ? "Deactivated" : v.verification_status}
                           </span>
                         </div>
 
                         <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-bold">Business Type:</span>
+                            <span className="font-semibold text-slate-800 truncate max-w-[160px]">{v.business_type || "Manufacturer & Bulk Supplier"}</span>
+                          </div>
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500 font-bold">Proof Type:</span>
                             <span className="font-semibold text-slate-800">{v.business_proof_type || "GST Certificate"}</span>
@@ -1151,7 +1247,7 @@ export function AdminDashboardClient() {
                           )}
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500 font-bold">Mobile / WA:</span>
-                            <span className="font-mono text-slate-800">{v.mobile}</span>
+                            <span className="font-mono text-slate-800">{v.mobile} / {v.whatsapp || v.mobile}</span>
                           </div>
                           {v.email && (
                             <div className="flex justify-between items-center">
@@ -1159,6 +1255,10 @@ export function AdminDashboardClient() {
                               <span className="text-slate-700 truncate max-w-[150px]">{v.email}</span>
                             </div>
                           )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-bold">Submitted:</span>
+                            <span className="text-slate-700">{v.created_at ? new Date(v.created_at).toLocaleDateString("en-IN") : "-"}</span>
+                          </div>
                           <div className="pt-1 border-t border-slate-200/60">
                             <span className="text-slate-500 font-bold block mb-0.5">Address:</span>
                             <p className="text-[10px] text-slate-700 leading-tight">{formattedAddress}</p>
@@ -1170,16 +1270,34 @@ export function AdminDashboardClient() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+                          <button
+                            onClick={() => setViewingVendor(v)}
+                            className="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 text-[11px] font-bold transition-all"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => openEditVendorModal(v)}
+                            className="rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0a2458] px-3 py-1.5 text-[11px] font-bold transition-all"
+                          >
+                            Edit
+                          </button>
                           {v.verification_status !== "approved" && (
                             <button
-                              onClick={() => updateVendor(v.id, "approved")}
-                              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-bold transition-all"
+                              onClick={() =>
+                                setConfirmVendorAction({
+                                  vendorId: v.id,
+                                  businessName: v.business_name,
+                                  action: "approved",
+                                })
+                              }
+                              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-2.5 text-[11px] font-bold transition-all"
                             >
-                              Approve Seller
+                              {v.verification_status === "suspended" ? "Reactivate" : "Approve"}
                             </button>
                           )}
-                          {v.verification_status !== "rejected" && (
+                          {v.verification_status === "pending" && (
                             <button
                               onClick={() =>
                                 setRejectModal({
@@ -1189,9 +1307,37 @@ export function AdminDashboardClient() {
                                   reason: "Business ID Proof or document could not be validated.",
                                 })
                               }
-                              className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-2 text-xs font-bold transition-all"
+                              className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-1.5 px-2.5 text-[11px] font-bold transition-all"
                             >
-                              Reject
+                              Decline
+                            </button>
+                          )}
+                          {v.verification_status === "approved" && (
+                            <button
+                              onClick={() =>
+                                setConfirmVendorAction({
+                                  vendorId: v.id,
+                                  businessName: v.business_name,
+                                  action: "suspended",
+                                })
+                              }
+                              className="flex-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white py-1.5 px-2.5 text-[11px] font-bold transition-all"
+                            >
+                              Deactivate
+                            </button>
+                          )}
+                          {v.verification_status === "rejected" && (
+                            <button
+                              onClick={() =>
+                                setConfirmVendorAction({
+                                  vendorId: v.id,
+                                  businessName: v.business_name,
+                                  action: "pending",
+                                })
+                              }
+                              className="flex-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 px-2.5 text-[11px] font-bold transition-all"
+                            >
+                              Reconsider
                             </button>
                           )}
                         </div>
@@ -1234,13 +1380,15 @@ export function AdminDashboardClient() {
                           <tr key={v.id} className="hover:bg-slate-50">
                             <td className="p-3 font-bold text-[#0a2458]">
                               <div className="text-sm font-extrabold">{v.business_name}</div>
+                              <div className="text-[10px] text-slate-500 font-semibold">{v.business_type || "Manufacturer & Bulk Supplier"}</div>
                               <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-50 text-blue-700">
                                 {v.primary_category || v.business_category}
                               </span>
                             </td>
                             <td className="p-3 text-slate-700">
                               <div className="font-semibold text-slate-900">{v.owner_name}</div>
-                              <div className="font-mono text-[11px] text-slate-600">{v.mobile}</div>
+                              <div className="font-mono text-[11px] text-slate-600">Mob: {v.mobile}</div>
+                              <div className="font-mono text-[10px] text-emerald-700">WA: {v.whatsapp || v.mobile}</div>
                               {v.email && <div className="text-[10px] text-slate-400">{v.email}</div>}
                             </td>
                             <td className="p-3 text-slate-700">
@@ -1265,6 +1413,9 @@ export function AdminDashboardClient() {
                               <p className="line-clamp-2 text-[11px] leading-tight font-medium" title={formattedAddress}>
                                 {formattedAddress}
                               </p>
+                              <div className="text-[10px] text-slate-400 mt-1">
+                                Applied: {v.created_at ? new Date(v.created_at).toLocaleDateString("en-IN") : "-"}
+                              </div>
                             </td>
                             <td className="p-3">
                               <span
@@ -1273,35 +1424,89 @@ export function AdminDashboardClient() {
                                     ? "bg-emerald-100 text-emerald-800"
                                     : v.verification_status === "rejected"
                                     ? "bg-rose-100 text-rose-800"
+                                    : v.verification_status === "suspended"
+                                    ? "bg-slate-200 text-slate-700"
                                     : "bg-amber-100 text-amber-800"
                                 }`}
                               >
-                                {v.verification_status}
+                                {v.verification_status === "suspended" ? "Deactivated" : v.verification_status}
                               </span>
                               {v.rejection_reason && (
                                 <div className="text-[10px] text-rose-600 mt-1 max-w-xs">{v.rejection_reason}</div>
                               )}
                             </td>
-                            <td className="p-3 space-x-1.5 whitespace-nowrap">
-                              <button
-                                onClick={() => updateVendor(v.id, "approved")}
-                                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setRejectModal({
-                                    isOpen: true,
-                                    type: "vendor",
-                                    id: v.id,
-                                    reason: "Business ID Proof or document could not be validated.",
-                                  })
-                                }
-                                className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                              >
-                                Reject
-                              </button>
+                            <td className="p-3 whitespace-nowrap">
+                              <div className="flex flex-wrap gap-1">
+                                <button
+                                  onClick={() => setViewingVendor(v)}
+                                  className="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 font-bold text-[11px]"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => openEditVendorModal(v)}
+                                  className="rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0a2458] px-2 py-1 font-bold text-[11px]"
+                                >
+                                  Edit
+                                </button>
+                                {v.verification_status !== "approved" && (
+                                  <button
+                                    onClick={() =>
+                                      setConfirmVendorAction({
+                                        vendorId: v.id,
+                                        businessName: v.business_name,
+                                        action: "approved",
+                                      })
+                                    }
+                                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                                  >
+                                    {v.verification_status === "suspended" ? "Reactivate" : "Approve"}
+                                  </button>
+                                )}
+                                {v.verification_status === "pending" && (
+                                  <button
+                                    onClick={() =>
+                                      setRejectModal({
+                                        isOpen: true,
+                                        type: "vendor",
+                                        id: v.id,
+                                        reason: "Business ID Proof or document could not be validated.",
+                                      })
+                                    }
+                                    className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                                  >
+                                    Decline
+                                  </button>
+                                )}
+                                {v.verification_status === "approved" && (
+                                  <button
+                                    onClick={() =>
+                                      setConfirmVendorAction({
+                                        vendorId: v.id,
+                                        businessName: v.business_name,
+                                        action: "suspended",
+                                      })
+                                    }
+                                    className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-2 py-1 font-bold text-[11px]"
+                                  >
+                                    Deactivate
+                                  </button>
+                                )}
+                                {v.verification_status === "rejected" && (
+                                  <button
+                                    onClick={() =>
+                                      setConfirmVendorAction({
+                                        vendorId: v.id,
+                                        businessName: v.business_name,
+                                        action: "pending",
+                                      })
+                                    }
+                                    className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 font-bold text-[11px]"
+                                  >
+                                    Reconsider
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2941,6 +3146,212 @@ export function AdminDashboardClient() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Seller Approve / Deactivate / Reactivate / Reconsider */}
+      {confirmVendorAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+            <h3 className="font-extrabold text-base text-[#0a2458] mb-2">
+              {confirmVendorAction.action === "approved"
+                ? "Confirm Seller Approval"
+                : confirmVendorAction.action === "suspended"
+                ? "Confirm Seller Deactivation"
+                : "Reconsider Rejected Application"}
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-5">
+              {confirmVendorAction.action === "approved"
+                ? `Are you sure you want to approve "${confirmVendorAction.businessName}"? Their seller account will be activated, they will be notified by email, and their listings will be eligible to appear publicly.`
+                : confirmVendorAction.action === "suspended"
+                ? `Are you sure you want to deactivate "${confirmVendorAction.businessName}"? Their public listings will be hidden immediately and seller publishing will be blocked.`
+                : `Move "${confirmVendorAction.businessName}" back to Pending Review so it can be re-evaluated?`}
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmVendorAction(null)}
+                className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateVendor(confirmVendorAction.vendorId, confirmVendorAction.action);
+                  setConfirmVendorAction(null);
+                }}
+                className={`rounded-full text-white px-5 py-2 text-xs font-bold shadow ${
+                  confirmVendorAction.action === "approved"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : confirmVendorAction.action === "suspended"
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Seller Application Details Modal */}
+      {viewingVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-extrabold text-lg text-[#0a2458]">{viewingVendor.business_name}</h3>
+                <p className="text-xs text-slate-500">Seller Application #{viewingVendor.id} • User ID #{viewingVendor.user_id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingVendor(null)}
+                className="rounded-full p-1.5 hover:bg-slate-100 text-slate-500"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <div><span className="text-slate-400 font-bold block">Owner Name</span><span className="font-bold text-slate-800">{viewingVendor.owner_name}</span></div>
+              <div><span className="text-slate-400 font-bold block">Status</span><span className="font-extrabold uppercase text-[#0a2458]">{viewingVendor.verification_status === "suspended" ? "Deactivated" : viewingVendor.verification_status}</span></div>
+              <div><span className="text-slate-400 font-bold block">Mobile</span><span className="font-mono text-slate-800">{viewingVendor.mobile}</span></div>
+              <div><span className="text-slate-400 font-bold block">WhatsApp</span><span className="font-mono text-slate-800">{viewingVendor.whatsapp || viewingVendor.mobile}</span></div>
+              <div><span className="text-slate-400 font-bold block">Business Email</span><span className="text-slate-800 break-all">{viewingVendor.email}</span></div>
+              <div><span className="text-slate-400 font-bold block">Business Type</span><span className="text-slate-800">{viewingVendor.business_type || "Manufacturer & Bulk Supplier"}</span></div>
+              <div><span className="text-slate-400 font-bold block">Primary Category</span><span className="font-bold text-blue-700">{viewingVendor.primary_category || viewingVendor.business_category}</span></div>
+              <div><span className="text-slate-400 font-bold block">Proof ({viewingVendor.business_proof_type || "GST"})</span><span className="font-mono font-bold text-slate-900">{viewingVendor.business_proof_number || viewingVendor.gst_number || "-"}</span></div>
+              <div className="sm:col-span-2">
+                <span className="text-slate-400 font-bold block">Address</span>
+                <span className="text-slate-800">
+                  {[viewingVendor.door_no, viewingVendor.address_line1, viewingVendor.address_line2, viewingVendor.city, viewingVendor.state, viewingVendor.pincode, viewingVendor.country].filter(Boolean).join(", ") || viewingVendor.address}
+                </span>
+              </div>
+              {viewingVendor.id_proof_url && (
+                <div className="sm:col-span-2">
+                  <span className="text-slate-400 font-bold block">Verification Document</span>
+                  <a href={viewingVendor.id_proof_url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                    Open Uploaded Proof Document ↗
+                  </a>
+                </div>
+              )}
+              <div><span className="text-slate-400 font-bold block">Submitted On</span><span className="text-slate-700">{viewingVendor.created_at || "-"}</span></div>
+              {viewingVendor.approved_at && (
+                <div><span className="text-slate-400 font-bold block">Approved At</span><span className="text-emerald-700">{viewingVendor.approved_at}</span></div>
+              )}
+              {viewingVendor.rejected_at && (
+                <div><span className="text-slate-400 font-bold block">Rejected At</span><span className="text-rose-700">{viewingVendor.rejected_at}</span></div>
+              )}
+              {viewingVendor.rejection_reason && (
+                <div className="sm:col-span-2 text-rose-700 font-semibold">
+                  Remarks: {viewingVendor.rejection_reason}
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewingVendor;
+                  setViewingVendor(null);
+                  openEditVendorModal(target);
+                }}
+                className="rounded-full bg-[#0a2458] text-white px-4 py-2 text-xs font-bold"
+              >
+                Edit Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingVendor(null)}
+                className="rounded-full bg-slate-100 text-slate-700 px-4 py-2 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Seller Details Modal */}
+      {editingVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
+          <form onSubmit={saveEditedVendor} className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 my-8 space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-extrabold text-base text-[#0a2458]">Edit Seller Application #{editingVendor.id}</h3>
+              <button type="button" onClick={() => setEditingVendor(null)} className="rounded-full p-1 hover:bg-slate-100">
+                <X className="h-4 w-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Registered Business Name</label>
+                <input required value={editVendorForm.business_name} onChange={(e) => setEditVendorForm({ ...editVendorForm, business_name: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Owner / Contact Name</label>
+                <input required value={editVendorForm.owner_name} onChange={(e) => setEditVendorForm({ ...editVendorForm, owner_name: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Mobile</label>
+                <input required value={editVendorForm.mobile} onChange={(e) => setEditVendorForm({ ...editVendorForm, mobile: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">WhatsApp</label>
+                <input value={editVendorForm.whatsapp} onChange={(e) => setEditVendorForm({ ...editVendorForm, whatsapp: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Business Email</label>
+                <input type="email" required value={editVendorForm.email} onChange={(e) => setEditVendorForm({ ...editVendorForm, email: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Primary Category</label>
+                <select value={editVendorForm.primary_category} onChange={(e) => setEditVendorForm({ ...editVendorForm, primary_category: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2">
+                  <option value="Products">Products</option>
+                  <option value="Industries">Industries</option>
+                  <option value="Services">Services</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Business Proof Type</label>
+                <input value={editVendorForm.business_proof_type} onChange={(e) => setEditVendorForm({ ...editVendorForm, business_proof_type: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Business Proof / GST Number</label>
+                <input value={editVendorForm.business_proof_number} onChange={(e) => setEditVendorForm({ ...editVendorForm, business_proof_number: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Door / Shop No</label>
+                <input value={editVendorForm.door_no} onChange={(e) => setEditVendorForm({ ...editVendorForm, door_no: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Address Line 1</label>
+                <input value={editVendorForm.address_line1} onChange={(e) => setEditVendorForm({ ...editVendorForm, address_line1: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">City</label>
+                <input value={editVendorForm.city} onChange={(e) => setEditVendorForm({ ...editVendorForm, city: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">State</label>
+                <input value={editVendorForm.state} onChange={(e) => setEditVendorForm({ ...editVendorForm, state: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Pincode</label>
+                <input value={editVendorForm.pincode} onChange={(e) => setEditVendorForm({ ...editVendorForm, pincode: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Country</label>
+                <input value={editVendorForm.country} onChange={(e) => setEditVendorForm({ ...editVendorForm, country: e.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-2" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button type="button" onClick={() => setEditingVendor(null)} className="rounded-full bg-slate-100 text-slate-700 px-4 py-2 text-xs font-bold">Cancel</button>
+              <button type="submit" disabled={savingVendorEdit} className="rounded-full bg-[#0a2458] hover:bg-[#1652b8] text-white px-5 py-2 text-xs font-bold disabled:opacity-60">
+                {savingVendorEdit ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

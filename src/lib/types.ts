@@ -32,6 +32,10 @@ export interface VendorRecord {
   product_details: string;
   verification_status: "pending" | "approved" | "rejected" | "suspended";
   rejection_reason?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  reviewed_by_admin_id?: number | null;
+  updated_at?: string;
   business_type?: string;
   country?: string;
   door_no?: string;

@@ -64,6 +64,7 @@ interface VendorInfo {
   state: string;
   description: string;
   verification_status: "pending" | "approved" | "rejected" | "suspended";
+  rejection_reason?: string;
 }
 
 interface MasterProduct {
@@ -133,6 +134,7 @@ export function UnifiedSellerPageClient() {
 
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [submittingReg, setSubmittingReg] = useState(false);
+  const [resubmitMode, setResubmitMode] = useState(false);
 
   // --------------------------------------------------------------------------
   // FORM: ADD SELLER PRODUCT (3-STEP DYNAMIC DROPDOWNS - Case D)
@@ -352,6 +354,7 @@ export function UnifiedSellerPageClient() {
       }
 
       showToast(data.message || "Seller application submitted! Status: Pending Approval", "success");
+      setResubmitMode(false);
       loadData();
     } catch {
       showToast("Registration error. Please try again.", "error");
@@ -455,7 +458,7 @@ export function UnifiedSellerPageClient() {
   // ==========================================================================
   // CASE A & B: SELLER APPLICATION FORM (GUEST OR REGISTERED USER)
   // ==========================================================================
-  if (!vendor) {
+  if (!vendor || resubmitMode) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
         {/* Banner */}
@@ -464,9 +467,11 @@ export function UnifiedSellerPageClient() {
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] px-3.5 py-1 text-xs font-black uppercase tracking-wider">
                 <Store className="h-3.5 w-3.5" />
-                RAWMAT MART Seller Portal
+                Become a RAWMAT MART Seller
               </span>
-              <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Seller Business Registration</h1>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">
+                {resubmitMode ? "Resubmit Seller Application" : "Apply as Seller"}
+              </h1>
               <p className="mt-1 text-xs sm:text-sm text-blue-100 max-w-xl">
                 Register as a verified industrial seller. Showcase your products, machineries, and turnkey services to verified bulk buyers across India.
               </p>
@@ -862,10 +867,10 @@ export function UnifiedSellerPageClient() {
             Application Status: Pending Verification
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-amber-950 mt-3">
-            Your Seller Application is Under Admin Verification
+            Your seller application is currently under admin verification. Please wait for approval.
           </h2>
           <p className="mt-3 text-sm sm:text-base text-amber-900 max-w-xl mx-auto leading-relaxed">
-            Your seller application for <strong>{vendor.business_name}</strong> has been received and is currently under review by our Admin verification team. Please wait for approval.
+            Your seller application for <strong>{vendor.business_name}</strong> is under review by our Super Admin team. You will be notified via email once approved.
           </p>
 
           <div className="mt-6 rounded-2xl bg-white border border-amber-200 p-4 text-xs text-slate-700 max-w-lg mx-auto text-left space-y-1.5">
@@ -903,11 +908,61 @@ export function UnifiedSellerPageClient() {
         <div className="rounded-3xl bg-rose-50 border-2 border-rose-300 p-6 sm:p-10 shadow-lg text-center">
           <ShieldAlert className="h-14 w-14 text-rose-600 mx-auto mb-4" />
           <h2 className="text-2xl sm:text-3xl font-extrabold text-rose-950">
-            Your Seller Application Has Not Been Approved
+            Your seller application has been declined. Please check your application status or contact support.
           </h2>
           <p className="mt-3 text-sm sm:text-base text-rose-900 max-w-xl mx-auto leading-relaxed">
-            Please contact the administrator for further information regarding verification requirements and resubmission.
+            Your seller application has not been approved. Please contact RAWMAT MART support for further information.
           </p>
+          {vendor.rejection_reason && (
+            <div className="mt-4 rounded-2xl bg-white border border-rose-200 p-4 text-xs text-rose-800 max-w-lg mx-auto">
+              <strong>Admin Remarks:</strong> {vendor.rejection_reason}
+            </div>
+          )}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setResubmitMode(true)}
+              className="rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-6 py-2.5 text-xs font-bold shadow"
+            >
+              Revise & Resubmit Application
+            </button>
+            <a
+              href="tel:+917382177653"
+              className="rounded-full bg-[#0a2458] text-white px-6 py-2.5 text-xs font-bold"
+            >
+              Contact Support: +91 7382177653
+            </a>
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-slate-300 text-slate-700 px-6 py-2.5 text-xs font-bold"
+            >
+              Return to Buyer Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // CASE F: DEACTIVATED / SUSPENDED SELLER
+  // ==========================================================================
+  if (vendor.verification_status === "suspended") {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+        <div className="rounded-3xl bg-slate-100 border-2 border-slate-300 p-6 sm:p-10 shadow-lg text-center">
+          <ShieldAlert className="h-14 w-14 text-slate-600 mx-auto mb-4" />
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+            Your Seller Account Is Currently Deactivated
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-slate-700 max-w-xl mx-auto leading-relaxed">
+            Your RAWMAT MART seller account for <strong>{vendor.business_name}</strong> has been deactivated by the administrator. Your public listings are hidden and publishing is disabled.
+          </p>
+          {vendor.rejection_reason && (
+            <div className="mt-4 rounded-2xl bg-white border border-slate-200 p-4 text-xs text-slate-700 max-w-lg mx-auto">
+              <strong>Remarks:</strong> {vendor.rejection_reason}
+            </div>
+          )}
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
               href="tel:+917382177653"
@@ -946,7 +1001,7 @@ export function UnifiedSellerPageClient() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 border border-emerald-400 text-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-wider">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Your Vendor Account Has Been Approved!
+                Your Seller Account Has Been Approved!
               </span>
               <span className="rounded-full bg-[#f97316] px-3 py-0.5 text-xs font-bold uppercase">
                 {vendor.business_category}
@@ -956,7 +1011,7 @@ export function UnifiedSellerPageClient() {
               {vendor.business_name}
             </h1>
             <p className="text-xs sm:text-sm text-blue-100 mt-1 max-w-2xl leading-relaxed">
-              Congratulations! Your seller account has been successfully approved. Kindly start listing your products and reach thousands of buyers on RAWMAT MART.
+              Congratulations! Your RAWMAT MART Vendor Account has been approved. Kindly start listing your products and services.
             </p>
           </div>
 

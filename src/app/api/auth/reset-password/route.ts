@@ -89,12 +89,13 @@ export async function POST(req: Request) {
     // Hash new password using scrypt
     const newPasswordHash = hashPassword(password);
 
-    // Invalidate reset token immediately upon single use
+    // Invalidate reset token immediately upon single use and revoke existing sessions
     db.prepare(
       `UPDATE users 
        SET password_hash = ?, 
            reset_token_hash = '', 
            reset_token_expires_at = '', 
+           session_version = COALESCE(session_version, 1) + 1,
            last_login_at = datetime('now') 
        WHERE id = ?`
     ).run(newPasswordHash, user.id);

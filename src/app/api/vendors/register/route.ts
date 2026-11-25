@@ -3,6 +3,7 @@ import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { getCurrentSession } from "@/lib/data";
+import { sendSellerApplicationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
         .prepare(`SELECT * FROM vendors WHERE user_id = ?`)
         .get(userId) as Record<string, unknown> | undefined;
 
-      if (existingVendor) {
+      if (existingVendor && existingVendor.verification_status !== "rejected") {
         return NextResponse.json(
           {
             error: "You have already submitted a seller application.",
@@ -93,11 +94,11 @@ export async function POST(req: Request) {
         );
       }
 
-      // Create new common user
+      // Create new common user (stays 'customer' until Admin approves seller application)
       const userIns = db
         .prepare(
           `INSERT INTO users (name, email, mobile, whatsapp, password_hash, role, status)
-           VALUES (?, ?, ?, ?, ?, 'vendor', 'active')`
+           VALUES (?, ?, ?, ?, ?, 'customer', 'active')`
         )
         .run(
           ownerName,
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
         );
 
       userId = Number(userIns.lastInsertRowid);
-      await setSessionCookie(userId, "vendor");
+      await setSessionCookie(userId, "customer", 1);
     }
 
     const businessName = (body.businessName || "").trim();
@@ -144,20 +145,25 @@ export async function POST(req: Request) {
       );
     }
 
-    // Insert into vendors table
-    const vendorIns = db
-      .prepare(
-        `INSERT INTO vendors (
-          user_id, business_name, owner_name, mobile, whatsapp, email,
-          business_category, product_service_category, gst_number, id_proof_type,
-          id_proof_url, logo_url, address, city, state, description, product_details,
-          verification_status, whatsapp_opt_in, whatsapp_categories, business_type,
-          country, door_no, address_line1, address_line2, pincode,
-          business_proof_type, business_proof_number, primary_category
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        userId,
+    // Controlled resubmission if rejected; otherwise insert new vendor application as 'pending'
+    const existingRejected = db
+      .prepare(`SELECT id FROM vendors WHERE user_id = ? AND verification_status = 'rejected' LIMIT 1`)
+      .get(userId) as { id: number } | undefined;
+
+    let vendorId: number;
+    if (existingRejected) {
+      db.prepare(
+        `UPDATE vendors SET
+          business_name = ?, owner_name = ?, mobile = ?, whatsapp = ?, email = ?,
+          business_category = ?, product_service_category = ?, gst_number = ?, id_proof_type = ?,
+          id_proof_url = ?, logo_url = ?, address = ?, city = ?, state = ?, description = ?,
+          product_details = ?, verification_status = 'pending', rejection_reason = '',
+          whatsapp_opt_in = ?, whatsapp_categories = ?, business_type = ?,
+          country = ?, door_no = ?, address_line1 = ?, address_line2 = ?, pincode = ?,
+          business_proof_type = ?, business_proof_number = ?, primary_category = ?,
+          updated_at = datetime('now')
+         WHERE id = ?`
+      ).run(
         businessName,
         ownerName,
         mobile,
@@ -184,18 +190,71 @@ export async function POST(req: Request) {
         pincode,
         businessProofType,
         businessProofNumber,
-        primaryCategory
+        primaryCategory,
+        existingRejected.id
       );
+      vendorId = existingRejected.id;
+    } else {
+      const vendorIns = db
+        .prepare(
+          `INSERT INTO vendors (
+            user_id, business_name, owner_name, mobile, whatsapp, email,
+            business_category, product_service_category, gst_number, id_proof_type,
+            id_proof_url, logo_url, address, city, state, description, product_details,
+            verification_status, whatsapp_opt_in, whatsapp_categories, business_type,
+            country, door_no, address_line1, address_line2, pincode,
+            business_proof_type, business_proof_number, primary_category, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          userId,
+          businessName,
+          ownerName,
+          mobile,
+          whatsapp || `91${mobile}`,
+          email,
+          primaryCategory,
+          catSlug,
+          gstNumber,
+          businessProofType,
+          body.idProofUrl || "",
+          body.logoUrl || "/images/rawmet-logo.png",
+          fullAddress,
+          city,
+          state,
+          body.description || "",
+          body.productDetails || "",
+          body.whatsappOptIn === false ? 0 : 1,
+          JSON.stringify([catSlug]),
+          businessType,
+          country,
+          doorNo,
+          addressLine1,
+          addressLine2,
+          pincode,
+          businessProofType,
+          businessProofNumber,
+          primaryCategory
+        );
+      vendorId = Number(vendorIns.lastInsertRowid);
+    }
 
-    // Update user role to vendor so they have seller access while keeping buyer features
-    db.prepare(`UPDATE users SET role = 'vendor' WHERE id = ?`).run(userId);
+    db.prepare(
+      `INSERT INTO audit_logs (user_id, user_email, action, details)
+       VALUES (?, ?, 'vendor_application_submitted', ?)`
+    ).run(userId, email, `Seller application #${vendorId} (${businessName}) submitted as pending.`);
 
     await syncDbToS3();
+
+    // Send confirmation email via Nodemailer (best-effort)
+    sendSellerApplicationEmail(email, ownerName, businessName, "received").catch((e) =>
+      console.error("Failed to send seller application received email:", e)
+    );
 
     return NextResponse.json(
       {
         success: true,
-        vendorId: Number(vendorIns.lastInsertRowid),
+        vendorId,
         status: "pending",
         message:
           "Your seller application has been submitted successfully! It is now under admin verification.",

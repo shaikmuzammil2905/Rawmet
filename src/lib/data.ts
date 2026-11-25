@@ -44,10 +44,13 @@ export async function getCurrentSession(): Promise<CurrentSessionInfo | null> {
 
   const db = getDb();
   const userRow = db
-    .prepare(`SELECT id, name, email, mobile, whatsapp, role, status, created_at FROM users WHERE id = ?`)
+    .prepare(`SELECT id, name, email, mobile, whatsapp, role, status, session_version, created_at FROM users WHERE id = ?`)
     .get(payload.uid) as Record<string, unknown> | undefined;
 
   if (!userRow || userRow.status === "suspended") return null;
+  if (payload.sv && userRow.session_version && Number(payload.sv) !== Number(userRow.session_version)) {
+    return null;
+  }
 
   const user = sanitizeUser(userRow);
   const vendorRow = db
@@ -199,6 +202,7 @@ export function queryListings(filters: ListingFilters = {}): {
   if (statusFilter !== "all") {
     conditions.push(`l.status = ?`);
     params.push(statusFilter);
+    conditions.push(`(l.is_published = 1 OR l.is_published IS NULL)`);
     conditions.push(`(v.id IS NULL OR v.verification_status = 'approved' OR l.vendor_id = 1)`);
   }
 
@@ -310,9 +314,12 @@ export function getListingBySlug(slug: string): {
               COALESCE(v.whatsapp, '917382177653') as vendor_whatsapp,
               COALESCE(v.mobile, '7382177653') as vendor_mobile,
               COALESCE(v.city, 'Pan India') as vendor_city
-       FROM listings l
-       LEFT JOIN vendors v ON v.id = l.vendor_id
-       WHERE LOWER(l.slug) = ?`
+        FROM listings l
+        LEFT JOIN vendors v ON v.id = l.vendor_id
+        WHERE LOWER(l.slug) = ?
+          AND (l.status = 'approved' OR l.status IS NULL)
+          AND (l.is_published = 1 OR l.is_published IS NULL)
+          AND (v.id IS NULL OR v.verification_status = 'approved' OR l.vendor_id = 1)`
     )
     .get(decoded) as unknown as ListingRecord | undefined;
 
@@ -327,7 +334,10 @@ export function getListingBySlug(slug: string): {
                 COALESCE(v.city, 'Pan India') as vendor_city
          FROM listings l
          LEFT JOIN vendors v ON v.id = l.vendor_id
-         WHERE l.slug LIKE ? OR LOWER(l.title) = ? OR CAST(l.id AS TEXT) = ?
+         WHERE (l.slug LIKE ? OR LOWER(l.title) = ? OR CAST(l.id AS TEXT) = ?)
+           AND (l.status = 'approved' OR l.status IS NULL)
+           AND (l.is_published = 1 OR l.is_published IS NULL)
+           AND (v.id IS NULL OR v.verification_status = 'approved' OR l.vendor_id = 1)
          ORDER BY l.id DESC LIMIT 1`
       )
       .get(`${decoded}%`, decoded, decoded) as unknown as ListingRecord | undefined;
@@ -375,6 +385,8 @@ export function getListingBySlug(slug: string): {
        FROM listings l
        LEFT JOIN vendors v ON v.id = l.vendor_id
        WHERE l.status = 'approved'
+         AND (l.is_published = 1 OR l.is_published IS NULL)
+         AND (v.id IS NULL OR v.verification_status = 'approved' OR l.vendor_id = 1)
          AND l.id != ? AND (l.category_slug = ? OR l.type = ?)
        ORDER BY CASE WHEN l.category_slug = ? THEN 0 ELSE 1 END, l.id DESC
        LIMIT 4`
@@ -396,7 +408,7 @@ export function getListingBySlug(slug: string): {
        WHERE (l.master_product_id = ? OR l.id = ?)
          AND (l.status = 'approved' OR l.status IS NULL)
          AND (l.is_published = 1 OR l.is_published IS NULL)
-         AND (v.verification_status = 'approved' OR v.verification_status IS NULL)
+         AND (v.verification_status = 'approved' OR l.vendor_id = 1)
        ORDER BY l.price_numeric ASC, l.id ASC`
     )
     .all(row.id, masterId, masterId) as unknown as Array<{

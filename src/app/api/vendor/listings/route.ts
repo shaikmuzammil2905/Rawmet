@@ -188,6 +188,12 @@ export async function PATCH(req: Request) {
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
   }
+  if (session.vendor.verification_status !== "approved") {
+    return NextResponse.json(
+      { error: "Only approved active sellers can modify listings." },
+      { status: 403 }
+    );
+  }
 
   try {
     const body = (await req.json()) as {
@@ -270,6 +276,12 @@ export async function DELETE(req: Request) {
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
+  }
+  if (session.vendor.verification_status !== "approved") {
+    return NextResponse.json(
+      { error: "Only approved active sellers can delete listings." },
+      { status: 403 }
+    );
   }
 
   const { searchParams } = new URL(req.url);
