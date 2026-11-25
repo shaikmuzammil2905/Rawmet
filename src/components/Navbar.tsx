@@ -178,7 +178,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full max-w-full overflow-hidden bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 no-print">
+      <header className="sticky top-0 z-50 w-full max-w-full overflow-visible bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 no-print">
         {/* Top Corporate Information Bar */}
         <div className="hidden lg:block bg-[#06183d] text-white/90 text-[11.5px] font-medium">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 flex items-center justify-between h-8">
@@ -265,6 +265,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="Shop"
+                href="/products"
                 active={pathname.startsWith("/products") || pathname.startsWith("/machineries") || pathname.startsWith("/services")}
                 items={SHOP_LINKS}
                 isOpen={openDropdown === "shop"}
@@ -273,6 +274,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="Sell"
+                href="/seller"
                 active={pathname.startsWith("/vendor") || pathname.startsWith("/seller")}
                 items={
                   session.user?.role === "vendor"
@@ -288,6 +290,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="Products"
+                href="/products"
                 active={pathname.startsWith("/products")}
                 items={productLinks}
                 isOpen={openDropdown === "products"}
@@ -296,6 +299,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="Industry"
+                href="/machineries"
                 active={pathname.startsWith("/machineries")}
                 items={machineryLinks}
                 isOpen={openDropdown === "machineries"}
@@ -304,6 +308,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="Services"
+                href="/services"
                 active={pathname.startsWith("/services")}
                 items={serviceLinks}
                 isOpen={openDropdown === "services"}
@@ -334,6 +339,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
               <NavDropdown
                 label="About Us"
+                href="/about"
                 active={pathname.startsWith("/about") || pathname.startsWith("/promote")}
                 items={ABOUT_LINKS}
                 isOpen={openDropdown === "about"}
@@ -569,12 +575,14 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
 function NavDropdown({
   label,
+  href,
   active,
   items,
   isOpen,
   onToggle,
 }: {
   label: string;
+  href: string;
   active: boolean;
   items: Array<{ label: string; href: string }>;
   isOpen: boolean;
@@ -586,11 +594,11 @@ function NavDropdown({
       onMouseEnter={() => onToggle(true)}
       onMouseLeave={() => onToggle(false)}
     >
-      <button
-        type="button"
-        onClick={() => onToggle(!isOpen)}
+      <Link
+        href={href}
+        onClick={() => onToggle(false)}
         aria-expanded={isOpen}
-        className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all flex items-center gap-1 ${
+        className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all flex items-center gap-1 cursor-pointer ${
           active
             ? "bg-[#0a2458] text-white shadow-sm"
             : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
@@ -600,7 +608,7 @@ function NavDropdown({
         <ChevronDown
           className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
-      </button>
+      </Link>
 
       {isOpen && (
         <div className="absolute top-full left-0 pt-2 z-50 min-w-[240px]">
