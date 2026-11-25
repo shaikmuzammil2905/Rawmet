@@ -207,10 +207,18 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 Launching Offer
               </Link>
               <span className="text-white/25">|</span>
-              {session.authenticated ? (
+              <Link href="/seller/login" className="text-orange-300 hover:text-white transition-colors font-bold">
+                Seller Login
+              </Link>
+              <span className="text-white/25">|</span>
+              <Link href="/login" prefetch={true} className="hover:text-white transition-colors font-semibold">
+                Login
+              </Link>
+              {session.authenticated && (
                 <>
+                  <span className="text-white/25">|</span>
                   <Link href={dashboardHref} className="text-orange-300 hover:text-white transition-colors font-bold">
-                    {session.user?.name ? `Hi, ${session.user.name.split(" ")[0]}` : "My Account"}
+                    {session.user?.name ? `Hi, ${session.user.name.split(" ")[0]}` : "Dashboard"}
                   </Link>
                   <span className="text-white/25">|</span>
                   <button
@@ -220,16 +228,6 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   >
                     Logout
                   </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/seller/login" className="text-orange-300 hover:text-white transition-colors font-bold">
-                    Seller Login
-                  </Link>
-                  <span className="text-white/25">|</span>
-                  <Link href="/login" className="hover:text-white transition-colors">
-                    Login
-                  </Link>
                 </>
               )}
             </div>
@@ -343,58 +341,70 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </nav>
 
-            {/* Desktop Action CTAs: User Login / Admin Panel / Dashboard button */}
-            <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+            {/* Desktop Action CTAs: User Login / Seller Login / Dashboard button */}
+            <div className="hidden xl:flex items-center gap-2.5 shrink-0">
               {session.authenticated ? (
                 <>
                   <Link
                     href={dashboardHref}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                    prefetch={true}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-4 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer"
                   >
                     <User className="h-4 w-4 text-[#f97316]" />
-                    <span className="truncate max-w-[140px]">
+                    <span className="truncate max-w-[130px]">
                       {session.user?.name ? session.user.name.split(" ")[0] : "Dashboard"}
                     </span>
+                  </Link>
+                  <Link
+                    href="/login"
+                    prefetch={true}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 hover:border-[#0a2458] bg-white hover:bg-slate-50 text-[#0a2458] px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                    title="Sign in with different account"
+                  >
+                    <span>Login</span>
                   </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
                     title="Logout"
                     aria-label="Logout"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm active:scale-95 cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Login</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/login"
+                    prefetch={true}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer"
+                    aria-label="User Login"
+                  >
+                    <User className="h-4 w-4 text-[#f97316]" />
+                    <span>Login</span>
+                  </Link>
+                </div>
               )}
             </div>
 
-            {/* Mobile Right Controls - Compact & Non-Overflowing */}
+            {/* Mobile Right Controls - Compact, Responsive & Non-Overflowing */}
             <div className="flex xl:hidden items-center gap-1.5 shrink-0">
               <Link
-                href={session.authenticated ? dashboardHref : "/login"}
-                className="inline-flex items-center gap-1 rounded-full bg-[#0a2458] text-white px-2.5 py-1.5 text-xs font-semibold max-w-[110px] truncate"
+                href="/login"
+                prefetch={true}
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex items-center gap-1 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-3 py-1.5 text-xs font-bold active:scale-95 transition-all shadow-sm cursor-pointer"
+                aria-label="User Login"
               >
                 <User className="h-3.5 w-3.5 text-[#f97316] shrink-0" />
-                <span className="truncate">
-                  {session.authenticated
-                    ? (session.user?.name ? (session.user.name.length > 9 ? "Account" : session.user.name) : "Account")
-                    : "Login"}
-                </span>
+                <span>{session.authenticated ? (session.user?.name ? (session.user.name.length > 7 ? "Account" : session.user.name.split(" ")[0]) : "Account") : "Login"}</span>
               </Link>
               <button
                 type="button"
                 onClick={() => setMobileOpen((prev) => !prev)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
-                className="inline-flex items-center justify-center rounded-lg p-1.5 text-[#0a2458] hover:bg-blue-50 transition-colors shrink-0"
+                className="inline-flex items-center justify-center rounded-lg p-1.5 text-[#0a2458] hover:bg-blue-50 transition-colors shrink-0 cursor-pointer"
               >
                 {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
@@ -406,18 +416,44 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
         {mobileOpen && (
           <div className="xl:hidden border-t border-slate-200 bg-white max-h-[calc(100vh-70px)] overflow-y-auto shadow-xl">
             <div className="px-4 py-4 space-y-3">
-              <div className="pb-2 border-b border-slate-100">
+              <div className="grid grid-cols-2 gap-2 pb-2 border-b border-slate-100">
                 <Link
-                  href={session.authenticated ? dashboardHref : "/login"}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] text-white px-4 py-2.5 text-sm font-semibold shadow"
+                  href="/login"
+                  prefetch={true}
+                  onClick={() => setMobileOpen(false)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3 py-2.5 text-xs font-bold shadow active:scale-95 cursor-pointer"
                 >
-                  <User className="h-4 w-4" />
-                  <span>{session.authenticated ? (session.user?.name || "My Account") : "Login"}</span>
+                  <User className="h-3.5 w-3.5 text-[#f97316]" />
+                  <span>{session.authenticated ? "User Login / Switch" : "User Login"}</span>
+                </Link>
+                <Link
+                  href="/seller/login"
+                  prefetch={true}
+                  onClick={() => setMobileOpen(false)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[#f97316] text-white px-3 py-2.5 text-xs font-bold shadow active:scale-95 cursor-pointer"
+                >
+                  <Tag className="h-3.5 w-3.5" />
+                  <span>Seller Login</span>
                 </Link>
               </div>
 
+              {session.authenticated && (
+                <div className="pb-2 border-b border-slate-100">
+                  <Link
+                    href={dashboardHref}
+                    prefetch={true}
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-[#0a2458] text-[#0a2458] hover:bg-blue-50 px-4 py-2 text-xs font-bold shadow-xs active:scale-95 cursor-pointer"
+                  >
+                    <User className="h-3.5 w-3.5 text-[#f97316]" />
+                    <span>Go to My Dashboard ({session.user?.role?.toUpperCase()}) →</span>
+                  </Link>
+                </div>
+              )}
+
               <MobileNavGroup
                 title="Seller Portal"
+                onItemClick={() => setMobileOpen(false)}
                 items={[
                   { label: "Seller Business Registration", href: "/vendor/register" },
                   { label: "Seller Login", href: "/seller/login" },
@@ -425,6 +461,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
               <MobileNavGroup
                 title="Main Navigation"
+                onItemClick={() => setMobileOpen(false)}
                 items={[
                   { label: "Home", href: "/" },
                   { label: "Shop (All Products, Industry, Services)", href: "/products" },
@@ -436,9 +473,9 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   { label: "Promote Us • Grow With Us", href: "/promote" },
                 ]}
               />
-              <MobileNavGroup title="Products" items={productLinks} />
-              <MobileNavGroup title="Industry" items={machineryLinks} />
-              <MobileNavGroup title="Services" items={serviceLinks} />
+              <MobileNavGroup title="Products" onItemClick={() => setMobileOpen(false)} items={productLinks} />
+              <MobileNavGroup title="Industry" onItemClick={() => setMobileOpen(false)} items={machineryLinks} />
+              <MobileNavGroup title="Services" onItemClick={() => setMobileOpen(false)} items={serviceLinks} />
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                 <span className="font-semibold text-[#0a2458]">Verified GST Business Portal</span>
@@ -449,8 +486,11 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               {session.authenticated && (
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="w-full mt-2 rounded-lg border border-red-200 bg-red-50 py-2 text-sm font-semibold text-red-700"
+                  onClick={async () => {
+                    setMobileOpen(false);
+                    await handleLogout();
+                  }}
+                  className="w-full mt-2 rounded-lg border border-red-200 bg-red-50 py-2 text-sm font-semibold text-red-700 cursor-pointer"
                 >
                   Sign Out
                 </button>
@@ -585,9 +625,11 @@ function NavDropdown({
 function MobileNavGroup({
   title,
   items,
+  onItemClick,
 }: {
   title: string;
   items: Array<{ label: string; href: string }>;
+  onItemClick?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -606,7 +648,9 @@ function MobileNavGroup({
             <Link
               key={item.href}
               href={item.href}
-              className="block py-1.5 text-xs font-semibold text-slate-600 hover:text-[#f97316]"
+              prefetch={true}
+              onClick={onItemClick}
+              className="block py-1.5 text-xs font-semibold text-slate-600 hover:text-[#f97316] transition-colors"
             >
               {item.label}
             </Link>
