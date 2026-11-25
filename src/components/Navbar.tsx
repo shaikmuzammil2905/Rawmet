@@ -206,13 +206,31 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 Launching Offer
               </Link>
               <span className="text-white/25">|</span>
-              <Link href="/seller/login" className="text-orange-300 hover:text-white transition-colors font-bold">
-                Seller Login
-              </Link>
-              <span className="text-white/25">|</span>
-              <Link href="/login" className="hover:text-white transition-colors">
-                Login
-              </Link>
+              {session.authenticated ? (
+                <>
+                  <Link href={dashboardHref} className="text-orange-300 hover:text-white transition-colors font-bold">
+                    {session.user?.name ? `Hi, ${session.user.name.split(" ")[0]}` : "My Account"}
+                  </Link>
+                  <span className="text-white/25">|</span>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="text-slate-300 hover:text-red-400 transition-colors font-semibold"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/seller/login" className="text-orange-300 hover:text-white transition-colors font-bold">
+                    Seller Login
+                  </Link>
+                  <span className="text-white/25">|</span>
+                  <Link href="/login" className="hover:text-white transition-colors">
+                    Login
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -324,36 +342,48 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </nav>
 
-            {/* Desktop Action CTAs: User Login button */}
+            {/* Desktop Action CTAs: User Login / Dashboard button */}
             <div className="hidden lg:flex items-center gap-2.5 shrink-0">
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
-              >
-                <User className="h-4 w-4" />
-                <span>Login</span>
-              </Link>
-              {session.authenticated && (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  title="Logout"
-                  aria-label="Logout"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
+              {session.authenticated ? (
+                <>
+                  <Link
+                    href={dashboardHref}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                  >
+                    <User className="h-4 w-4 text-[#f97316]" />
+                    <span className="truncate max-w-[140px]">
+                      {session.user?.name ? session.user.name.split(" ")[0] : "Dashboard"}
+                    </span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    title="Logout"
+                    aria-label="Logout"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-colors shadow-sm"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
                 >
-                  <LogOut className="h-4 w-4" />
-                </button>
+                  <User className="h-4 w-4" />
+                  <span>Login</span>
+                </Link>
               )}
             </div>
 
             {/* Mobile Right Controls */}
             <div className="flex xl:hidden items-center gap-2">
               <Link
-                href="/login"
+                href={session.authenticated ? dashboardHref : "/login"}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
               >
-                <User className="h-3.5 w-3.5" />
-                <span>Login</span>
+                <User className="h-3.5 w-3.5 text-[#f97316]" />
+                <span>{session.authenticated ? (session.user?.name ? session.user.name.split(" ")[0] : "Account") : "Login"}</span>
               </Link>
               <button
                 type="button"

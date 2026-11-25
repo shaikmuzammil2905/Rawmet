@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword } from "@/lib/auth";
 
@@ -51,6 +51,8 @@ export async function POST(req: Request) {
       expiresAt,
       user.id
     );
+
+    await syncDbToS3();
 
     return NextResponse.json({
       success: true,

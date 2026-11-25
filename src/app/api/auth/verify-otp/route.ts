@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { sanitizeUser, setSessionCookie } from "@/lib/auth";
 
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     }
 
     db.prepare(`UPDATE users SET otp_code = '', otp_expires_at = '' WHERE id = ?`).run(Number(row.id));
+    await syncDbToS3();
     const user = sanitizeUser(row);
     await setSessionCookie(user.id, user.role);
 
