@@ -1034,9 +1034,14 @@ export function AdminDashboardClient() {
                 !q ||
                 v.business_name.toLowerCase().includes(q) ||
                 v.owner_name.toLowerCase().includes(q) ||
+                (v.business_proof_number || "").toLowerCase().includes(q) ||
+                (v.business_proof_type || "").toLowerCase().includes(q) ||
+                (v.primary_category || "").toLowerCase().includes(q) ||
                 (v.gst_number || "").toLowerCase().includes(q) ||
                 (v.mobile || "").includes(q) ||
+                (v.email || "").toLowerCase().includes(q) ||
                 (v.city || "").toLowerCase().includes(q) ||
+                (v.country || "").toLowerCase().includes(q) ||
                 (v.state || "").toLowerCase().includes(q);
               return matchesStatus && matchesSearch;
             });
@@ -1051,7 +1056,7 @@ export function AdminDashboardClient() {
                         Sellers & Business Verifications ({filteredSellers.length} / {data.vendors.length})
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Manage registered manufacturers, bulk suppliers, GST validations, and catalog rights.
+                        Manage registered manufacturers, bulk suppliers, business proof documents, and catalog rights.
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1077,7 +1082,7 @@ export function AdminDashboardClient() {
                       type="text"
                       value={sellerSearch}
                       onChange={(e) => setSellerSearch(e.target.value)}
-                      placeholder="Search sellers by business name, owner, GST number, mobile, city..."
+                      placeholder="Search sellers by business name, proof ID, category, country, city, mobile..."
                       className="w-full rounded-xl border border-slate-300 pl-10 pr-4 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0a2458] focus:outline-none bg-slate-50/50"
                     />
                   </div>
@@ -1085,77 +1090,114 @@ export function AdminDashboardClient() {
 
                 {/* Mobile View: High-density responsive cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3.5">
-                  {filteredSellers.map((v) => (
-                    <div
-                      key={v.id}
-                      className="rounded-2xl border border-slate-200 p-4 bg-white shadow-sm flex flex-col justify-between space-y-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h4 className="font-extrabold text-sm text-[#0a2458] truncate">{v.business_name}</h4>
-                          <p className="text-xs text-slate-600 font-semibold">{v.owner_name}</p>
-                          <p className="text-[11px] text-slate-500">{v.city}, {v.state}</p>
-                        </div>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase shrink-0 ${
-                            v.verification_status === "approved"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : v.verification_status === "rejected"
-                              ? "bg-rose-100 text-rose-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {v.verification_status}
-                        </span>
-                      </div>
+                  {filteredSellers.map((v) => {
+                    const formattedAddress = [
+                      v.door_no ? `Door/Shop #${v.door_no}` : null,
+                      v.address_line1,
+                      v.address_line2,
+                      v.city,
+                      v.state,
+                      v.pincode,
+                      v.country || "India"
+                    ].filter(Boolean).join(", ") || v.address || "Address not specified";
 
-                      <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-bold">GST:</span>
-                          <span className="font-mono text-slate-800 font-bold">{v.gst_number || "Awaiting Doc"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-bold">Mobile / WA:</span>
-                          <span className="font-mono text-slate-800">{v.mobile}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-bold">Category:</span>
-                          <span className="font-semibold text-slate-700 uppercase">{v.business_category}</span>
-                        </div>
-                        {v.rejection_reason && (
-                          <div className="text-rose-600 font-medium pt-1 border-t border-rose-100">
-                            Reason: {v.rejection_reason}
+                    return (
+                      <div
+                        key={v.id}
+                        className="rounded-2xl border border-slate-200 p-4 bg-white shadow-sm flex flex-col justify-between space-y-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-extrabold text-sm text-[#0a2458] truncate">{v.business_name}</h4>
+                            <p className="text-xs text-slate-600 font-semibold">{v.owner_name}</p>
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-50 text-blue-700">
+                              {v.primary_category || v.business_category}
+                            </span>
                           </div>
-                        )}
-                      </div>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase shrink-0 ${
+                              v.verification_status === "approved"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : v.verification_status === "rejected"
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {v.verification_status}
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                        {v.verification_status !== "approved" && (
-                          <button
-                            onClick={() => updateVendor(v.id, "approved")}
-                            className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-bold transition-all"
-                          >
-                            Approve Seller
-                          </button>
-                        )}
-                        {v.verification_status !== "rejected" && (
-                          <button
-                            onClick={() =>
-                              setRejectModal({
-                                isOpen: true,
-                                type: "vendor",
-                                id: v.id,
-                                reason: "GST Certificate / Authentic ID could not be verified.",
-                              })
-                            }
-                            className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-2 text-xs font-bold transition-all"
-                          >
-                            Reject
-                          </button>
-                        )}
+                        <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-bold">Proof Type:</span>
+                            <span className="font-semibold text-slate-800">{v.business_proof_type || "GST Certificate"}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-bold">Proof ID:</span>
+                            <span className="font-mono text-slate-900 font-bold">{v.business_proof_number || v.gst_number || "Awaiting Doc"}</span>
+                          </div>
+                          {v.id_proof_url && (
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-200/60">
+                              <span className="text-slate-500 font-bold">Proof File:</span>
+                              <a
+                                href={v.id_proof_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 font-bold hover:underline text-[10px] flex items-center gap-1"
+                              >
+                                View Uploaded Document ↗
+                              </a>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-bold">Mobile / WA:</span>
+                            <span className="font-mono text-slate-800">{v.mobile}</span>
+                          </div>
+                          {v.email && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-500 font-bold">Email:</span>
+                              <span className="text-slate-700 truncate max-w-[150px]">{v.email}</span>
+                            </div>
+                          )}
+                          <div className="pt-1 border-t border-slate-200/60">
+                            <span className="text-slate-500 font-bold block mb-0.5">Address:</span>
+                            <p className="text-[10px] text-slate-700 leading-tight">{formattedAddress}</p>
+                          </div>
+                          {v.rejection_reason && (
+                            <div className="text-rose-600 font-medium pt-1 border-t border-rose-100">
+                              Reason: {v.rejection_reason}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                          {v.verification_status !== "approved" && (
+                            <button
+                              onClick={() => updateVendor(v.id, "approved")}
+                              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-bold transition-all"
+                            >
+                              Approve Seller
+                            </button>
+                          )}
+                          {v.verification_status !== "rejected" && (
+                            <button
+                              onClick={() =>
+                                setRejectModal({
+                                  isOpen: true,
+                                  type: "vendor",
+                                  id: v.id,
+                                  reason: "Business ID Proof or document could not be validated.",
+                                })
+                              }
+                              className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-2 text-xs font-bold transition-all"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {filteredSellers.length === 0 && (
                     <div className="col-span-full py-8 text-center text-xs text-slate-500">
                       No sellers match your search or filter.
@@ -1165,71 +1207,108 @@ export function AdminDashboardClient() {
 
                 {/* Desktop View: Full Table */}
                 <div className="hidden lg:block rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 overflow-x-auto shadow-sm">
-                  <table className="w-full text-xs text-left min-w-[650px]">
+                  <table className="w-full text-xs text-left min-w-[780px]">
                     <thead className="bg-slate-50 text-slate-700 uppercase font-bold border-b">
                       <tr>
-                        <th className="p-3">Business</th>
-                        <th className="p-3">Owner</th>
-                        <th className="p-3">GST Number</th>
-                        <th className="p-3">Mobile / WA</th>
-                        <th className="p-3">Category</th>
+                        <th className="p-3">Business & Category</th>
+                        <th className="p-3">Owner & Contact</th>
+                        <th className="p-3">Business Proof & Doc</th>
+                        <th className="p-3">Detailed Address</th>
                         <th className="p-3">Status</th>
                         <th className="p-3">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredSellers.map((v) => (
-                        <tr key={v.id} className="hover:bg-slate-50">
-                          <td className="p-3 font-bold text-[#0a2458]">
-                            {v.business_name}
-                            <div className="text-[11px] font-normal text-slate-500">{v.city}, {v.state}</div>
-                          </td>
-                          <td className="p-3 text-slate-700">{v.owner_name}</td>
-                          <td className="p-3 font-mono text-[11px]">{v.gst_number || "Awaiting Doc"}</td>
-                          <td className="p-3 font-mono">{v.mobile}</td>
-                          <td className="p-3 font-semibold uppercase text-slate-600">{v.business_category}</td>
-                          <td className="p-3">
-                            <span
-                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
-                                v.verification_status === "approved"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : v.verification_status === "rejected"
-                                  ? "bg-rose-100 text-rose-800"
-                                  : "bg-amber-100 text-amber-800"
-                              }`}
-                            >
-                              {v.verification_status}
-                            </span>
-                            {v.rejection_reason && (
-                              <div className="text-[10px] text-rose-600 mt-1 max-w-xs">{v.rejection_reason}</div>
-                            )}
-                          </td>
-                          <td className="p-3 space-x-1.5 whitespace-nowrap">
-                            <button
-                              onClick={() => updateVendor(v.id, "approved")}
-                              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                setRejectModal({
-                                  isOpen: true,
-                                  type: "vendor",
-                                  id: v.id,
-                                  reason: "GST Certificate / Authentic ID could not be verified.",
-                                })
-                              }
-                              className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
-                            >
-                              Reject
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredSellers.map((v) => {
+                        const formattedAddress = [
+                          v.door_no ? `Door/Shop #${v.door_no}` : null,
+                          v.address_line1,
+                          v.address_line2,
+                          v.city,
+                          v.state,
+                          v.pincode,
+                          v.country || "India"
+                        ].filter(Boolean).join(", ") || v.address || "Address not specified";
+
+                        return (
+                          <tr key={v.id} className="hover:bg-slate-50">
+                            <td className="p-3 font-bold text-[#0a2458]">
+                              <div className="text-sm font-extrabold">{v.business_name}</div>
+                              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-blue-50 text-blue-700">
+                                {v.primary_category || v.business_category}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-700">
+                              <div className="font-semibold text-slate-900">{v.owner_name}</div>
+                              <div className="font-mono text-[11px] text-slate-600">{v.mobile}</div>
+                              {v.email && <div className="text-[10px] text-slate-400">{v.email}</div>}
+                            </td>
+                            <td className="p-3 text-slate-700">
+                              <div className="text-[11px] font-semibold text-slate-500">
+                                {v.business_proof_type || "GST Certificate"}
+                              </div>
+                              <div className="font-mono font-bold text-slate-900 text-xs">
+                                {v.business_proof_number || v.gst_number || "Awaiting Doc"}
+                              </div>
+                              {v.id_proof_url && (
+                                <a
+                                  href={v.id_proof_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-blue-600 font-bold hover:underline mt-0.5"
+                                >
+                                  View Document ↗
+                                </a>
+                              )}
+                            </td>
+                            <td className="p-3 text-slate-600 max-w-xs">
+                              <p className="line-clamp-2 text-[11px] leading-tight font-medium" title={formattedAddress}>
+                                {formattedAddress}
+                              </p>
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                                  v.verification_status === "approved"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : v.verification_status === "rejected"
+                                    ? "bg-rose-100 text-rose-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {v.verification_status}
+                              </span>
+                              {v.rejection_reason && (
+                                <div className="text-[10px] text-rose-600 mt-1 max-w-xs">{v.rejection_reason}</div>
+                              )}
+                            </td>
+                            <td className="p-3 space-x-1.5 whitespace-nowrap">
+                              <button
+                                onClick={() => updateVendor(v.id, "approved")}
+                                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setRejectModal({
+                                    isOpen: true,
+                                    type: "vendor",
+                                    id: v.id,
+                                    reason: "Business ID Proof or document could not be validated.",
+                                  })
+                                }
+                                className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 font-bold text-[11px]"
+                              >
+                                Reject
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {filteredSellers.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="p-6 text-center text-slate-500">
+                          <td colSpan={6} className="p-6 text-center text-slate-500">
                             No sellers match your search or filter.
                           </td>
                         </tr>
@@ -2169,10 +2248,17 @@ export function AdminDashboardClient() {
                           Owner_Name: v.owner_name,
                           Mobile: v.mobile,
                           Email: v.email,
-                          GST_Number: v.gst_number,
-                          Category: v.business_category,
+                          Primary_Category: v.primary_category || v.business_category,
+                          Proof_Type: v.business_proof_type || "GST Certificate",
+                          Proof_Number: v.business_proof_number || v.gst_number || "",
+                          Proof_Doc_URL: v.id_proof_url || "",
+                          Door_No: v.door_no || "",
+                          Address_Line1: v.address_line1 || "",
+                          Address_Line2: v.address_line2 || "",
                           City: v.city,
                           State: v.state,
+                          Pincode: v.pincode || "",
+                          Country: v.country || "India",
                           Status: v.verification_status,
                           Rejection_Reason: v.rejection_reason || "",
                         }))

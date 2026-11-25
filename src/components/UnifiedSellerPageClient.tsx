@@ -10,6 +10,7 @@ import {
   Clock,
   Edit3,
   Eye,
+  EyeOff,
   FileText,
   FileUp,
   Inbox,
@@ -105,17 +106,31 @@ export function UnifiedSellerPageClient() {
   const [activeTab, setActiveTab] = useState<"overview" | "listings" | "add" | "enquiries" | "profile">("overview");
 
   // --------------------------------------------------------------------------
-  // FORM: REGISTRATION (Case B)
+  // FORM: REGISTRATION (Case B & Guest Direct Registration)
   // --------------------------------------------------------------------------
+  const [regOwnerName, setRegOwnerName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regMobile, setRegMobile] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+
   const [regBusinessName, setRegBusinessName] = useState("");
+  const [regPrimaryCategory, setRegPrimaryCategory] = useState<"Products" | "Industries" | "Services">("Products");
   const [regBusinessType, setRegBusinessType] = useState("Manufacturer");
-  const [regBusinessCategory, setRegBusinessCategory] = useState("Industrial Products");
-  const [regGstNumber, setRegGstNumber] = useState("");
-  const [regAddress, setRegAddress] = useState("");
+  const [regBusinessProofType, setRegBusinessProofType] = useState("GST Registration Certificate");
+  const [regBusinessProofNumber, setRegBusinessProofNumber] = useState("");
+  const [regIdProofUrl, setRegIdProofUrl] = useState("");
+
+  // Address Breakdown
+  const [regCountry, setRegCountry] = useState("India");
   const [regCity, setRegCity] = useState("");
   const [regState, setRegState] = useState("");
+  const [regDoorNo, setRegDoorNo] = useState("");
+  const [regAddressLine1, setRegAddressLine1] = useState("");
+  const [regAddressLine2, setRegAddressLine2] = useState("");
+  const [regPincode, setRegPincode] = useState("");
   const [regDescription, setRegDescription] = useState("");
-  const [regIdProofUrl, setRegIdProofUrl] = useState("");
+
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [submittingReg, setSubmittingReg] = useState(false);
 
@@ -267,23 +282,65 @@ export function UnifiedSellerPageClient() {
     }
   }
 
-  // Submit Registration (Case B)
+  // Submit Registration
   async function handleRegisterSeller(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!regBusinessName.trim()) {
+      showToast("Please enter your registered business name.", "error");
+      return;
+    }
+    if (!regBusinessProofNumber.trim()) {
+      showToast(`Please enter your ${regBusinessProofType} number.`, "error");
+      return;
+    }
+    if (!regCity.trim() || !regAddressLine1.trim()) {
+      showToast("Please enter your city and address line 1.", "error");
+      return;
+    }
+    if (!user && (!regOwnerName.trim() || !regEmail.trim() || regMobile.replace(/\D/g, "").length !== 10 || regPassword.length < 6)) {
+      showToast("Please provide your name, valid email, 10-digit mobile, and password (min 6 chars).", "error");
+      return;
+    }
+
     setSubmittingReg(true);
     try {
+      const fullAddress = [
+        regDoorNo.trim(),
+        regAddressLine1.trim(),
+        regAddressLine2.trim(),
+        regCity.trim(),
+        regState.trim(),
+        regPincode.trim(),
+        regCountry.trim(),
+      ]
+        .filter(Boolean)
+        .join(", ");
+
       const res = await fetch("/api/vendors/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessName: regBusinessName,
+          ownerName: user?.name || regOwnerName.trim(),
+          email: user?.email || regEmail.trim(),
+          mobile: user?.mobile || regMobile.trim(),
+          password: regPassword,
+          businessName: regBusinessName.trim(),
           businessType: regBusinessType,
-          businessCategory: regBusinessCategory,
-          gstNumber: regGstNumber,
-          address: regAddress,
-          city: regCity,
-          state: regState,
-          description: regDescription,
+          businessCategory: regPrimaryCategory,
+          primaryCategory: regPrimaryCategory,
+          businessProofType: regBusinessProofType,
+          businessProofNumber: regBusinessProofNumber.trim(),
+          gstNumber: regBusinessProofNumber.trim(),
+          country: regCountry.trim() || "India",
+          city: regCity.trim(),
+          state: regState.trim(),
+          doorNo: regDoorNo.trim(),
+          addressLine1: regAddressLine1.trim(),
+          addressLine2: regAddressLine2.trim(),
+          pincode: regPincode.trim(),
+          address: fullAddress,
+          description: regDescription.trim(),
           idProofUrl: regIdProofUrl,
         }),
       });
@@ -396,235 +453,380 @@ export function UnifiedSellerPageClient() {
   }
 
   // ==========================================================================
-  // CASE A: USER IS NOT LOGGED IN
-  // ==========================================================================
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:py-16">
-        <div className="rounded-3xl bg-gradient-to-r from-[#0a2458] to-[#123983] p-8 sm:p-12 text-white shadow-xl text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] px-3.5 py-1 text-xs font-black uppercase tracking-wider">
-            <Store className="h-3.5 w-3.5" />
-            RAWMAT MART Seller Portal
-          </span>
-          <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Sell on India's Real-Time B2B Industrial Portal
-          </h1>
-          <p className="mt-3 text-sm sm:text-base text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            One common account for both Buying and Selling. Register or log in to your RAWMAT MART account to manage listings, connect with buyers, and grow your industrial sales.
-          </p>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/login?next=/vendor/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-8 py-3.5 text-sm font-extrabold shadow-lg transition-all transform active:scale-98"
-            >
-              <Store className="h-4 w-4" />
-              <span>REGISTER AS A SELLER</span>
-            </Link>
-            <Link
-              href="/seller/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-slate-100 text-[#0a2458] px-8 py-3.5 text-sm font-extrabold shadow-lg transition-all transform active:scale-98"
-            >
-              <Lock className="h-4 w-4 text-[#0a2458]" />
-              <span>LOGIN TO SELLER ACCOUNT</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Benefits Grid */}
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <BadgeCheck className="h-8 w-8 text-[#f97316] mb-3" />
-            <h3 className="font-extrabold text-[#0a2458] text-base">GST Verified Trust</h3>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-              Showcase authentic GST credentials and build immediate credibility with industrial bulk buyers across India.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <Package className="h-8 w-8 text-[#0a2458] mb-3" />
-            <h3 className="font-extrabold text-[#0a2458] text-base">Instant Catalogue Publishing</h3>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-              Select verified admin products and set your own competitive prices, MOQ, and supply locations with instant approval.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <MessageCircle className="h-8 w-8 text-emerald-600 mb-3" />
-            <h3 className="font-extrabold text-[#0a2458] text-base">Direct WhatsApp & Calls</h3>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-              Receive verified buyer enquiries and quotations directly on your phone and WhatsApp in real time.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ==========================================================================
-  // CASE B: LOGGED IN, BUT HAS NOT APPLIED AS A SELLER
+  // CASE A & B: SELLER APPLICATION FORM (GUEST OR REGISTERED USER)
   // ==========================================================================
   if (!vendor) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
         {/* Banner */}
         <div className="rounded-3xl bg-gradient-to-r from-[#0a2458] to-[#123983] p-6 sm:p-8 text-white shadow-lg mb-8">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] px-3 py-1 text-xs font-bold">
-            <BadgeCheck className="h-3.5 w-3.5" />
-            Common User Account Linked: {user.name} ({user.email})
-          </span>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Seller Business Registration</h1>
-          <p className="mt-1 text-xs sm:text-sm text-blue-100">
-            Apply to become a verified seller using your existing account. No new password needed!
-          </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] px-3.5 py-1 text-xs font-black uppercase tracking-wider">
+                <Store className="h-3.5 w-3.5" />
+                RAWMAT MART Seller Portal
+              </span>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Seller Business Registration</h1>
+              <p className="mt-1 text-xs sm:text-sm text-blue-100 max-w-xl">
+                Register as a verified industrial seller. Showcase your products, machineries, and turnkey services to verified bulk buyers across India.
+              </p>
+            </div>
+            {!user && (
+              <Link
+                href="/seller/login"
+                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white hover:bg-slate-100 text-[#0a2458] px-5 py-2.5 text-xs font-bold shadow transition-all active:scale-95"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                <span>Already a Seller? Login</span>
+              </Link>
+            )}
+          </div>
+          {user && (
+            <div className="mt-4 pt-3 border-t border-white/15 flex items-center gap-2 text-xs text-blue-200">
+              <BadgeCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>Common Account Linked: <strong>{user.name}</strong> ({user.email}) • Mobile: <strong>{user.mobile}</strong></span>
+            </div>
+          )}
         </div>
 
         {/* Application Form */}
         <form onSubmit={handleRegisterSeller} className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Owner / Contact Name *</label>
-              <input
-                type="text"
-                disabled
-                value={user.name}
-                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600 font-medium"
-              />
-              <span className="text-[11px] text-slate-400">Pre-filled from your account</span>
-            </div>
+          {/* 1. Account / Owner Information */}
+          <div>
+            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">1</span>
+              <span>Owner & Contact Credentials</span>
+            </h3>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Registered Business Name *</label>
-              <input
-                type="text"
-                required
-                value={regBusinessName}
-                onChange={(e) => setRegBusinessName(e.target.value)}
-                placeholder="e.g. Bharat Rubber Products Pvt Ltd"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Mobile Number *</label>
-              <input
-                type="text"
-                disabled
-                value={user.mobile}
-                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600 font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Registered Email *</label>
-              <input
-                type="text"
-                disabled
-                value={user.email}
-                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600 font-medium"
-              />
-            </div>
-
-            {/* Business Type Selection */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Business Type *</label>
-              <select
-                value={regBusinessType}
-                onChange={(e) => setRegBusinessType(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
-              >
-                <option value="Manufacturer">Manufacturer</option>
-                <option value="Bulk Supplier">Bulk Supplier</option>
-                <option value="Distributor">Distributor</option>
-                <option value="Wholesaler">Wholesaler</option>
-                <option value="Retailer">Retailer</option>
-                <option value="Service Provider">Service Provider</option>
-              </select>
-            </div>
-
-            {/* Primary Business Category */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Primary Category *</label>
-              <select
-                value={regBusinessCategory}
-                onChange={(e) => setRegBusinessCategory(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
-              >
-                <option value="Industrial Products">Industrial Products</option>
-                <option value="Machinery & Equipment">Machinery & Equipment</option>
-                <option value="Services">Services</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">GST Number / Authentic Business ID *</label>
-              <input
-                type="text"
-                required
-                value={regGstNumber}
-                onChange={(e) => setRegGstNumber(e.target.value.toUpperCase())}
-                placeholder="e.g. 36AABCU9603R1ZM"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm uppercase font-mono focus:border-[#0a2458] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Upload GST / Business ID Proof (Optional)</label>
-              <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 px-3 py-2.5 text-xs font-semibold text-[#0a2458] cursor-pointer hover:bg-blue-100/50 transition-colors">
-                <FileUp className="h-4 w-4 text-[#f97316]" />
-                <span>{uploadingDoc ? "Uploading..." : regIdProofUrl ? "Document Uploaded ✓" : "Upload Document (PDF/Image)"}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Owner / Contact Person Name *</label>
                 <input
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.webp,.pdf"
-                  onChange={(e) => e.target.files?.[0] && uploadDocument(e.target.files[0])}
-                  className="hidden"
+                  type="text"
+                  required
+                  value={user ? user.name : regOwnerName}
+                  onChange={(e) => setRegOwnerName(e.target.value)}
+                  disabled={Boolean(user)}
+                  placeholder="e.g. Rajesh Kulkarni"
+                  className={`w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none ${
+                    user ? "bg-slate-100 text-slate-600 font-medium" : "bg-white"
+                  }`}
                 />
-              </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Registered Business Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={user ? user.email : regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  disabled={Boolean(user)}
+                  placeholder="e.g. sales@company.com"
+                  className={`w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none ${
+                    user ? "bg-slate-100 text-slate-600 font-medium" : "bg-white"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Mobile Number (10 Digits) *</label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  value={user ? user.mobile : regMobile}
+                  onChange={(e) => setRegMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  disabled={Boolean(user)}
+                  placeholder="e.g. 9820112233"
+                  className={`w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none ${
+                    user ? "bg-slate-100 text-slate-600 font-medium" : "bg-white font-mono"
+                  }`}
+                />
+              </div>
+
+              {!user && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Create Seller Account Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 pr-10 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Used for your common buyer/seller account login</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* 2. Primary Category Selection (Products, Industries, Services) */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">2</span>
+              <span>Primary Category *</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Select the primary business classification you supply or manufacture:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: "Products", label: "Products", desc: "Rubber, Plastic, Metals, Polymers, Bio Chemicals" },
+                { id: "Industries", label: "Industries", desc: "Turnkey Plants, Machineries, Heavy Equipment" },
+                { id: "Services", label: "Services", desc: "AMC, Logistics, Loans, Maintenance, Business Reg" },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setRegPrimaryCategory(cat.id as any)}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    regPrimaryCategory === cat.id
+                      ? "bg-[#0a2458] text-white border-[#0a2458] shadow-md ring-2 ring-[#f97316]/40"
+                      : "bg-slate-50/70 hover:bg-slate-100 border-slate-200 text-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-sm">{cat.label}</span>
+                    <span
+                      className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        regPrimaryCategory === cat.id ? "border-white bg-[#f97316]" : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {regPrimaryCategory === cat.id && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </span>
+                  </div>
+                  <p
+                    className={`text-[11px] mt-1 line-clamp-2 ${
+                      regPrimaryCategory === cat.id ? "text-blue-100" : "text-slate-500"
+                    }`}
+                  >
+                    {cat.desc}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Business Name & Business Type */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">3</span>
+              <span>Business Profile</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Registered Business Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={regBusinessName}
+                  onChange={(e) => setRegBusinessName(e.target.value)}
+                  placeholder="e.g. Bharat Rubber & Polymers Pvt Ltd"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Business Constitution / Type *</label>
+                <select
+                  value={regBusinessType}
+                  onChange={(e) => setRegBusinessType(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium focus:border-[#0a2458] focus:outline-none"
+                >
+                  <option value="Manufacturer">Manufacturer</option>
+                  <option value="Bulk Supplier">Bulk Supplier / Trader</option>
+                  <option value="Turnkey Plant OEM">Turnkey Plant OEM</option>
+                  <option value="Distributor">Distributor / Stockist</option>
+                  <option value="Wholesaler">Wholesaler</option>
+                  <option value="Service Provider">Industrial Service Provider</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Business Proof & Verification Documents */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">4</span>
+              <span>Business Proof & Verification</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Select your business registration type and enter the corresponding verification number:
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Select Business Proof Type *</label>
+                <select
+                  value={regBusinessProofType}
+                  onChange={(e) => setRegBusinessProofType(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
+                >
+                  <option value="GST Registration Certificate">GST Registration Certificate (GSTIN)</option>
+                  <option value="MSME / Udyam Certificate">MSME / Udyam Registration Certificate</option>
+                  <option value="Shop & Establishment License">Shop & Establishment License</option>
+                  <option value="Trade License / Factory License">Trade License / Factory License</option>
+                  <option value="Certificate of Incorporation (CIN)">Certificate of Incorporation (CIN / MCA)</option>
+                  <option value="Partnership Deed / LLP">Partnership Deed / LLP Agreement</option>
+                  <option value="Business PAN / Proprietorship Proof">Business PAN / Proprietorship Proof</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  {regBusinessProofType} Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regBusinessProofNumber}
+                  onChange={(e) => setRegBusinessProofNumber(e.target.value.toUpperCase())}
+                  placeholder="e.g. 36AABCU9603R1ZM / UDYAM-XX-00-0000000"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm uppercase font-mono font-bold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Upload Your Business ID Proof ({regBusinessProofType})
+                </label>
+                <label className="flex items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/50 p-4 text-xs font-bold text-[#0a2458] cursor-pointer hover:bg-blue-100/60 transition-colors">
+                  <FileUp className="h-5 w-5 text-[#f97316]" />
+                  <span>
+                    {uploadingDoc
+                      ? "Uploading document..."
+                      : regIdProofUrl
+                      ? "Business ID Proof Uploaded Successfully ✓"
+                      : "Upload Business ID Proof Document (PDF / JPG / PNG)"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,.pdf"
+                    onChange={(e) => e.target.files?.[0] && uploadDocument(e.target.files[0])}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Address Breakdown: City, Country, Down Full Address */}
+          <div className="border-t border-slate-100 pt-5 space-y-4">
+            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">5</span>
+              <span>Factory / Business Address & Location</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Country *</label>
+                <input
+                  type="text"
+                  required
+                  value={regCountry}
+                  onChange={(e) => setRegCountry(e.target.value)}
+                  placeholder="India"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">City *</label>
+                <input
+                  type="text"
+                  required
+                  value={regCity}
+                  onChange={(e) => setRegCity(e.target.value)}
+                  placeholder="e.g. Hyderabad / Mumbai"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">State *</label>
+                <input
+                  type="text"
+                  required
+                  value={regState}
+                  onChange={(e) => setRegState(e.target.value)}
+                  placeholder="e.g. Telangana / Maharashtra"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Door No / Shop No / Unit No *</label>
+                <input
+                  type="text"
+                  required
+                  value={regDoorNo}
+                  onChange={(e) => setRegDoorNo(e.target.value)}
+                  placeholder="e.g. Shop No. 12 / Plot No. 45-B"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Pincode / Postal Code *</label>
+                <input
+                  type="text"
+                  required
+                  value={regPincode}
+                  onChange={(e) => setRegPincode(e.target.value)}
+                  placeholder="e.g. 500037"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">City *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Address Line 1 (Street / Industrial Area / Estate) *</label>
               <input
                 type="text"
                 required
-                value={regCity}
-                onChange={(e) => setRegCity(e.target.value)}
-                placeholder="e.g. Guntur / Hyderabad"
+                value={regAddressLine1}
+                onChange={(e) => setRegAddressLine1(e.target.value)}
+                placeholder="e.g. Phase 2, IDA Industrial Estate, Main Road"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">State *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Address Line 2 (Landmark / Area / Phase)</label>
               <input
                 type="text"
-                required
-                value={regState}
-                onChange={(e) => setRegState(e.target.value)}
-                placeholder="e.g. Andhra Pradesh / Telangana"
+                value={regAddressLine2}
+                onChange={(e) => setRegAddressLine2(e.target.value)}
+                placeholder="e.g. Near Industrial Substation / Beside Warehouse"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Factory / Office Full Address *</label>
-            <input
-              type="text"
-              required
-              value={regAddress}
-              onChange={(e) => setRegAddress(e.target.value)}
-              placeholder="Plot No, Industrial Estate, Phase, PIN Code"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Business & Product Description</label>
+          {/* 6. Description */}
+          <div className="border-t border-slate-100 pt-5">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Business & Product Capabilities Description</label>
             <textarea
               rows={3}
               value={regDescription}
               onChange={(e) => setRegDescription(e.target.value)}
-              placeholder="Certifications, years in business, manufacturing capacity..."
+              placeholder="Certifications, years in business, monthly production capacity, client references..."
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
             />
           </div>
@@ -632,14 +834,14 @@ export function UnifiedSellerPageClient() {
           <button
             type="submit"
             disabled={submittingReg}
-            className="w-full rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 text-white py-3.5 text-sm font-extrabold shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 text-white py-4 text-sm font-extrabold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             {submittingReg ? (
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <Store className="h-4 w-4" />
-                <span>Submit Seller Application for Verification</span>
+                <Store className="h-5 w-5" />
+                <span>Submit Seller Business Registration for Verification</span>
               </>
             )}
           </button>

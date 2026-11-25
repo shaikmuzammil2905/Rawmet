@@ -432,6 +432,14 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE users ADD COLUMN otp_last_sent_at TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN reset_token_hash TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN reset_token_expires_at TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN country TEXT DEFAULT 'India'",
+    "ALTER TABLE vendors ADD COLUMN door_no TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN address_line1 TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN address_line2 TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN pincode TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN business_proof_type TEXT DEFAULT 'GST Registration'",
+    "ALTER TABLE vendors ADD COLUMN business_proof_number TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN primary_category TEXT DEFAULT 'Products'",
   ];
   for (const sql of migrations) {
     try {

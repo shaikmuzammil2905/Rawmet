@@ -18,15 +18,23 @@ export async function POST(req: Request) {
       email?: string;
       password?: string;
       businessType?: string;
-      businessCategory?: string; // "Industrial Products", "Machinery & Equipment", "Services"
+      businessCategory?: string; // "Products", "Industries", "Services"
+      primaryCategory?: string;
       productServiceCategory?: string;
       gstNumber?: string;
+      businessProofType?: string;
+      businessProofNumber?: string;
       idProofType?: string;
       idProofUrl?: string;
       logoUrl?: string;
       address?: string;
+      doorNo?: string;
+      addressLine1?: string;
+      addressLine2?: string;
       city?: string;
       state?: string;
+      country?: string;
+      pincode?: string;
       description?: string;
       productDetails?: string;
       whatsappOptIn?: boolean;
@@ -104,18 +112,33 @@ export async function POST(req: Request) {
     }
 
     const businessName = (body.businessName || "").trim();
-    const gstNumber = (body.gstNumber || "").trim().toUpperCase();
-    const address = (body.address || "").trim();
+    const primaryCategory = (body.primaryCategory || body.businessCategory || "Products").trim();
+    const businessProofType = (body.businessProofType || body.idProofType || "GST Registration").trim();
+    const businessProofNumber = (body.businessProofNumber || body.gstNumber || "").trim().toUpperCase();
+    const gstNumber = businessProofNumber; // Backward compatibility
+
+    const country = (body.country || "India").trim();
+    const city = (body.city || "").trim();
+    const state = (body.state || "").trim();
+    const doorNo = (body.doorNo || "").trim();
+    const addressLine1 = (body.addressLine1 || "").trim();
+    const addressLine2 = (body.addressLine2 || "").trim();
+    const pincode = (body.pincode || "").trim();
+
+    const fullAddress = (
+      body.address ||
+      [doorNo, addressLine1, addressLine2, city, state, pincode, country].filter(Boolean).join(", ")
+    ).trim();
+
     const whatsapp = (body.whatsapp || mobile).replace(/\D/g, "");
     const businessType = body.businessType || "Manufacturer & Bulk Supplier";
-    const businessCategory = body.businessCategory || "Industrial Products";
     const catSlug = (body.productServiceCategory || "rubber").trim();
 
-    if (!ownerName || !businessName || mobile.length !== 10 || !email || !gstNumber || !address) {
+    if (!ownerName || !businessName || mobile.length !== 10 || !email || !businessProofNumber || (!fullAddress && !city)) {
       return NextResponse.json(
         {
           error:
-            "Please fill all mandatory fields: Owner Name, Business Name, 10-digit Mobile, Business Email, GST/Authentic ID, and Business Address.",
+            "Please fill all required fields: Business Name, Business Proof Number, City, and Address.",
         },
         { status: 400 }
       );
@@ -128,8 +151,10 @@ export async function POST(req: Request) {
           user_id, business_name, owner_name, mobile, whatsapp, email,
           business_category, product_service_category, gst_number, id_proof_type,
           id_proof_url, logo_url, address, city, state, description, product_details,
-          verification_status, whatsapp_opt_in, whatsapp_categories, business_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`
+          verification_status, whatsapp_opt_in, whatsapp_categories, business_type,
+          country, door_no, address_line1, address_line2, pincode,
+          business_proof_type, business_proof_number, primary_category
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         userId,
@@ -138,20 +163,28 @@ export async function POST(req: Request) {
         mobile,
         whatsapp || `91${mobile}`,
         email,
-        businessCategory,
+        primaryCategory,
         catSlug,
         gstNumber,
-        body.idProofType || "GST Certificate",
+        businessProofType,
         body.idProofUrl || "",
         body.logoUrl || "/images/rawmet-logo.png",
-        address,
-        body.city || "",
-        body.state || "",
+        fullAddress,
+        city,
+        state,
         body.description || "",
         body.productDetails || "",
         body.whatsappOptIn === false ? 0 : 1,
         JSON.stringify([catSlug]),
-        businessType
+        businessType,
+        country,
+        doorNo,
+        addressLine1,
+        addressLine2,
+        pincode,
+        businessProofType,
+        businessProofNumber,
+        primaryCategory
       );
 
     // Update user role to vendor so they have seller access while keeping buyer features

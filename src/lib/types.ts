@@ -33,6 +33,14 @@ export interface VendorRecord {
   verification_status: "pending" | "approved" | "rejected" | "suspended";
   rejection_reason?: string;
   business_type?: string;
+  country?: string;
+  door_no?: string;
+  address_line1?: string;
+  address_line2?: string;
+  pincode?: string;
+  business_proof_type?: string;
+  business_proof_number?: string;
+  primary_category?: string;
   whatsapp_opt_in: number;
   whatsapp_categories: string;
   created_at: string;
