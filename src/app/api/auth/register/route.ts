@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword, sanitizeUser, setSessionCookie } from "@/lib/auth";
+import { sendWelcomeRegistrationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +52,11 @@ export async function POST(req: Request) {
 
     const user = sanitizeUser(userRow);
     await setSessionCookie(user.id, user.role);
+
+    // Send real confirmation welcome email
+    sendWelcomeRegistrationEmail(email, name).catch((err) => {
+      console.warn("sendWelcomeRegistrationEmail async error:", err);
+    });
 
     return NextResponse.json({ success: true, user }, { status: 201 });
   } catch {
