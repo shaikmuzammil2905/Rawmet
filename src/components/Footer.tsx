@@ -143,6 +143,7 @@ export function Footer({
             <li><Link href="/subscriptions" className="hover:text-orange-400 transition-colors">Launching Offer</Link></li>
             <li><Link href="/promote" className="hover:text-orange-400 transition-colors">Promote Us • Grow With Us</Link></li>
             <li><Link href="/about#contact" className="hover:text-orange-400 transition-colors">Contact</Link></li>
+            <li><Link href="/admin/login" className="hover:text-orange-400 transition-colors text-xs font-semibold text-orange-300/80">Admin Portal</Link></li>
           </ul>
         </div>
 
@@ -198,7 +199,13 @@ export function Footer({
       <div className="border-t border-white/10 bg-[#04112c]">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
           <p>© {new Date().getFullYear()} RAWMAT MART — Sirrinidhi Enterprises. All Rights Reserved.</p>
-          <p>GST / Authentic ID Verification • Multi-Vendor B2B Industrial Marketplace</p>
+          <div className="flex items-center gap-3">
+            <span>GST / Authentic ID Verification • Multi-Vendor B2B Industrial Marketplace</span>
+            <span>•</span>
+            <Link href="/admin/login" className="text-slate-400 hover:text-orange-400 transition-colors font-semibold">
+              Admin Portal
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

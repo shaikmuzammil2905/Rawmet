@@ -251,9 +251,19 @@ export function LoginClient() {
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <Link
                 href={getDestination(currentSession.user.role)}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0a2458] hover:bg-[#06183d] text-white py-2.5 px-4 text-xs font-bold shadow transition-all"
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold shadow transition-all text-white ${
+                  currentSession.user.role === "admin"
+                    ? "bg-[#f97316] hover:bg-[#ea580c] ring-2 ring-orange-400/40"
+                    : "bg-[#0a2458] hover:bg-[#06183d]"
+                }`}
               >
-                <span>Go to Dashboard</span>
+                <span>
+                  {currentSession.user.role === "admin"
+                    ? "Go to Admin Panel"
+                    : currentSession.user.role === "vendor"
+                    ? "Go to Seller Dashboard"
+                    : "Go to Dashboard"}
+                </span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               <button
@@ -563,14 +573,24 @@ export function LoginClient() {
         )}
 
         {/* Dedicated Seller Portal Callout */}
-        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-500 mb-2">Are you an Industrial Seller / Vendor?</p>
-          <Link
-            href="/seller/login"
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 text-[#0a2458] hover:bg-blue-100 px-5 py-2 text-xs font-extrabold transition-all shadow-xs"
-          >
-            <span>Access Dedicated Seller Login →</span>
-          </Link>
+        <div className="mt-6 pt-5 border-t border-slate-100 text-center space-y-3">
+          <div>
+            <p className="text-xs text-slate-500 mb-1.5">Are you an Industrial Seller / Vendor?</p>
+            <Link
+              href="/seller/login"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 text-[#0a2458] hover:bg-blue-100 px-5 py-2 text-xs font-extrabold transition-all shadow-xs"
+            >
+              <span>Access Dedicated Seller Login →</span>
+            </Link>
+          </div>
+          <div className="pt-2 border-t border-slate-100">
+            <Link
+              href="/admin/login"
+              className="text-[11px] font-bold text-slate-500 hover:text-[#0a2458] transition-colors"
+            >
+              Platform Administrator? Access Super Admin Login →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

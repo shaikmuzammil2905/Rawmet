@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Phone,
+  ShieldCheck,
   ShoppingBag,
   Tag,
   User,
@@ -177,6 +178,25 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
   return (
     <>
+      {/* Super Administrator Quick Access Strip */}
+      {session.user?.role === "admin" && (
+        <div className="bg-[#0f172a] text-white py-1 px-4 text-xs font-semibold flex items-center justify-between border-b border-orange-500/40 no-print z-50 relative">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] sm:text-xs text-slate-200">
+              Super Admin Session Active: <strong className="text-orange-400">{session.user.name}</strong>
+            </span>
+          </div>
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex items-center gap-1.5 bg-[#f97316] hover:bg-[#ea580c] text-white px-3 py-0.5 rounded-full text-[11px] font-black transition-all shadow-xs"
+          >
+            <ShieldCheck className="h-3 w-3" />
+            <span>Open Super Admin Panel →</span>
+          </Link>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 no-print">
         {/* Top Corporate Information Bar */}
         <div className="hidden lg:block bg-[#06183d] text-white/90 text-[11.5px] font-medium">
@@ -208,9 +228,16 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               <span className="text-white/25">|</span>
               {session.authenticated ? (
                 <>
-                  <Link href={dashboardHref} className="text-orange-300 hover:text-white transition-colors font-bold">
-                    {session.user?.name ? `Hi, ${session.user.name.split(" ")[0]}` : "My Account"}
-                  </Link>
+                  {session.user?.role === "admin" ? (
+                    <Link href="/admin/dashboard" className="text-orange-400 hover:text-white transition-colors font-bold inline-flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  ) : (
+                    <Link href={dashboardHref} className="text-orange-300 hover:text-white transition-colors font-bold">
+                      {session.user?.name ? `Hi, ${session.user.name.split(" ")[0]}` : "My Account"}
+                    </Link>
+                  )}
                   <span className="text-white/25">|</span>
                   <button
                     type="button"
@@ -228,6 +255,10 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   <span className="text-white/25">|</span>
                   <Link href="/login" className="hover:text-white transition-colors">
                     Login
+                  </Link>
+                  <span className="text-white/25">|</span>
+                  <Link href="/admin/login" className="text-slate-400 hover:text-orange-300 transition-colors text-xs font-semibold">
+                    Admin
                   </Link>
                 </>
               )}
@@ -342,19 +373,29 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
               />
             </nav>
 
-            {/* Desktop Action CTAs: User Login / Dashboard button */}
+            {/* Desktop Action CTAs: User Login / Admin Panel / Dashboard button */}
             <div className="hidden lg:flex items-center gap-2.5 shrink-0">
               {session.authenticated ? (
                 <>
-                  <Link
-                    href={dashboardHref}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
-                  >
-                    <User className="h-4 w-4 text-[#f97316]" />
-                    <span className="truncate max-w-[140px]">
-                      {session.user?.name ? session.user.name.split(" ")[0] : "Dashboard"}
-                    </span>
-                  </Link>
+                  {session.user?.role === "admin" ? (
+                    <Link
+                      href="/admin/dashboard"
+                      className="inline-flex items-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] ring-2 ring-orange-300/40"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-white" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  ) : (
+                    <Link
+                      href={dashboardHref}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                    >
+                      <User className="h-4 w-4 text-[#f97316]" />
+                      <span className="truncate max-w-[140px]">
+                        {session.user?.name ? session.user.name.split(" ")[0] : "Dashboard"}
+                      </span>
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -366,13 +407,23 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Login</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white px-5 py-2 text-sm font-bold shadow-sm hover:shadow transition-all active:scale-[0.98]"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>Login</span>
+                  </Link>
+                  <Link
+                    href="/admin/login"
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-600 hover:text-[#0a2458] px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs"
+                    title="Super Admin Login Portal"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Admin</span>
+                  </Link>
+                </div>
               )}
             </div>
 
@@ -380,10 +431,21 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
             <div className="flex xl:hidden items-center gap-2">
               <Link
                 href={session.authenticated ? dashboardHref : "/login"}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#0a2458] text-white px-3.5 py-1.5 text-xs font-semibold"
+                className={`inline-flex items-center gap-1.5 rounded-full text-white px-3.5 py-1.5 text-xs font-semibold ${
+                  session.user?.role === "admin" ? "bg-[#f97316]" : "bg-[#0a2458]"
+                }`}
               >
-                <User className="h-3.5 w-3.5 text-[#f97316]" />
-                <span>{session.authenticated ? (session.user?.name ? session.user.name.split(" ")[0] : "Account") : "Login"}</span>
+                {session.user?.role === "admin" ? (
+                  <>
+                    <ShieldCheck className="h-3.5 w-3.5 text-white" />
+                    <span>Admin</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="h-3.5 w-3.5 text-[#f97316]" />
+                    <span>{session.authenticated ? (session.user?.name ? session.user.name.split(" ")[0] : "Account") : "Login"}</span>
+                  </>
+                )}
               </Link>
               <button
                 type="button"

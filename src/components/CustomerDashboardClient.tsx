@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   Bell,
   Bookmark,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   MessageSquare,
   Printer,
   Search,
+  ShieldCheck,
   Trash2,
   User,
 } from "lucide-react";
@@ -101,6 +103,33 @@ export function CustomerDashboardClient() {
           </button>
         </div>
       </div>
+
+      {/* Super Admin Privileges Banner */}
+      {data.user.role === "admin" && (
+        <div className="mb-6 rounded-3xl bg-gradient-to-r from-orange-600 via-orange-500 to-[#0a2458] p-5 sm:p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg border border-orange-400/30">
+          <div className="flex items-center gap-3.5">
+            <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center font-bold shrink-0">
+              <ShieldCheck className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wider mb-1">
+                <span>Super Administrator</span>
+              </div>
+              <h3 className="font-black text-lg text-white">Full Master Admin Privileges Active</h3>
+              <p className="text-xs text-orange-100 max-w-xl">
+                You have master access to manage all Marketplace Products, Categories, Subcategories, Verified Sellers, CMS Content, and System Controls.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/dashboard"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-orange-50 text-[#0a2458] px-6 py-3 text-sm font-black shadow-md hover:shadow-lg transition-all shrink-0"
+          >
+            <span>Open Super Admin Panel</span>
+            <ArrowRight className="h-4 w-4 text-[#f97316]" />
+          </Link>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
