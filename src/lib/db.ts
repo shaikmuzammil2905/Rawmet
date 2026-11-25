@@ -428,6 +428,10 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE listings ADD COLUMN commercial_details TEXT DEFAULT ''",
     "ALTER TABLE listings ADD COLUMN is_master INTEGER DEFAULT 0",
     "ALTER TABLE vendors ADD COLUMN business_type TEXT DEFAULT 'Manufacturer & Bulk Supplier'",
+    "ALTER TABLE users ADD COLUMN otp_attempts INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN otp_last_sent_at TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN reset_token_hash TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN reset_token_expires_at TEXT DEFAULT ''",
   ];
   for (const sql of migrations) {
     try {

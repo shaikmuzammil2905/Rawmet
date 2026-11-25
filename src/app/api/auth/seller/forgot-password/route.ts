@@ -53,12 +53,16 @@ export async function POST(req: Request) {
 
       const emailResult = await sendOtpEmail(rawEmail, otp, "password_reset");
 
+      if (!emailResult.success) {
+        return NextResponse.json(
+          { error: "Unable to send password reset email. Please check your email address or try again shortly." },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
-        message: emailResult.success
-          ? `Password reset code sent to ${rawEmail}. Valid for 10 minutes.`
-          : `Password reset OTP generated for ${rawEmail}. (Use code below if inbox delivery is delayed).`,
-        demoOtp: !emailResult.success || process.env.NODE_ENV !== "production" ? otp : undefined,
+        message: `Password reset code sent to ${rawEmail}. Please check your inbox.`,
       });
     }
 

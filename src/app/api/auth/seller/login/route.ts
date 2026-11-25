@@ -94,12 +94,16 @@ export async function POST(req: Request) {
 
       const emailResult = await sendOtpEmail(String(userRow.email), otp, "seller_login");
 
+      if (!emailResult.success) {
+        return NextResponse.json(
+          { error: "Unable to send login verification email. Please check your email address or try again shortly." },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
-        message: emailResult.success
-          ? `Login OTP has been sent to ${userRow.email}. Valid for 10 minutes.`
-          : `OTP generated for ${userRow.email}. (Email delivery status: ${emailResult.error || "delivery fallback"})`,
-        demoOtp: !emailResult.success || process.env.NODE_ENV !== "production" ? otp : undefined,
+        message: `Login OTP has been sent to ${userRow.email}. Please check your inbox.`,
       });
     }
 

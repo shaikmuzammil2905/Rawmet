@@ -129,3 +129,19 @@ export function sanitizeUser(row: Record<string, unknown>): UserRecord {
   };
 }
 
+export function hashOtp(otp: string): string {
+  return crypto.createHmac("sha256", getAuthSecret()).update(otp.trim()).digest("hex");
+}
+
+export function hashToken(token: string): string {
+  return crypto.createHmac("sha256", getAuthSecret()).update(token.trim()).digest("hex");
+}
+
+export function maskEmail(email: string): string {
+  const parts = email.trim().toLowerCase().split("@");
+  if (parts.length !== 2) return email;
+  const [local, domain] = parts;
+  if (local.length <= 2) return `${local[0]}***@${domain}`;
+  return `${local[0]}${"*".repeat(Math.max(local.length - 2, 4))}${local[local.length - 1]}@${domain}`;
+}
+

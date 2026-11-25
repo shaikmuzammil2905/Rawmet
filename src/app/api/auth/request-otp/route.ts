@@ -2,42 +2,33 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
-import { hashPassword } from "@/lib/auth";
-import { sendOtpEmail } from "@/lib/email";
+import { hashOtp, hashPassword, maskEmail } from "@/lib/auth";
+import { sendVerificationOtpEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
     ensureSeeded();
-    const body = (await req.json()) as { email?: string; mobile?: string; name?: string };
+    const body = (await req.json()) as { email?: string; name?: string };
 
-    const rawEmail = (body.email || "").trim().toLowerCase();
-    const rawMobile = (body.mobile || "").replace(/\D/g, "").slice(-10);
+    const email = (body.email || "").trim().toLowerCase();
 
-    // Prioritize Email OTP as requested
-    let email = rawEmail;
-    let mobile = rawMobile;
-
-    if (!email && !mobile) {
+    if (!email) {
       return NextResponse.json({ error: "Please enter your email address." }, { status: 400 });
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address (e.g. name@company.com)." }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address (e.g. name@company.com)." },
+        { status: 400 }
+      );
     }
 
     const db = getDb();
-    let user: { id: number; email: string; role: string; status: string } | undefined;
-
-    if (email) {
-      user = db.prepare(`SELECT id, email, role, status FROM users WHERE LOWER(email) = ?`).get(email) as
-        | { id: number; email: string; role: string; status: string }
-        | undefined;
-    } else if (mobile) {
-      user = db.prepare(`SELECT id, email, role, status FROM users WHERE mobile = ?`).get(mobile) as
-        | { id: number; email: string; role: string; status: string }
-        | undefined;
-      if (user) email = user.email;
-    }
+    let user = db
+      .prepare(`SELECT id, email, role, status, otp_last_sent_at FROM users WHERE LOWER(email) = ?`)
+      .get(email) as
+      | { id: number; email: string; role: string; status: string; otp_last_sent_at?: string }
+      | undefined;
 
     if (user && user.role === "admin") {
       return NextResponse.json(
@@ -47,17 +38,28 @@ export async function POST(req: Request) {
     }
 
     if (user && user.status === "suspended") {
-      return NextResponse.json({ error: "Your account is currently suspended. Please contact customer support." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Your account is currently suspended. Please contact customer support." },
+        { status: 403 }
+      );
     }
 
-    // Auto-create user if not found
+    // Rate Limiting / 60-Second Resend Cooldown
+    if (user?.otp_last_sent_at) {
+      const lastSentMs = new Date(user.otp_last_sent_at).getTime();
+      const elapsedSeconds = Math.floor((Date.now() - lastSentMs) / 1000);
+      if (elapsedSeconds < 60) {
+        const remaining = 60 - elapsedSeconds;
+        return NextResponse.json(
+          { error: `Please wait ${remaining}s before requesting a new verification code.` },
+          { status: 429 }
+        );
+      }
+    }
+
+    // Auto-create user record if not found
     if (!user) {
-      if (!email) {
-        email = `user.${mobile}@rawmet.local`;
-      }
-      if (!mobile) {
-        mobile = `9${Math.floor(100000000 + Math.random() * 900000000)}`;
-      }
+      const fallbackMobile = `9${Math.floor(100000000 + Math.random() * 900000000)}`;
       const displayName =
         (body.name || "").trim() ||
         email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -68,48 +70,51 @@ export async function POST(req: Request) {
           `INSERT INTO users (name, email, mobile, whatsapp, password_hash, role, status)
            VALUES (?, ?, ?, ?, ?, 'customer', 'active')`
         )
-        .run(displayName, email, mobile, `91${mobile}`, hashPassword(randomPass));
+        .run(displayName, email, fallbackMobile, `91${fallbackMobile}`, hashPassword(randomPass));
 
       user = { id: Number(ins.lastInsertRowid), email, role: "customer", status: "active" };
     }
 
+    // Generate cryptographically secure 6-digit OTP
     const otp = String(crypto.randomInt(100000, 999999));
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const otpHashed = hashOtp(otp);
+    // 5-minute expiration per specification
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    db.prepare(`UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?`).run(
-      otp,
-      expiresAt,
-      user.id
-    );
+    db.prepare(
+      `UPDATE users 
+       SET otp_code = ?, 
+           otp_expires_at = ?, 
+           otp_attempts = 0, 
+           otp_last_sent_at = datetime('now') 
+       WHERE id = ?`
+    ).run(otpHashed, expiresAt, user.id);
 
     await syncDbToS3();
 
-    // Directly send OTP email
-    let emailSent = false;
-    let emailError = "";
-    if (email && email.includes("@") && !email.endsWith("@rawmet.local")) {
-      const emailRes = await sendOtpEmail(email, otp, "customer_login");
-      emailSent = emailRes.success;
-      if (!emailRes.success) {
-        emailError = emailRes.error || "Email delivery failed";
-        console.warn("sendOtpEmail notice:", emailRes.error);
-      }
+    // Send real SMTP email via Nodemailer
+    const emailRes = await sendVerificationOtpEmail(email, otp);
+
+    if (!emailRes.success) {
+      console.error("sendVerificationOtpEmail failed for", email, ":", emailRes.error);
+      return NextResponse.json(
+        {
+          error:
+            "Unable to send verification email at this moment. Please check your email address or try again shortly.",
+        },
+        { status: 500 }
+      );
     }
 
+    // Successful real email dispatch - NEVER return the OTP itself to client
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? `OTP code sent directly to ${email}. Please check your inbox or spam folder.`
-        : `Verification code generated for ${email}. (Use code below if inbox delivery is delayed).`,
+      message: "Verification code sent successfully to your email. Please check your inbox.",
+      maskedEmail: maskEmail(email),
       email,
-      emailSent,
-      // Provide demoOtp if email delivery failed or in dev mode so the user is NEVER blocked from signing in
-      demoOtp: !emailSent || process.env.NODE_ENV !== "production" ? otp : undefined,
-      smtpStatus: emailSent ? "delivered" : "delivery_fallback",
-      smtpError: !emailSent ? emailError : undefined,
     });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Failed to generate OTP.";
+    const errorMsg = err instanceof Error ? err.message : "Failed to process verification code.";
     console.error("request-otp error:", err);
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }

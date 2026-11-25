@@ -3,7 +3,21 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Lock, LogOut, Mail, RefreshCw, ShieldCheck, Sparkles, User, UserPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  LogOut,
+  Mail,
+  RefreshCw,
+  ShieldCheck,
+  User,
+  UserPlus,
+} from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
 interface SessionUser {
@@ -22,23 +36,31 @@ export function LoginClient() {
   const { showToast } = useToast();
 
   // Active Session state
-  const [currentSession, setCurrentSession] = useState<{ authenticated: boolean; user: SessionUser | null } | null>(null);
+  const [currentSession, setCurrentSession] = useState<{
+    authenticated: boolean;
+    user: SessionUser | null;
+  } | null>(null);
 
   // Tabs: "otp" (default) | "password" | "register"
   const [tab, setTab] = useState<"otp" | "password" | "register">("otp");
   const [loading, setLoading] = useState(false);
 
-  // EMAIL OTP Login state
+  // EMAIL OTP Login state (NO instant OTP display, NO auto-fill)
   const [otpEmail, setOtpEmail] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [demoOtp, setDemoOtp] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
 
   // Password Login credentials
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot Password state
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   // Register credentials
   const [regName, setRegName] = useState("");
@@ -66,7 +88,7 @@ export function LoginClient() {
       .catch(() => setCurrentSession({ authenticated: false, user: null }));
   }, [searchParams]);
 
-  // Countdown timer effect for OTP resend
+  // Countdown timer effect for OTP resend (60s cooldown)
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => {
@@ -82,7 +104,7 @@ export function LoginClient() {
     return "/dashboard";
   }
 
-  // 1. Send OTP Directly to Email
+  // 1. Send OTP to Real Email via Nodemailer SMTP
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     const cleanEmail = otpEmail.trim().toLowerCase();
@@ -99,30 +121,31 @@ export function LoginClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        showToast(data.error || "Failed to send OTP to email.", "error");
+        showToast(data.error || "Unable to send verification email.", "error");
         return;
       }
       setOtpSent(true);
       setTimer(60);
-      if (data.demoOtp) {
-        setDemoOtp(data.demoOtp);
-        setOtpCode(data.demoOtp); // Auto-fill for friction-free verification
-      }
-      showToast(data.message || `OTP code sent directly to ${cleanEmail}`, "success");
+      setOtpCode(""); // User must manually retrieve from email!
+      setMaskedEmail(data.maskedEmail || cleanEmail);
+      showToast(
+        data.message || "Verification code sent successfully to your email. Please check your inbox.",
+        "success"
+      );
     } catch {
-      showToast("Unable to send OTP. Please check your connection.", "error");
+      showToast("Unable to send verification code. Please check your connection.", "error");
     } finally {
       setLoading(false);
     }
   }
 
-  // 2. Verify OTP and Sign In
+  // 2. Verify OTP Entered by User
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     const cleanEmail = otpEmail.trim().toLowerCase();
     const cleanOtp = otpCode.trim();
     if (cleanOtp.length !== 6) {
-      showToast("Please enter the 6-digit OTP code.", "error");
+      showToast("Please enter the 6-digit verification code.", "error");
       return;
     }
     setLoading(true);
@@ -134,7 +157,7 @@ export function LoginClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        showToast(data.error || "Incorrect OTP code. Please check your email.", "error");
+        showToast(data.error || "Incorrect verification code. Please check your email.", "error");
         return;
       }
       showToast(`Welcome back, ${data.user?.name || "User"}!`, "success");
@@ -142,7 +165,7 @@ export function LoginClient() {
       router.push(dest);
       router.refresh();
     } catch {
-      showToast("OTP verification failed. Please try again.", "error");
+      showToast("Verification failed. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -178,7 +201,35 @@ export function LoginClient() {
     }
   }
 
-  // 4. Register New Account
+  // 4. Send Forgot Password Reset Link
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanEmail = forgotEmail.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      showToast("Please enter a valid registered email address.", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json();
+      setForgotSubmitted(true);
+      showToast(
+        data.message || "If an account exists, a password reset link has been sent to your email.",
+        "success"
+      );
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 5. Register New Account
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (!regName.trim() || !regEmail.trim() || !regMobile.trim() || !regPassword) {
@@ -247,25 +298,21 @@ export function LoginClient() {
               <p className="text-xs font-semibold text-emerald-800">You are currently signed in as</p>
               <h3 className="text-base font-extrabold text-[#0a2458] mt-0.5">{currentSession.user.name}</h3>
               <p className="text-[11px] text-slate-500 font-semibold">{currentSession.user.email} • {String(currentSession.user.role).toUpperCase()}</p>
-              {(currentSession.user.role || "").toLowerCase() === "admin" && (
-                <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-extrabold text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-full">
-                  <ShieldCheck className="h-3 w-3" />
-                  <span>Master Administrator Access</span>
-                </span>
-              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <Link
                 href={getDestination(currentSession.user.role)}
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-extrabold shadow transition-all text-white ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold shadow transition-all text-white ${
                   (currentSession.user.role || "").toLowerCase() === "admin"
-                    ? "bg-[#f97316] hover:bg-[#ea580c] ring-2 ring-orange-400/40 text-sm py-3"
+                    ? "bg-[#0a2458] hover:bg-[#06183d]"
+                    : (currentSession.user.role || "").toLowerCase() === "vendor"
+                    ? "bg-[#f97316] hover:bg-[#ea580c]"
                     : "bg-[#0a2458] hover:bg-[#06183d]"
                 }`}
               >
                 <span>
                   {(currentSession.user.role || "").toLowerCase() === "admin"
-                    ? "Go to Admin Panel"
+                    ? "Go to Dashboard"
                     : (currentSession.user.role || "").toLowerCase() === "vendor"
                     ? "Go to Seller Dashboard"
                     : "Go to Dashboard"}
@@ -292,19 +339,23 @@ export function LoginClient() {
             onClick={() => {
               setTab("otp");
               setOtpSent(false);
+              setShowForgot(false);
             }}
             className={`rounded-xl py-2 transition-all flex items-center justify-center gap-1 ${
-              tab === "otp" ? "bg-[#0a2458] text-white shadow" : "text-slate-600 hover:text-slate-900"
+              tab === "otp" && !showForgot ? "bg-[#0a2458] text-white shadow" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Mail className="h-3 w-3 text-orange-400" />
+            <Mail className="h-3 w-3" />
             <span>Email OTP</span>
           </button>
           <button
             type="button"
-            onClick={() => setTab("password")}
+            onClick={() => {
+              setTab("password");
+              setShowForgot(false);
+            }}
             className={`rounded-xl py-2 transition-all flex items-center justify-center gap-1 ${
-              tab === "password" ? "bg-[#0a2458] text-white shadow" : "text-slate-600 hover:text-slate-900"
+              tab === "password" || showForgot ? "bg-[#0a2458] text-white shadow" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <KeyRound className="h-3 w-3" />
@@ -312,7 +363,10 @@ export function LoginClient() {
           </button>
           <button
             type="button"
-            onClick={() => setTab("register")}
+            onClick={() => {
+              setTab("register");
+              setShowForgot(false);
+            }}
             className={`rounded-xl py-2 transition-all flex items-center justify-center gap-1 ${
               tab === "register" ? "bg-[#f97316] text-white shadow" : "text-slate-600 hover:text-slate-900"
             }`}
@@ -322,7 +376,7 @@ export function LoginClient() {
           </button>
         </div>
 
-        {/* TAB 1: EMAIL OTP LOGIN (Directly sends OTP to email) */}
+        {/* TAB 1: REAL EMAIL OTP LOGIN */}
         {tab === "otp" && (
           <div className="space-y-4">
             {!otpSent ? (
@@ -343,7 +397,7 @@ export function LoginClient() {
                     />
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Enter your email. A 6-digit OTP verification code will be sent directly to your inbox.
+                    Enter your email. A 6-digit verification code will be sent directly to your inbox.
                   </p>
                 </div>
 
@@ -358,10 +412,12 @@ export function LoginClient() {
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="rounded-2xl bg-blue-50/70 border border-blue-200 p-3 flex items-center justify-between">
+                <div className="rounded-2xl bg-blue-50/70 border border-blue-200 p-3.5 flex items-center justify-between">
                   <div className="min-w-0 pr-2">
-                    <span className="text-[11px] text-slate-500 block">OTP sent to email:</span>
-                    <strong className="text-sm font-bold text-[#0a2458] truncate block">{otpEmail}</strong>
+                    <span className="text-[11px] text-slate-500 block">Verification code sent to:</span>
+                    <strong className="text-sm font-bold text-[#0a2458] truncate block">
+                      {maskedEmail || otpEmail}
+                    </strong>
                   </div>
                   <button
                     type="button"
@@ -379,21 +435,7 @@ export function LoginClient() {
                   Please check your email inbox or spam folder for the 6-digit code.
                 </p>
 
-                {demoOtp && (
-                  <div className="rounded-2xl bg-orange-50 border border-orange-200 p-3 text-center text-xs text-orange-900 space-y-1 shadow-sm">
-                    <div className="flex items-center justify-center gap-1.5 font-bold text-orange-800">
-                      <ShieldCheck className="h-4 w-4 text-[#f97316]" />
-                      <span>Instant Verification OTP Code:</span>
-                    </div>
-                    <div className="font-mono text-2xl tracking-[0.3em] text-[#0a2458] font-black py-0.5">
-                      {demoOtp}
-                    </div>
-                    <p className="text-[11px] text-orange-700/80">
-                      Code auto-filled. You can also click Verify below directly.
-                    </p>
-                  </div>
-                )}
-
+                {/* Secure Manual OTP Input (No on-screen code display, No auto-fill) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Enter 6-Digit Verification Code
@@ -401,12 +443,18 @@ export function LoginClient() {
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="Enter 6-digit OTP"
-                    className="w-full rounded-xl border border-slate-300 text-center font-mono text-lg font-black tracking-[0.3em] py-2.5 focus:border-[#1652b8] focus:outline-none"
+                    className="w-full rounded-xl border border-slate-300 text-center font-mono text-xl font-bold tracking-[0.4em] py-3 focus:border-[#1652b8] focus:outline-none"
+                    autoFocus
                   />
+                  <p className="text-[11px] text-slate-400 text-center mt-1">
+                    Code expires in 5 minutes
+                  </p>
                 </div>
 
                 <button
@@ -420,7 +468,7 @@ export function LoginClient() {
 
                 <div className="text-center pt-1">
                   {timer > 0 ? (
-                    <span className="text-xs text-slate-500">Resend OTP to email in {timer}s</span>
+                    <span className="text-xs text-slate-500 font-medium">Resend OTP in {timer}s</span>
                   ) : (
                     <button
                       type="button"
@@ -429,7 +477,7 @@ export function LoginClient() {
                       className="inline-flex items-center gap-1 text-xs font-bold text-[#1652b8] hover:underline"
                     >
                       <RefreshCw className="h-3 w-3" />
-                      <span>Resend OTP Code</span>
+                      <span>Resend OTP</span>
                     </button>
                   )}
                 </div>
@@ -438,64 +486,144 @@ export function LoginClient() {
           </div>
         )}
 
-        {/* TAB 2: EMAIL / MOBILE + PASSWORD LOGIN */}
+        {/* TAB 2: PASSWORD LOGIN + FORGOT PASSWORD */}
         {tab === "password" && (
-          <form onSubmit={handlePasswordLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email or Mobile Number</label>
-              <div className="relative">
-                <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="name@company.com or 10-digit mobile"
-                  className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
-                />
-              </div>
-            </div>
+          <div>
+            {showForgot ? (
+              /* Integrated Forgot Password Form */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-[#0a2458]">Forgot Password</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgot(false);
+                      setForgotSubmitted(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-[#1652b8] hover:underline"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    <span>Back to Sign In</span>
+                  </button>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700">Password</label>
-                <Link href="/seller/login#forgot" className="text-[11px] font-semibold text-[#1652b8] hover:underline">
-                  Forgot?
-                </Link>
+                {forgotSubmitted ? (
+                  <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-center space-y-3">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      If an account exists with <strong>{forgotEmail}</strong>, a password reset link has been sent. Please check your inbox and spam folder.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgot(false);
+                        setForgotSubmitted(false);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-5 py-2 text-xs font-bold shadow"
+                    >
+                      <span>Return to Password Login</span>
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Enter your registered email address and we will send you a secure password reset link valid for 30 minutes.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Registered Email Address *
+                      </label>
+                      <div className="relative">
+                        <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          required
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="e.g. name@company.com"
+                          className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading || !forgotEmail.includes("@")}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white py-3 text-sm font-bold shadow transition-all active:scale-[0.99]"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span>{loading ? "Sending Reset Link..." : "Send Password Reset Link"}</span>
+                    </button>
+                  </form>
+                )}
               </div>
-              <div className="relative">
-                <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full rounded-xl border border-slate-200 pl-10 pr-10 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
-                />
+            ) : (
+              /* Standard Password Login */
+              <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email or Mobile Number</label>
+                  <div className="relative">
+                    <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="name@company.com or 10-digit mobile"
+                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(identifier.includes("@") ? identifier : "");
+                        setShowForgot(true);
+                      }}
+                      className="text-[11px] font-semibold text-[#1652b8] hover:underline"
+                    >
+                      Forgot?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full rounded-xl border border-slate-200 pl-10 pr-10 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white py-3 text-sm font-bold shadow transition-all active:scale-[0.99]"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <KeyRound className="h-4 w-4 text-[#f97316]" />
+                  <span>{loading ? "Signing In..." : "Sign In with Password"}</span>
                 </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-full bg-[#0a2458] hover:bg-[#06183d] text-white py-3 text-sm font-bold shadow transition-all active:scale-[0.99]"
-            >
-              {loading ? "Signing In..." : "Sign In with Password"}
-            </button>
-          </form>
+              </form>
+            )}
+          </div>
         )}
 
-        {/* TAB 3: NEW USER REGISTRATION */}
+        {/* TAB 3: REGISTER NEW USER */}
         {tab === "register" && (
-          <form onSubmit={handleRegister} className="space-y-3.5">
+          <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
               <div className="relative">
