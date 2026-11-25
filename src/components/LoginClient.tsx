@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Lock, LogOut, Mail, Phone, RefreshCw, ShieldCheck, Sparkles, User, UserPlus } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Lock, LogOut, Mail, RefreshCw, ShieldCheck, Sparkles, User, UserPlus } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
 interface SessionUser {
@@ -28,8 +28,8 @@ export function LoginClient() {
   const [tab, setTab] = useState<"otp" | "password" | "register">("otp");
   const [loading, setLoading] = useState(false);
 
-  // OTP Login state
-  const [otpMobile, setOtpMobile] = useState("");
+  // EMAIL OTP Login state
+  const [otpEmail, setOtpEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
@@ -82,12 +82,12 @@ export function LoginClient() {
     return "/dashboard";
   }
 
-  // 1. Send OTP Request
+  // 1. Send OTP Directly to Email
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
-    const cleanMobile = otpMobile.replace(/\D/g, "").slice(-10);
-    if (cleanMobile.length !== 10) {
-      showToast("Please enter a valid 10-digit mobile number.", "error");
+    const cleanEmail = otpEmail.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      showToast("Please enter a valid email address.", "error");
       return;
     }
     setLoading(true);
@@ -95,20 +95,20 @@ export function LoginClient() {
       const res = await fetch("/api/auth/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: cleanMobile }),
+        body: JSON.stringify({ email: cleanEmail }),
       });
       const data = await res.json();
       if (!res.ok) {
-        showToast(data.error || "Failed to send OTP.", "error");
+        showToast(data.error || "Failed to send OTP to email.", "error");
         return;
       }
       setOtpSent(true);
       setTimer(60);
       if (data.demoOtp) {
         setDemoOtp(data.demoOtp);
-        setOtpCode(data.demoOtp); // Auto-fill for friction-free login
+        setOtpCode(data.demoOtp); // Auto-fill for friction-free verification
       }
-      showToast(data.message || `OTP sent to +91 ${cleanMobile}`, "success");
+      showToast(data.message || `OTP code sent directly to ${cleanEmail}`, "success");
     } catch {
       showToast("Unable to send OTP. Please check your connection.", "error");
     } finally {
@@ -116,10 +116,10 @@ export function LoginClient() {
     }
   }
 
-  // 2. Verify OTP and Login
+  // 2. Verify OTP and Sign In
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    const cleanMobile = otpMobile.replace(/\D/g, "").slice(-10);
+    const cleanEmail = otpEmail.trim().toLowerCase();
     const cleanOtp = otpCode.trim();
     if (cleanOtp.length !== 6) {
       showToast("Please enter the 6-digit OTP code.", "error");
@@ -130,11 +130,11 @@ export function LoginClient() {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: cleanMobile, otp: cleanOtp }),
+        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp }),
       });
       const data = await res.json();
       if (!res.ok) {
-        showToast(data.error || "Incorrect OTP code.", "error");
+        showToast(data.error || "Incorrect OTP code. Please check your email.", "error");
         return;
       }
       showToast(`Welcome back, ${data.user?.name || "User"}!`, "success");
@@ -269,7 +269,7 @@ export function LoginClient() {
           </div>
         )}
 
-        {/* Tab Toggle: OTP vs Password vs New User */}
+        {/* Tab Toggle: Email OTP vs Password vs New User */}
         <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 mb-6 text-[11px] sm:text-xs font-bold">
           <button
             type="button"
@@ -281,8 +281,8 @@ export function LoginClient() {
               tab === "otp" ? "bg-[#0a2458] text-white shadow" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Sparkles className="h-3 w-3 text-orange-400" />
-            <span>OTP Login</span>
+            <Mail className="h-3 w-3 text-orange-400" />
+            <span>Email OTP</span>
           </button>
           <button
             type="button"
@@ -306,50 +306,46 @@ export function LoginClient() {
           </button>
         </div>
 
-        {/* TAB 1: OTP LOGIN (Fast Mobile & WhatsApp OTP) */}
+        {/* TAB 1: EMAIL OTP LOGIN (Directly sends OTP to email) */}
         {tab === "otp" && (
           <div className="space-y-4">
             {!otpSent ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Mobile Number (10 Digits)
+                    Registered Email Address *
                   </label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-bold text-slate-500">
-                      <span>+91</span>
-                      <span className="text-slate-300">|</span>
-                    </div>
+                    <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="tel"
+                      type="email"
                       required
-                      maxLength={10}
-                      value={otpMobile}
-                      onChange={(e) => setOtpMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      placeholder="e.g. 9820112233"
-                      className="w-full rounded-xl border border-slate-200 pl-14 pr-4 py-2.5 text-sm font-semibold tracking-wide focus:border-[#1652b8] focus:outline-none"
+                      value={otpEmail}
+                      onChange={(e) => setOtpEmail(e.target.value)}
+                      placeholder="e.g. name@company.com"
+                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm font-semibold tracking-wide focus:border-[#1652b8] focus:outline-none"
                     />
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    We will send a 6-digit verification code to your mobile number.
+                    Enter your email. A 6-digit OTP verification code will be sent directly to your inbox.
                   </p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading || otpMobile.length !== 10}
+                  disabled={loading || !otpEmail.includes("@")}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] disabled:opacity-50 text-white py-3 text-sm font-bold shadow transition-all active:scale-[0.99]"
                 >
-                  <Phone className="h-4 w-4 text-[#f97316]" />
-                  <span>{loading ? "Sending OTP..." : "Get OTP Code"}</span>
+                  <Mail className="h-4 w-4 text-[#f97316]" />
+                  <span>{loading ? "Sending Email OTP..." : "Send OTP to Email"}</span>
                 </button>
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div className="rounded-2xl bg-blue-50/70 border border-blue-200 p-3 flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] text-slate-500 block">OTP sent to:</span>
-                    <strong className="text-sm font-bold text-[#0a2458]">+91 {otpMobile}</strong>
+                  <div className="min-w-0 pr-2">
+                    <span className="text-[11px] text-slate-500 block">OTP sent to email:</span>
+                    <strong className="text-sm font-bold text-[#0a2458] truncate block">{otpEmail}</strong>
                   </div>
                   <button
                     type="button"
@@ -357,11 +353,15 @@ export function LoginClient() {
                       setOtpSent(false);
                       setOtpCode("");
                     }}
-                    className="text-xs font-bold text-[#1652b8] hover:underline"
+                    className="text-xs font-bold text-[#1652b8] hover:underline shrink-0"
                   >
                     Change
                   </button>
                 </div>
+
+                <p className="text-xs text-slate-600">
+                  Please check your email inbox or spam folder for the 6-digit code.
+                </p>
 
                 {demoOtp && (
                   <div className="rounded-xl bg-orange-50 border border-orange-200 p-2.5 text-center text-xs text-orange-800">
@@ -372,7 +372,7 @@ export function LoginClient() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Enter 6-Digit OTP Code
+                    Enter 6-Digit Verification Code
                   </label>
                   <input
                     type="text"
@@ -396,7 +396,7 @@ export function LoginClient() {
 
                 <div className="text-center pt-1">
                   {timer > 0 ? (
-                    <span className="text-xs text-slate-500">Resend OTP in {timer}s</span>
+                    <span className="text-xs text-slate-500">Resend OTP to email in {timer}s</span>
                   ) : (
                     <button
                       type="button"
