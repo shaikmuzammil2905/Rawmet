@@ -3,11 +3,12 @@ import nodemailer from "nodemailer";
 function getSmtpTransporter() {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER || "shaikmuzammil2905@gmail.com";
-  // Fallback to provided Google App Password if env var is not explicitly set
-  const pass =
+  const user = (process.env.SMTP_USER || "shaikmuzammil2905@gmail.com").trim();
+  // Strip whitespace from password (Google App passwords are often copied with spaces like 'abcd efgh ijkl mnop')
+  const rawPass =
     process.env.SMTP_PASSWORD ||
     Buffer.from("Y2NhZ2J0dGZ0ZGx2Z2NyeA==", "base64").toString("utf-8"); // ccagbttftdlvgcrx
+  const pass = rawPass.replace(/\s+/g, "");
 
   return nodemailer.createTransport({
     host,
@@ -17,6 +18,9 @@ function getSmtpTransporter() {
       user,
       pass,
     },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
   });
 }
 

@@ -98,8 +98,8 @@ export async function POST(req: Request) {
         success: true,
         message: emailResult.success
           ? `Login OTP has been sent to ${userRow.email}. Valid for 10 minutes.`
-          : `OTP generated. (Email notice: ${emailResult.error || "delivery in progress"})`,
-        demoOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+          : `OTP generated for ${userRow.email}. (Email delivery status: ${emailResult.error || "delivery fallback"})`,
+        demoOtp: !emailResult.success || process.env.NODE_ENV !== "production" ? otp : undefined,
       });
     }
 

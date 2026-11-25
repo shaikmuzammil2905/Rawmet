@@ -380,9 +380,17 @@ export function LoginClient() {
                 </p>
 
                 {demoOtp && (
-                  <div className="rounded-xl bg-orange-50 border border-orange-200 p-2.5 text-center text-xs text-orange-800">
-                    <span>Verification OTP: </span>
-                    <strong className="font-mono text-base tracking-widest text-[#0a2458] font-black">{demoOtp}</strong>
+                  <div className="rounded-2xl bg-orange-50 border border-orange-200 p-3 text-center text-xs text-orange-900 space-y-1 shadow-sm">
+                    <div className="flex items-center justify-center gap-1.5 font-bold text-orange-800">
+                      <ShieldCheck className="h-4 w-4 text-[#f97316]" />
+                      <span>Instant Verification OTP Code:</span>
+                    </div>
+                    <div className="font-mono text-2xl tracking-[0.3em] text-[#0a2458] font-black py-0.5">
+                      {demoOtp}
+                    </div>
+                    <p className="text-[11px] text-orange-700/80">
+                      Code auto-filled. You can also click Verify below directly.
+                    </p>
                   </div>
                 )}
 

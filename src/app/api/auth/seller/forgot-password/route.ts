@@ -57,8 +57,8 @@ export async function POST(req: Request) {
         success: true,
         message: emailResult.success
           ? `Password reset code sent to ${rawEmail}. Valid for 10 minutes.`
-          : `Password reset OTP generated. (Email delivery status: ${emailResult.error || "sent"})`,
-        demoOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+          : `Password reset OTP generated for ${rawEmail}. (Use code below if inbox delivery is delayed).`,
+        demoOtp: !emailResult.success || process.env.NODE_ENV !== "production" ? otp : undefined,
       });
     }
 

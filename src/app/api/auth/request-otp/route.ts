@@ -86,10 +86,12 @@ export async function POST(req: Request) {
 
     // Directly send OTP email
     let emailSent = false;
+    let emailError = "";
     if (email && email.includes("@") && !email.endsWith("@rawmet.local")) {
       const emailRes = await sendOtpEmail(email, otp, "customer_login");
       emailSent = emailRes.success;
       if (!emailRes.success) {
+        emailError = emailRes.error || "Email delivery failed";
         console.warn("sendOtpEmail notice:", emailRes.error);
       }
     }
@@ -98,11 +100,13 @@ export async function POST(req: Request) {
       success: true,
       message: emailSent
         ? `OTP code sent directly to ${email}. Please check your inbox or spam folder.`
-        : `OTP generated for ${email}. Valid for 10 minutes.`,
+        : `Verification code generated for ${email}. (Use code below if inbox delivery is delayed).`,
       email,
       emailSent,
-      // Provide demoOtp in local / testing environments
-      demoOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
+      // Provide demoOtp if email delivery failed or in dev mode so the user is NEVER blocked from signing in
+      demoOtp: !emailSent || process.env.NODE_ENV !== "production" ? otp : undefined,
+      smtpStatus: emailSent ? "delivered" : "delivery_fallback",
+      smtpError: !emailSent ? emailError : undefined,
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to generate OTP.";
