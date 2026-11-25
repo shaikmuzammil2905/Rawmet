@@ -254,6 +254,17 @@ export function LoginClient() {
             </button>
           </form>
         )}
+
+        {/* Seller Portal Callout */}
+        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-500 mb-2">Are you an Industrial Seller / Vendor?</p>
+          <Link
+            href="/seller/login"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 text-[#0a2458] hover:bg-blue-100 px-5 py-2 text-xs font-extrabold transition-all shadow-xs"
+          >
+            <span>Access Dedicated Seller Login →</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

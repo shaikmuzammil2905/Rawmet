@@ -79,6 +79,11 @@ const ABOUT_LINKS = [
   { label: "Promote Us • Grow With Us", href: "/promote" },
 ];
 
+const SELL_LINKS = [
+  { label: "Seller Business Registration (Free GST Listing)", href: "/vendor/register" },
+  { label: "Seller Login (Seller Portal)", href: "/seller/login" },
+];
+
 export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: string }) {
   const rawPathname = usePathname();
   const pathname = rawPathname || "";
@@ -201,6 +206,10 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 Launching Offer
               </Link>
               <span className="text-white/25">|</span>
+              <Link href="/seller/login" className="text-orange-300 hover:text-white transition-colors font-bold">
+                Seller Login
+              </Link>
+              <span className="text-white/25">|</span>
               <Link href="/login" className="hover:text-white transition-colors">
                 Login
               </Link>
@@ -245,16 +254,20 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 onToggle={(open) => setOpenDropdown(open ? "shop" : null)}
               />
 
-              <Link
-                href={session.user?.role === "vendor" ? "/vendor/dashboard" : "/vendor/register"}
-                className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                  pathname.startsWith("/vendor")
-                    ? "bg-[#0a2458] text-white"
-                    : "text-slate-700 hover:text-[#0a2458] hover:bg-slate-100"
-                }`}
-              >
-                Sell
-              </Link>
+              <NavDropdown
+                label="Sell"
+                active={pathname.startsWith("/vendor") || pathname.startsWith("/seller")}
+                items={
+                  session.user?.role === "vendor"
+                    ? [
+                        { label: "Seller Dashboard", href: "/vendor/dashboard" },
+                        { label: "Seller Registration", href: "/vendor/register" },
+                      ]
+                    : SELL_LINKS
+                }
+                isOpen={openDropdown === "sell"}
+                onToggle={(open) => setOpenDropdown(open ? "sell" : null)}
+              />
 
               <NavDropdown
                 label="Products"
@@ -368,6 +381,13 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
                 </Link>
               </div>
 
+              <MobileNavGroup
+                title="Seller Portal"
+                items={[
+                  { label: "Seller Business Registration", href: "/vendor/register" },
+                  { label: "Seller Login", href: "/seller/login" },
+                ]}
+              />
               <MobileNavGroup
                 title="Main Navigation"
                 items={[

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, FileUp, ShieldCheck, Store } from "lucide-react";
+import { BadgeCheck, FileUp, Lock, ShieldCheck, Store } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
 const CATEGORY_OPTIONS = [
@@ -101,9 +102,9 @@ export function VendorRegisterClient() {
       <div className="rounded-3xl bg-gradient-to-r from-[#0a2458] to-[#123983] p-6 sm:p-8 text-white shadow-lg mb-8">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f97316] px-3 py-1 text-xs font-bold">
           <BadgeCheck className="h-3.5 w-3.5" />
-          Free Listings for GST-Verified Vendors
+          Free Listings for GST-Verified Sellers
         </span>
-        <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Vendor Business Registration</h1>
+        <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold">Seller Business Registration</h1>
         <p className="mt-1 text-sm text-blue-100">
           Submit your GST Number / Authentic ID proof. Once Admin approves your verification, your free listings go live across RAWMAT MART.
         </p>
@@ -347,8 +348,27 @@ export function VendorRegisterClient() {
           className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 text-white py-3.5 px-6 text-sm font-extrabold shadow-lg transition-all"
         >
           <Store className="h-4 w-4" />
-          <span>{submitting ? "Submitting Registration..." : "Submit Vendor Registration for Verification"}</span>
+          <span>{submitting ? "Submitting Registration..." : "Submit Seller Registration for Verification"}</span>
         </button>
+
+        {/* Already Registered as a Seller Section */}
+        <div className="mt-8 rounded-2xl border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100/70 p-6 sm:p-8 text-center shadow-xs">
+          <h3 className="text-base sm:text-lg font-extrabold text-[#0a2458]">
+            Already Registered as a Seller?
+          </h3>
+          <p className="mt-1 text-xs sm:text-sm text-slate-600">
+            Access your seller account and manage your business.
+          </p>
+          <div className="mt-4 sm:mt-5">
+            <Link
+              href="/seller/login"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#1652b8] text-white px-8 sm:px-10 py-3.5 text-sm font-extrabold shadow-md hover:shadow-lg transition-all transform active:scale-98"
+            >
+              <Lock className="h-4 w-4 text-[#f97316]" />
+              <span>SELLER LOGIN</span>
+            </Link>
+          </div>
+        </div>
       </form>
     </div>
   );

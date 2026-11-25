@@ -269,12 +269,17 @@ export function VendorDashboardClient() {
       </div>
 
       {!isVerified && (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 mb-6 flex items-start gap-3 text-sm text-amber-950">
-          <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="rounded-2xl bg-amber-50 border border-amber-300 p-5 mb-6 flex items-start gap-3 text-sm text-amber-950 shadow-xs">
+          <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold">Verification Status: {vendor.verification_status.toUpperCase()}</p>
-            <p className="text-xs mt-0.5">
-              Free listings require GST / Authentic ID verification approval by Admin before you can publish live catalog items.
+            <p className="font-bold text-base text-amber-900">
+              Verification Status: {vendor.verification_status.toUpperCase()}
+            </p>
+            <p className="text-sm mt-1 leading-relaxed">
+              Your seller registration is currently under admin verification. You will be able to access your seller dashboard once approved.
+            </p>
+            <p className="text-xs text-amber-800 mt-2 font-medium">
+              Need assistance? Call Customer Support at +91 7382177653 or email support@rawmet.com
             </p>
           </div>
         </div>

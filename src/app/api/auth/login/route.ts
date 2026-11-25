@@ -40,6 +40,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Access denied. Admin privileges required." }, { status: 403 });
     }
 
+    if (row.role === "vendor") {
+      const vendorRow = db
+        .prepare(`SELECT verification_status FROM vendors WHERE user_id = ? LIMIT 1`)
+        .get(row.id) as { verification_status?: string } | undefined;
+
+      if (vendorRow?.verification_status === "pending") {
+        return NextResponse.json(
+          {
+            error:
+              "Your seller registration is currently under admin verification. You will be able to access your seller dashboard once approved.",
+            status: "pending",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (vendorRow?.verification_status === "rejected") {
+        return NextResponse.json(
+          {
+            error: "Your seller registration was rejected by Admin. Please contact customer support.",
+            status: "rejected",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const user = sanitizeUser(row);
     await setSessionCookie(user.id, user.role);
 

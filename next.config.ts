@@ -18,6 +18,18 @@ const nextConfig: NextConfig = {
         source: "/industry/:category",
         destination: "/machineries/:category",
       },
+      {
+        source: "/seller/dashboard",
+        destination: "/vendor/dashboard",
+      },
+      {
+        source: "/seller/register",
+        destination: "/vendor/register",
+      },
+      {
+        source: "/seller",
+        destination: "/seller/login",
+      },
     ];
   },
 };
