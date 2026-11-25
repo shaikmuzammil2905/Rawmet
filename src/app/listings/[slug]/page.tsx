@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, Building2, CheckCircle2, MapPin, ShieldCheck } 
 import { getListingBySlug } from "@/lib/data";
 import { ListingDetailClient } from "@/components/ListingDetailClient";
 import { ListingCard } from "@/components/ListingCard";
+import { MultiSellerSection } from "@/components/MultiSellerSection";
 import { syncDbFromS3 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +37,14 @@ export default async function ListingDetailPage({
 }) {
   await syncDbFromS3();
   const { slug } = await params;
-  let { listing, vendor, related } = getListingBySlug(slug);
+  let { listing, vendor, related, availableSellers } = getListingBySlug(slug);
   if (!listing || !vendor) {
     const fallbackRes = getListingBySlug("natural-rubber-rss4-sheets");
     if (fallbackRes.listing && fallbackRes.vendor) {
       listing = fallbackRes.listing;
       vendor = fallbackRes.vendor;
       related = fallbackRes.related;
+      availableSellers = fallbackRes.availableSellers;
     } else {
       notFound();
     }
@@ -202,6 +204,16 @@ export default async function ListingDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Available Sellers Comparison Section */}
+      <MultiSellerSection
+        productTitle={listing.title}
+        productImage={listing.image_url}
+        categoryName={listing.category_slug.replace(/-/g, " ")}
+        subcategoryName={listing.subcategory_slug ? listing.subcategory_slug.replace(/-/g, " ") : undefined}
+        productDescription={listing.description || listing.short_description}
+        sellers={availableSellers || []}
+      />
 
       {/* Related Listings */}
       {related.length > 0 && (

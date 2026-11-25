@@ -10,7 +10,15 @@ export async function GET() {
   }
   const db = getDb();
   const listings = db
-    .prepare(`SELECT * FROM listings WHERE vendor_id = ? ORDER BY id DESC`)
+    .prepare(
+      `SELECT l.*,
+              m.title as master_title,
+              m.image_url as master_image_url
+       FROM listings l
+       LEFT JOIN listings m ON m.id = l.master_product_id
+       WHERE l.vendor_id = ?
+       ORDER BY l.id DESC`
+    )
     .all(session.vendor.id);
 
   // Check active subscription quota
@@ -25,8 +33,8 @@ export async function GET() {
     )
     .get(session.user.id) as { plan_name: string; listing_allowance: number } | undefined;
 
-  const allowance = sub ? (sub.listing_allowance || 100) : 2;
-  const planName = sub ? sub.plan_name : "Free Tier (2 Listings)";
+  const allowance = sub ? (sub.listing_allowance || 100) : 100;
+  const planName = sub ? sub.plan_name : "Standard Plan";
 
   return NextResponse.json({
     listings,
@@ -48,7 +56,7 @@ export async function POST(req: Request) {
   if (session.vendor.verification_status !== "approved") {
     return NextResponse.json(
       {
-        error: `Free listings require GST / Authentic ID verification approval. Current status: ${session.vendor.verification_status.toUpperCase()}.`,
+        error: `Your seller registration is currently under admin verification. You will be able to access your seller dashboard once approved. Current status: ${session.vendor.verification_status.toUpperCase()}.`,
       },
       { status: 403 }
     );
@@ -56,91 +64,107 @@ export async function POST(req: Request) {
 
   const db = getDb();
 
-  // Enforce listing allowance quota
-  const sub = db
-    .prepare(
-      `SELECT us.*, sp.name as plan_name, sp.listing_allowance
-       FROM user_subscriptions us
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE us.user_id = ? AND us.status = 'active' AND datetime(us.ends_at) > datetime('now')
-       ORDER BY sp.listing_allowance DESC, us.id DESC
-       LIMIT 1`
-    )
-    .get(session.user.id) as { plan_name: string; listing_allowance: number } | undefined;
-
-  const allowance = sub ? (sub.listing_allowance || 100) : 2;
-  const planName = sub ? sub.plan_name : "Free Tier (2 Listings)";
-
-  const currentCount = (
-    db.prepare(`SELECT COUNT(*) as c FROM listings WHERE vendor_id = ?`).get(session.vendor.id) as { c: number }
-  ).c;
-
-  if (currentCount >= allowance) {
-    return NextResponse.json(
-      {
-        error: `Listing quota reached (${currentCount}/${allowance}). Your plan "${planName}" allows up to ${allowance} active catalog listings. Please upgrade your subscription plan to publish more products.`,
-      },
-      { status: 403 }
-    );
-  }
-
   try {
     const body = (await req.json()) as {
+      master_product_id?: number;
       type?: "product" | "machinery" | "service";
       category_slug?: string;
       subcategory_slug?: string;
       title?: string;
-      short_description?: string;
-      description?: string;
-      specifications?: Record<string, string>;
-      location?: string;
+      price_numeric?: number;
+      price_unit?: string;
       price_display?: string;
+      min_order_qty?: string;
       availability?: string;
-      image_url?: string;
-      gallery_urls?: string[];
+      specifications?: Record<string, string> | string;
+      location?: string;
+      description?: string;
     };
 
-    const title = (body.title || "").trim();
-    const categorySlug = (body.category_slug || "").trim();
-    if (!title || !categorySlug || !body.type) {
-      return NextResponse.json({ error: "Listing type, category, and title are required." }, { status: 400 });
+    const masterId = Number(body.master_product_id || 0);
+    if (!masterId) {
+      return NextResponse.json(
+        { error: "Please select an existing admin-approved product from the catalogue." },
+        { status: 400 }
+      );
     }
 
-    const baseSlug = slugify(title);
+    // Fetch the master product
+    const master = db
+      .prepare(
+        `SELECT * FROM listings WHERE id = ? AND (master_product_id IS NULL OR master_product_id = 0 OR is_master = 1)`
+      )
+      .get(masterId) as Record<string, unknown> | undefined;
+
+    if (!master) {
+      return NextResponse.json(
+        { error: "Selected product not found in the master catalogue." },
+        { status: 404 }
+      );
+    }
+
+    const priceNumeric = Number(body.price_numeric || 0);
+    const priceUnit = (body.price_unit || "Unit").trim();
+    const priceDisplay =
+      body.price_display || (priceNumeric > 0 ? `₹${priceNumeric} / ${priceUnit}` : "Request Quote");
+    const minOrderQty = (body.min_order_qty || "1").trim();
+    const availability = (body.availability || "In Stock").trim();
+    const location = (body.location || session.vendor.city || "Pan India").trim();
+    const sellerDesc = (body.description || "").trim() || String(master.description || "");
+
+    let specsObj: Record<string, string> = {};
+    if (typeof body.specifications === "string") {
+      try {
+        specsObj = JSON.parse(body.specifications);
+      } catch {
+        specsObj = { Specifications: body.specifications };
+      }
+    } else if (body.specifications && typeof body.specifications === "object") {
+      specsObj = body.specifications;
+    }
+
+    // Generate unique slug
+    const baseSlug = `${slugify(String(master.title))}-${session.vendor.id}`;
     const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
 
+    // Automatic approval for listings of existing admin products!
     const res = db
       .prepare(
         `INSERT INTO listings (
-          vendor_id, type, category_slug, subcategory_slug, title, slug,
+          vendor_id, master_product_id, type, category_slug, subcategory_slug, title, slug,
           short_description, description, specifications, location, price_display,
-          availability, image_url, gallery_urls, status, is_published
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1)`
+          price_numeric, price_unit, min_order_qty, availability, image_url, gallery_urls,
+          status, is_published
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 1)`
       )
       .run(
         session.vendor.id,
-        body.type,
-        categorySlug,
-        body.subcategory_slug || "",
-        title,
+        master.id,
+        master.type,
+        master.category_slug,
+        master.subcategory_slug || "",
+        master.title,
         uniqueSlug,
-        body.short_description || title,
-        body.description || "",
-        JSON.stringify(body.specifications || {}),
-        body.location || `${session.vendor.city || "India"}`,
-        body.price_display || "Request Quote",
-        body.availability || "In Stock",
-        body.image_url || "/images/cat-products.png",
-        JSON.stringify(body.gallery_urls || [body.image_url || "/images/cat-products.png"])
+        master.short_description || master.title,
+        sellerDesc,
+        JSON.stringify(specsObj),
+        location,
+        priceDisplay,
+        priceNumeric,
+        priceUnit,
+        minOrderQty,
+        availability,
+        master.image_url,
+        master.gallery_urls || JSON.stringify([master.image_url])
       );
 
     db.prepare(`
       INSERT INTO audit_logs (user_id, user_email, action, details)
-      VALUES (?, ?, 'vendor_submitted_listing', ?)
+      VALUES (?, ?, 'vendor_published_listing', ?)
     `).run(
       session.user.id,
       session.user.email,
-      `Vendor #${session.vendor.id} submitted listing '${title}' for approval`
+      `Vendor #${session.vendor.id} published listing '${master.title}' @ ${priceDisplay}`
     );
 
     await syncDbToS3();
@@ -149,12 +173,13 @@ export async function POST(req: Request) {
       {
         success: true,
         id: Number(res.lastInsertRowid),
-        message: "Listing submitted for Admin approval.",
+        message: "Your listing has been automatically published and is now live on RAWMAT MART!",
       },
       { status: 201 }
     );
-  } catch {
-    return NextResponse.json({ error: "Failed to create listing." }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("Listing publish error:", err);
+    return NextResponse.json({ error: "Failed to publish listing." }, { status: 500 });
   }
 }
 
@@ -167,18 +192,15 @@ export async function PATCH(req: Request) {
   try {
     const body = (await req.json()) as {
       id?: number;
-      type?: "product" | "machinery" | "service";
-      category_slug?: string;
-      subcategory_slug?: string;
-      title?: string;
-      short_description?: string;
+      price_numeric?: number;
+      price_unit?: string;
+      price_display?: string;
+      min_order_qty?: string;
+      availability?: string;
+      location?: string;
       description?: string;
       specifications?: Record<string, string>;
-      location?: string;
-      price_display?: string;
-      availability?: string;
-      image_url?: string;
-      gallery_urls?: string[];
+      is_published?: number | boolean;
     };
 
     if (!body.id) {
@@ -187,51 +209,59 @@ export async function PATCH(req: Request) {
 
     const db = getDb();
     const existing = db
-      .prepare(`SELECT id FROM listings WHERE id = ? AND vendor_id = ?`)
-      .get(body.id, session.vendor.id);
+      .prepare(`SELECT id, status FROM listings WHERE id = ? AND vendor_id = ?`)
+      .get(body.id, session.vendor.id) as { id: number; status: string } | undefined;
 
     if (!existing) {
       return NextResponse.json({ error: "Listing not found or access denied." }, { status: 404 });
     }
 
+    let isPubVal: number | null = null;
+    if (typeof body.is_published === "boolean") {
+      isPubVal = body.is_published ? 1 : 0;
+    } else if (typeof body.is_published === "number") {
+      isPubVal = body.is_published;
+    }
+
+    const priceNumeric = body.price_numeric !== undefined ? Number(body.price_numeric) : null;
+    const priceUnit = body.price_unit ? body.price_unit.trim() : null;
+    let priceDisplay = body.price_display ?? null;
+    if (priceNumeric !== null && priceUnit !== null && !priceDisplay) {
+      priceDisplay = `₹${priceNumeric} / ${priceUnit}`;
+    }
+
     db.prepare(
       `UPDATE listings SET
-        type = COALESCE(?, type),
-        category_slug = COALESCE(?, category_slug),
-        subcategory_slug = COALESCE(?, subcategory_slug),
-        title = COALESCE(?, title),
-        short_description = COALESCE(?, short_description),
+        price_numeric = COALESCE(?, price_numeric),
+        price_unit = COALESCE(?, price_unit),
+        price_display = COALESCE(?, price_display),
+        min_order_qty = COALESCE(?, min_order_qty),
+        availability = COALESCE(?, availability),
+        location = COALESCE(?, location),
         description = COALESCE(?, description),
         specifications = COALESCE(?, specifications),
-        location = COALESCE(?, location),
-        price_display = COALESCE(?, price_display),
-        availability = COALESCE(?, availability),
-        image_url = COALESCE(?, image_url),
-        gallery_urls = COALESCE(?, gallery_urls),
-        status = 'pending',
+        is_published = COALESCE(?, is_published),
         updated_at = datetime('now')
       WHERE id = ? AND vendor_id = ?`
     ).run(
-      body.type ?? null,
-      body.category_slug ?? null,
-      body.subcategory_slug ?? null,
-      body.title ? body.title.trim() : null,
-      body.short_description ? body.short_description.trim() : null,
-      body.description ?? null,
+      priceNumeric,
+      priceUnit,
+      priceDisplay,
+      body.min_order_qty ? body.min_order_qty.trim() : null,
+      body.availability ? body.availability.trim() : null,
+      body.location ? body.location.trim() : null,
+      body.description ? body.description.trim() : null,
       body.specifications ? JSON.stringify(body.specifications) : null,
-      body.location ?? null,
-      body.price_display ?? null,
-      body.availability ?? null,
-      body.image_url ?? null,
-      body.gallery_urls ? JSON.stringify(body.gallery_urls) : null,
+      isPubVal,
       body.id,
       session.vendor.id
     );
 
     await syncDbToS3();
 
-    return NextResponse.json({ success: true, message: "Listing updated and resubmitted for Admin review." });
-  } catch {
+    return NextResponse.json({ success: true, message: "Listing updated successfully." });
+  } catch (err: unknown) {
+    console.error("Listing update error:", err);
     return NextResponse.json({ error: "Failed to update listing." }, { status: 500 });
   }
 }

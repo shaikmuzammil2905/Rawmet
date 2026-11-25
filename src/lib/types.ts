@@ -32,6 +32,7 @@ export interface VendorRecord {
   product_details: string;
   verification_status: "pending" | "approved" | "rejected" | "suspended";
   rejection_reason?: string;
+  business_type?: string;
   whatsapp_opt_in: number;
   whatsapp_categories: string;
   created_at: string;
@@ -82,6 +83,13 @@ export interface ListingRecord {
   status: "pending" | "approved" | "rejected";
   rejection_reason?: string;
   is_published?: number;
+  master_product_id?: number | null;
+  price_numeric?: number;
+  price_unit?: string;
+  min_order_qty?: string;
+  supply_location?: string;
+  commercial_details?: string;
+  is_master?: number;
   featured: number;
   views_count: number;
   created_at: string;

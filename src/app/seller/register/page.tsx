@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { VendorRegisterClient } from "@/components/VendorRegisterClient";
+import { UnifiedSellerPageClient } from "@/components/UnifiedSellerPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +15,11 @@ export default function SellerRegisterPage() {
       fallback={
         <div className="py-20 flex flex-col items-center justify-center gap-3">
           <div className="h-9 w-9 border-4 border-[#0a2458] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-bold text-[#0a2458]">Loading Seller Registration...</p>
+          <p className="text-xs font-bold text-[#0a2458]">Loading Seller Portal...</p>
         </div>
       }
     >
-      <VendorRegisterClient />
+      <UnifiedSellerPageClient />
     </Suspense>
   );
 }

@@ -74,8 +74,10 @@ export async function getCurrentSession(): Promise<CurrentSessionInfo | null> {
 export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentSessionInfo | null> {
   const session = await getCurrentSession();
   if (!session) return null;
-  if (!allowedRoles.includes(session.user.role)) return null;
-  return session;
+  if (allowedRoles.includes(session.user.role)) return session;
+  // If user has a linked vendor record, grant vendor role access
+  if (allowedRoles.includes("vendor") && session.vendor) return session;
+  return null;
 }
 
 export function getCmsMap(): {
@@ -272,6 +274,30 @@ export function getListingBySlug(slug: string): {
   listing: ListingRecord | null;
   vendor: VendorRecord | null;
   related: ListingRecord[];
+  availableSellers?: Array<{
+    listing_id: number;
+    price_display: string;
+    price_numeric: number;
+    price_unit: string;
+    min_order_qty: string;
+    availability: string;
+    location: string;
+    specifications: string;
+    description: string;
+    master_product_id: number | null;
+    vendor_id: number;
+    user_id: number;
+    seller_name: string;
+    business_name: string;
+    mobile: string;
+    whatsapp: string;
+    email: string;
+    gst_number: string;
+    vendor_city: string;
+    vendor_state: string;
+    verification_status: string;
+    is_current: number;
+  }>;
 } {
   ensureSeeded();
   const db = getDb();
@@ -355,10 +381,54 @@ export function getListingBySlug(slug: string): {
     )
     .all(row.id, row.category_slug, row.type, row.category_slug) as unknown as ListingRecord[];
 
+  const masterId = row.master_product_id || row.id;
+  const availableSellers = db
+    .prepare(
+      `SELECT l.id as listing_id, l.price_display, l.price_numeric, l.price_unit,
+              l.min_order_qty, l.availability, l.location, l.specifications, l.description,
+              l.master_product_id,
+              v.id as vendor_id, v.user_id, v.owner_name as seller_name, v.business_name,
+              v.mobile, v.whatsapp, v.email, v.gst_number, v.city as vendor_city,
+              v.state as vendor_state, v.verification_status,
+              CASE WHEN l.id = ? THEN 1 ELSE 0 END as is_current
+       FROM listings l
+       JOIN vendors v ON v.id = l.vendor_id
+       WHERE (l.master_product_id = ? OR l.id = ?)
+         AND (l.status = 'approved' OR l.status IS NULL)
+         AND (l.is_published = 1 OR l.is_published IS NULL)
+         AND (v.verification_status = 'approved' OR v.verification_status IS NULL)
+       ORDER BY l.price_numeric ASC, l.id ASC`
+    )
+    .all(row.id, masterId, masterId) as unknown as Array<{
+      listing_id: number;
+      price_display: string;
+      price_numeric: number;
+      price_unit: string;
+      min_order_qty: string;
+      availability: string;
+      location: string;
+      specifications: string;
+      description: string;
+      master_product_id: number | null;
+      vendor_id: number;
+      user_id: number;
+      seller_name: string;
+      business_name: string;
+      mobile: string;
+      whatsapp: string;
+      email: string;
+      gst_number: string;
+      vendor_city: string;
+      vendor_state: string;
+      verification_status: string;
+      is_current: number;
+    }>;
+
   return {
     listing: { ...row, vendor_verified: Boolean(row.vendor_verified) },
     vendor: toPlain(vendor) || null,
     related: related.map((r) => ({ ...r, vendor_verified: Boolean(r.vendor_verified) })),
+    availableSellers,
   };
 }
 

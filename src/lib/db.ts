@@ -20,6 +20,8 @@ declare global {
   // eslint-disable-next-line no-var
   var __rawmetDb: DbClient | undefined;
   // eslint-disable-next-line no-var
+  var __rawmetRawDb: Database | undefined;
+  // eslint-disable-next-line no-var
   var __rawmetSeeded: boolean | undefined;
 }
 
@@ -92,6 +94,12 @@ export async function syncDbFromS3(force = false): Promise<void> {
     const downloaded = await downloadDbFromS3(targetPath);
     if (downloaded) {
       lastS3SyncMs = Date.now();
+      if (globalThis.__rawmetRawDb) {
+        try {
+          globalThis.__rawmetRawDb.close();
+        } catch {}
+        globalThis.__rawmetRawDb = undefined;
+      }
       globalThis.__rawmetDb = undefined;
     }
   } catch (err) {
@@ -102,8 +110,17 @@ export async function syncDbFromS3(force = false): Promise<void> {
 export async function syncDbToS3(): Promise<void> {
   try {
     const targetPath = resolveWritableDbPath();
-    await uploadDbToS3(targetPath);
-    lastS3SyncMs = Date.now();
+    // Non-blocking upload with timeout protection
+    Promise.race([
+      uploadDbToS3(targetPath),
+      new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("S3 sync timeout")), 4000)),
+    ])
+      .then((uploaded) => {
+        if (uploaded) lastS3SyncMs = Date.now();
+      })
+      .catch((err) => {
+        console.error("syncDbToS3 non-blocking error:", err);
+      });
   } catch (err) {
     console.error("syncDbToS3 error:", err);
   }
@@ -125,10 +142,12 @@ function resolveWritableDbPath(): string {
         } catch {}
       }
     }
-    // Clean stale lock folder if a previous serverless invocation exited unexpectedly
+    // Clean stale lock folder if an invocation exited unexpectedly
     const lockDir = `${dbFile}.lock`;
-    if (isReadOnlyEnv && fs.existsSync(lockDir)) {
-      fs.rmSync(lockDir, { recursive: true, force: true });
+    if (fs.existsSync(lockDir)) {
+      try {
+        fs.rmSync(lockDir, { recursive: true, force: true });
+      } catch {}
     }
     return dbFile;
   } catch {
@@ -390,6 +409,14 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE vendors ADD COLUMN rejection_reason TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN rejection_reason TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN last_login_at TEXT DEFAULT ''",
+    "ALTER TABLE listings ADD COLUMN master_product_id INTEGER DEFAULT NULL",
+    "ALTER TABLE listings ADD COLUMN price_numeric REAL DEFAULT 0",
+    "ALTER TABLE listings ADD COLUMN price_unit TEXT DEFAULT 'Kg'",
+    "ALTER TABLE listings ADD COLUMN min_order_qty TEXT DEFAULT '1'",
+    "ALTER TABLE listings ADD COLUMN supply_location TEXT DEFAULT ''",
+    "ALTER TABLE listings ADD COLUMN commercial_details TEXT DEFAULT ''",
+    "ALTER TABLE listings ADD COLUMN is_master INTEGER DEFAULT 0",
+    "ALTER TABLE vendors ADD COLUMN business_type TEXT DEFAULT 'Manufacturer & Bulk Supplier'",
   ];
   for (const sql of migrations) {
     try {
@@ -403,15 +430,39 @@ function runSafeMigrations(db: DbClient): void {
 export function getDb(): DbClient {
   if (!globalThis.__rawmetDb) {
     const dbPath = resolveWritableDbPath();
-    let rawDb: Database;
-    try {
-      rawDb = new Database(dbPath);
+    let rawDb: Database | null = null;
+    const lockDir = `${dbPath}.lock`;
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
       try {
-        rawDb.exec("PRAGMA busy_timeout = 15000; PRAGMA journal_mode = WAL;");
-      } catch {}
-    } catch {
+        if (fs.existsSync(lockDir)) {
+          try {
+            fs.rmSync(lockDir, { recursive: true, force: true });
+          } catch {}
+        }
+        rawDb = new Database(dbPath);
+        try {
+          rawDb.exec("PRAGMA busy_timeout = 30000;");
+        } catch {}
+        break;
+      } catch (err) {
+        if (attempt === 5) {
+          console.error(`Failed to open SQLite database after 5 attempts at ${dbPath}:`, err);
+          rawDb = new Database(":memory:");
+        } else {
+          // Clean stale lock before retry
+          try {
+            fs.rmSync(lockDir, { recursive: true, force: true });
+          } catch {}
+        }
+      }
+    }
+
+    if (!rawDb) {
       rawDb = new Database(":memory:");
     }
+
+    globalThis.__rawmetRawDb = rawDb;
     const client = wrapWasmDb(rawDb);
     initializeSchema(client);
     globalThis.__rawmetDb = client;

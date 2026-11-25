@@ -20,6 +20,7 @@ import { useToast } from "./ToastProvider";
 
 interface DashboardPayload {
   user: { id: number; name: string; email: string; mobile: string; whatsapp: string; role: string };
+  vendor?: { id: number; business_name: string; verification_status: string } | null;
   activeSubscription: { plan_name: string; starts_at: string; ends_at: string; status: string } | null;
   savedListings: Array<{ id: number; title: string; slug: string; category_slug: string; price_display: string; image_url: string; vendor_name: string }>;
   requirements: Array<{ id: number; title: string; category_slug: string; quantity: string; location: string; status: string; matched_vendors_count: number; created_at: string }>;
@@ -178,6 +179,38 @@ export function CustomerDashboardClient() {
             <ul className="space-y-2 text-xs text-slate-600">
               <li className="rounded-xl bg-slate-50 p-3">
                 <strong>Portal Active:</strong> Your account can post requirements and enquire with GST-verified suppliers.
+              </li>
+              {/* Common Account: Seller Status & Portal Access */}
+              <li className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <strong className="text-[#0a2458]">Seller Capabilities:</strong>
+                  <span className="font-bold text-[#f97316]">
+                    {data.vendor
+                      ? `Status: ${data.vendor.verification_status.toUpperCase()}`
+                      : "Not Applied"}
+                  </span>
+                </div>
+                <p className="text-slate-600">
+                  {data.vendor?.verification_status === "approved"
+                    ? "Your seller account is approved. You can list products and manage enquiries."
+                    : data.vendor?.verification_status === "pending"
+                    ? "Your seller application is under admin verification. Please wait for approval."
+                    : data.vendor?.verification_status === "rejected"
+                    ? "Seller application rejected. Contact support for details."
+                    : "You can become an industrial seller anytime using this common account."}
+                </p>
+                <div className="pt-1">
+                  <Link
+                    href="/vendor/register"
+                    className="inline-block rounded-full bg-[#0a2458] hover:bg-[#1652b8] text-white px-4 py-1.5 text-[11px] font-bold shadow-xs transition-all"
+                  >
+                    {data.vendor?.verification_status === "approved"
+                      ? "Open Seller Portal →"
+                      : data.vendor?.verification_status === "pending"
+                      ? "View Application Status →"
+                      : "Become a Seller →"}
+                  </Link>
+                </div>
               </li>
               {data.requirements.slice(0, 2).map((r) => (
                 <li key={r.id} className="rounded-xl bg-blue-50/70 p-3">

@@ -57,6 +57,7 @@ export async function GET() {
 
   return NextResponse.json({
     user: session.user,
+    vendor: session.vendor,
     activeSubscription: session.activeSubscription,
     savedListings,
     requirements,

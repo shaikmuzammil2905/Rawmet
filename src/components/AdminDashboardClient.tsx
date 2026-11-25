@@ -473,14 +473,17 @@ export function AdminDashboardClient() {
       }),
     });
     const out = await res.json().catch(() => ({}));
-    if (res.ok) {
-      showToast(`Category '${newCatName}' created and live on website!`, "success");
+    if (res.ok && (out.success || out.id)) {
+      showToast(out.message || `Category '${newCatName}' created and live on website!`, "success");
       setNewCatName("");
       setNewCatDesc("");
       setNewCatImage("/images/cat-products.png");
+      if (out.id) {
+        setNewSubcatParentId(Number(out.id));
+      }
       loadOverview();
     } else {
-      showToast(out.error || "Failed to create category.", "error");
+      showToast(out.error || out.message || "Failed to create category.", "error");
     }
   }
 
@@ -507,13 +510,13 @@ export function AdminDashboardClient() {
       }),
     });
     const out = await res.json().catch(() => ({}));
-    if (res.ok) {
-      showToast(`Sub-category '${newSubcatName}' created successfully!`, "success");
+    if (res.ok && (out.success || out.id)) {
+      showToast(out.message || `Sub-category '${newSubcatName}' created successfully!`, "success");
       setNewSubcatName("");
       setNewSubcatDesc("");
       loadOverview();
     } else {
-      showToast(out.error || "Failed to create sub-category.", "error");
+      showToast(out.error || out.message || "Failed to create sub-category.", "error");
     }
   }
 
@@ -1282,8 +1285,23 @@ export function AdminDashboardClient() {
           {/* TAB 5: PRODUCTS / MACHINERIES / SERVICES (Full View: Step 1 Main Category -> Step 2 Sub Category -> Step 3 Listing Create -> Past Listings) */}
           {(activeTab === "products" || activeTab === "machineries" || activeTab === "services") && (() => {
             const typeLabel = activeTab === "products" ? "Product" : activeTab === "machineries" ? "Industry" : "Service";
-            const categoriesForType = data.categories.filter((c) => c.type === listingTypeFilter);
-            const subcategoriesForType = data.subcategories.filter((s) => s.category_type === listingTypeFilter || categoriesForType.some((c) => c.id === s.category_id));
+            const rawCategoriesForType = data.categories.filter((c) => c.type === listingTypeFilter);
+            const seenCatNames = new Set<string>();
+            const categoriesForType = rawCategoriesForType.filter((c) => {
+              const norm = (c.name || "").toLowerCase().trim();
+              if (seenCatNames.has(norm)) return false;
+              seenCatNames.add(norm);
+              return true;
+            });
+
+            const rawSubsForType = data.subcategories.filter((s) => s.category_type === listingTypeFilter || categoriesForType.some((c) => c.id === s.category_id));
+            const seenSubKeys = new Set<string>();
+            const subcategoriesForType = rawSubsForType.filter((s) => {
+              const key = `${s.category_id}-${(s.name || "").toLowerCase().trim()}`;
+              if (seenSubKeys.has(key)) return false;
+              seenSubKeys.add(key);
+              return true;
+            });
 
             // Subcategories belonging to the chosen newCat
             const activeMainCatObj = categoriesForType.find((c) => c.slug === (newCat || categoriesForType[0]?.slug));

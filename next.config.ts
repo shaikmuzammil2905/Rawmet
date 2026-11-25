@@ -11,12 +11,56 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: "/product",
+        destination: "/products",
+      },
+      {
+        source: "/product/:category*",
+        destination: "/products/:category*",
+      },
+      {
+        source: "/machinery",
+        destination: "/machineries",
+      },
+      {
+        source: "/machinery/:category*",
+        destination: "/machineries/:category*",
+      },
+      {
         source: "/industry",
         destination: "/machineries",
       },
       {
-        source: "/industry/:category",
-        destination: "/machineries/:category",
+        source: "/industry/:category*",
+        destination: "/machineries/:category*",
+      },
+      {
+        source: "/service",
+        destination: "/services",
+      },
+      {
+        source: "/service/:category*",
+        destination: "/services/:category*",
+      },
+      {
+        source: "/category/:category*",
+        destination: "/products/:category*",
+      },
+      {
+        source: "/categories/:category*",
+        destination: "/products/:category*",
+      },
+      {
+        source: "/categories",
+        destination: "/products",
+      },
+      {
+        source: "/item/:slug",
+        destination: "/listings/:slug",
+      },
+      {
+        source: "/listing/:slug",
+        destination: "/listings/:slug",
       },
       {
         source: "/seller/dashboard",

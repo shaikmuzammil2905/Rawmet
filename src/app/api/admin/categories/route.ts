@@ -41,12 +41,19 @@ export async function POST(req: Request) {
 
       // Check if subcategory already exists under this category
       const existingSub = db.prepare(
-        `SELECT id FROM subcategories WHERE category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))`
-      ).get(categoryId, name);
+        `SELECT id, name, slug FROM subcategories WHERE category_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))`
+      ).get(categoryId, name) as { id: number; name: string; slug: string } | undefined;
       if (existingSub) {
         return NextResponse.json(
-          { error: `Subcategory "${name}" already exists under ${parent.name}.` },
-          { status: 400 }
+          {
+            success: true,
+            id: existingSub.id,
+            name: existingSub.name,
+            slug: existingSub.slug,
+            categoryId,
+            message: `Subcategory "${name}" is already created and active under ${parent.name}.`,
+          },
+          { status: 200 }
         );
       }
 
@@ -71,13 +78,20 @@ export async function POST(req: Request) {
     // 2. Create Main Category
     const type = body.type || "product";
     const existingByName = db.prepare(
-      `SELECT id, name FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND type = ?`
-    ).get(name, type) as { id: number; name: string } | undefined;
+      `SELECT id, name, slug FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND type = ?`
+    ).get(name, type) as { id: number; name: string; slug: string } | undefined;
 
     if (existingByName) {
       return NextResponse.json(
-        { error: `Category "${name}" already exists under ${type}s.` },
-        { status: 400 }
+        {
+          success: true,
+          id: existingByName.id,
+          name: existingByName.name,
+          slug: existingByName.slug,
+          type,
+          message: `Category "${name}" is already created and active under ${type}s.`,
+        },
+        { status: 200 }
       );
     }
 

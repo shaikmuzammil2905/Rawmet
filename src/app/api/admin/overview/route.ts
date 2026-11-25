@@ -132,15 +132,25 @@ export async function GET() {
     )
     .all();
 
-  const vendors = db.prepare(`SELECT * FROM vendors ORDER BY id DESC`).all();
+  const vendors = db
+    .prepare(
+      `SELECT v.*, u.name as user_name, u.email as user_email, u.mobile as user_mobile
+       FROM vendors v
+       LEFT JOIN users u ON u.id = v.user_id
+       ORDER BY v.id DESC`
+    )
+    .all();
   const users = db
     .prepare(`SELECT id, name, email, mobile, whatsapp, role, status, created_at FROM users ORDER BY id DESC`)
     .all();
   const listings = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name
+      `SELECT l.*,
+              COALESCE(v.business_name, 'Platform / Admin Master') as vendor_name,
+              m.title as master_title
        FROM listings l
        LEFT JOIN vendors v ON v.id = l.vendor_id
+       LEFT JOIN listings m ON m.id = l.master_product_id
        ORDER BY l.id DESC`
     )
     .all();

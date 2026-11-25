@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { VendorDashboardClient } from "@/components/VendorDashboardClient";
+import { UnifiedSellerPageClient } from "@/components/UnifiedSellerPageClient";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Vendor Dashboard | RAWMAT MART",
+  title: "Seller Portal & Dashboard | RAWMAT MART",
   description: "Manage your products, quotations, enquiries and live catalog.",
 };
 
@@ -15,11 +15,11 @@ export default function VendorDashboardPage() {
       fallback={
         <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
           <div className="h-10 w-10 border-4 border-[#0a2458] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold text-[#0a2458]">Loading Vendor Portal...</p>
+          <p className="text-sm font-bold text-[#0a2458]">Loading Seller Portal...</p>
         </div>
       }
     >
-      <VendorDashboardClient />
+      <UnifiedSellerPageClient />
     </Suspense>
   );
 }
