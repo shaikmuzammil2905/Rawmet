@@ -12,7 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RequirementsPage() {
-  await syncDbFromS3(true);
+  try {
+    await syncDbFromS3(true);
+  } catch (err) {
+    console.error("RequirementsPage S3 sync error:", err);
+  }
   const requirements = getRequirements({ limit: 40 });
   const categories = getCategories();
 

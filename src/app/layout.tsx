@@ -51,7 +51,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  await syncDbFromS3(true);
+  try {
+    await syncDbFromS3(true);
+  } catch (err) {
+    console.error("RootLayout S3 sync error:", err);
+  }
   const { contactSettings } = getCmsMap();
 
   const orgSchema = {

@@ -25,6 +25,8 @@ declare global {
   var __rawmetSeeded: boolean | undefined;
   // eslint-disable-next-line no-var
   var __rawmetS3ETag: string | undefined;
+  // eslint-disable-next-line no-var
+  var __rawmetSyncPromise: Promise<void> | undefined;
 }
 
 function normalizeParams(params: unknown[]): SqlValue[] {
@@ -93,49 +95,61 @@ export function markLocalDbWrite(): void {
 
 export async function syncDbFromS3(force = false): Promise<void> {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-  if (!isReadOnlyEnv) return;
-  if (!isS3Configured()) {
-    throw new Error(
-      "AWS S3 is not configured (missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_S3_BUCKET_NAME)."
-    );
+  if (!isReadOnlyEnv || !isS3Configured()) return;
+
+  if (globalThis.__rawmetSyncPromise) {
+    return globalThis.__rawmetSyncPromise;
   }
 
   const targetPath = resolveWritableDbPath();
-  try {
-    const head = await Promise.race([
-      headDbInS3(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-    ]);
-
-    if (
-      head?.etag &&
-      head.etag === globalThis.__rawmetS3ETag &&
-      fs.existsSync(targetPath) &&
-      (!force || Date.now() - lastS3SyncMs < 1500)
-    ) {
-      return;
-    }
-
-    // Close open WASM DB handle before overwriting the file on disk
-    if (globalThis.__rawmetRawDb) {
-      try {
-        globalThis.__rawmetRawDb.close();
-      } catch {}
-      globalThis.__rawmetRawDb = undefined;
-    }
-    globalThis.__rawmetDb = undefined;
-
-    const downloaded = await Promise.race([
-      downloadDbFromS3(targetPath),
-      new Promise<{ ok: boolean; etag?: string }>((resolve) => setTimeout(() => resolve({ ok: false }), 5000)),
-    ]);
-    if (downloaded.ok) {
-      globalThis.__rawmetS3ETag = downloaded.etag || head?.etag || "";
-      lastS3SyncMs = Date.now();
-    }
-  } catch (err) {
-    console.error("syncDbFromS3 error:", err);
+  // Prevent RootLayout + child page.tsx in the same SSR request from racing and closing each other's DB handle
+  if (fs.existsSync(targetPath) && Date.now() - lastS3SyncMs < 1500) {
+    return;
   }
+
+  globalThis.__rawmetSyncPromise = (async () => {
+    try {
+      const head = await Promise.race([
+        headDbInS3(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
+
+      if (
+        head?.etag &&
+        head.etag === globalThis.__rawmetS3ETag &&
+        fs.existsSync(targetPath) &&
+        (!force || Date.now() - lastS3SyncMs < 1500)
+      ) {
+        lastS3SyncMs = Date.now();
+        return;
+      }
+
+      const tmpPath = `${targetPath}.download.tmp`;
+      const downloaded = await Promise.race([
+        downloadDbFromS3(tmpPath),
+        new Promise<{ ok: boolean; etag?: string }>((resolve) => setTimeout(() => resolve({ ok: false }), 5000)),
+      ]);
+      if (downloaded.ok && fs.existsSync(tmpPath)) {
+        // Close open WASM DB handle only after temp download succeeds, then atomically replace DB file
+        if (globalThis.__rawmetRawDb) {
+          try {
+            globalThis.__rawmetRawDb.close();
+          } catch {}
+          globalThis.__rawmetRawDb = undefined;
+        }
+        globalThis.__rawmetDb = undefined;
+        fs.renameSync(tmpPath, targetPath);
+        globalThis.__rawmetS3ETag = downloaded.etag || head?.etag || "";
+        lastS3SyncMs = Date.now();
+      }
+    } catch (err) {
+      console.error("syncDbFromS3 error:", err);
+    } finally {
+      globalThis.__rawmetSyncPromise = undefined;
+    }
+  })();
+
+  return globalThis.__rawmetSyncPromise;
 }
 
 export async function syncDbToS3(): Promise<void> {
