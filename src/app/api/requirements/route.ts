@@ -1,19 +1,32 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCurrentSession, getRequirements } from "@/lib/data";
 import { dispatchWhatsAppOpportunity } from "@/lib/whatsapp";
 import type { RequirementRecord } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: Request) {
+  await syncDbFromS3(true);
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category") || "all";
   const q = searchParams.get("q") || "";
   const items = getRequirements({ category, q, limit: 50 });
-  return NextResponse.json({ items });
+  return NextResponse.json(
+    { items },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    }
+  );
 }
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     const session = await getCurrentSession();
     const body = (await req.json()) as {
       name?: string;
@@ -73,6 +86,9 @@ export async function POST(req: Request) {
       .get(res.lastInsertRowid) as unknown as RequirementRecord;
 
     const waResult = dispatchWhatsAppOpportunity(created);
+
+    await syncDbToS3();
+    revalidatePath("/", "layout");
 
     return NextResponse.json(
       {

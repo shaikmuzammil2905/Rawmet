@@ -1,10 +1,11 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCmsMap } from "@/lib/data";
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       name?: string;
       mobile?: string;
@@ -32,6 +33,8 @@ export async function POST(req: Request) {
       `INSERT INTO referrals (name, mobile, whatsapp, location, reference_details, referral_code, status)
        VALUES (?, ?, ?, ?, ?, ?, 'new')`
     ).run(name, mobile, whatsapp || `91${mobile}`, location, referenceDetails, referralCode);
+
+    await syncDbToS3();
 
     const { contactSettings } = getCmsMap();
     const adminWa = contactSettings.whatsapp.replace(/\D/g, "") || "917382177653";

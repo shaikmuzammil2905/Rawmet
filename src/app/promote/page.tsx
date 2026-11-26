@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getCmsMap } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { PromoteClient } from "@/components/PromoteClient";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Partner with RAWMAT MART, refer industrial vendors, and earn referral rewards.",
 };
 
-export default function PromotePage() {
+export default async function PromotePage() {
+  await syncDbFromS3(true);
   const { contactSettings } = getCmsMap();
 
   return (

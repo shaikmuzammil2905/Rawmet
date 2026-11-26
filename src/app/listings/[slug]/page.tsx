@@ -15,7 +15,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const { slug } = await params;
   const { listing } = getListingBySlug(slug);
   if (!listing) return { title: "Industrial Listing - RAWMAT MART" };
@@ -35,7 +35,7 @@ export default async function ListingDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await syncDbFromS3();
+  await syncDbFromS3(true);
   const { slug } = await params;
   let { listing, vendor, related, availableSellers } = getListingBySlug(slug);
   if (!listing || !vendor) {

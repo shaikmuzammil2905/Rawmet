@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3 } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
+  await syncDbFromS3(true);
   const session = await getCurrentSession();
   if (!session) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -11,10 +14,10 @@ export async function GET() {
   const db = getDb();
   const savedListings = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name
+      `SELECT l.*, COALESCE(v.business_name, 'RAWMAT MART Verified Seller') as vendor_name
        FROM saved_listings sl
        JOIN listings l ON l.id = sl.listing_id
-       JOIN vendors v ON v.id = l.vendor_id
+       LEFT JOIN vendors v ON v.id = l.vendor_id
        WHERE sl.user_id = ?
        ORDER BY sl.id DESC`
     )

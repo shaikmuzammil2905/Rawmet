@@ -4,6 +4,10 @@ import { ToastProvider } from "@/components/ToastProvider";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { getCmsMap } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rawmet.com";
 
@@ -46,7 +50,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await syncDbFromS3(true);
   const { contactSettings } = getCmsMap();
 
   const orgSchema = {

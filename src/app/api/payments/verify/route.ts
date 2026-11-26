@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 import { verifyPaymentOrderToken } from "@/lib/auth";
 import { verifyRazorpaySignature } from "@/lib/razorpay";
@@ -9,10 +9,13 @@ import type { SubscriptionPlanRecord } from "@/lib/types";
 export async function POST(req: Request) {
   const session = await getCurrentSession();
   if (!session) {
+    await syncDbToS3();
+
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       orderId?: string;
       orderToken?: string;
@@ -29,7 +32,9 @@ export async function POST(req: Request) {
     const outcome = body.outcome || "paid";
 
     if (!orderId || !orderToken) {
-      return NextResponse.json({ error: "Missing order verification details." }, { status: 400 });
+      await syncDbToS3();
+
+    return NextResponse.json({ error: "Missing order verification details." }, { status: 400 });
     }
 
     const db = getDb();
@@ -49,12 +54,16 @@ export async function POST(req: Request) {
       | undefined;
 
     if (!payment) {
-      return NextResponse.json({ error: "Payment order not found." }, { status: 404 });
+      await syncDbToS3();
+
+    return NextResponse.json({ error: "Payment order not found." }, { status: 404 });
     }
 
     // Duplicate payment protection
     if (payment.status === "paid") {
-      return NextResponse.json({
+      await syncDbToS3();
+
+    return NextResponse.json({
         success: true,
         duplicateProtected: true,
         status: "paid",
@@ -71,12 +80,16 @@ export async function POST(req: Request) {
         signature: body.razorpaySignature,
       });
       if (!isValidRzp) {
-        return NextResponse.json({ error: "Invalid Razorpay payment signature." }, { status: 403 });
+        await syncDbToS3();
+
+    return NextResponse.json({ error: "Invalid Razorpay payment signature." }, { status: 403 });
       }
     } else {
       // Verify server-issued HMAC signature
       if (!verifyPaymentOrderToken(orderToken, payment.order_id, session.user.id, payment.plan_id, payment.amount_inr)) {
-        return NextResponse.json({ error: "Invalid payment verification signature." }, { status: 403 });
+        await syncDbToS3();
+
+    return NextResponse.json({ error: "Invalid payment verification signature." }, { status: 403 });
       }
     }
 
@@ -140,6 +153,8 @@ export async function POST(req: Request) {
       throw e;
     }
 
+    await syncDbToS3();
+
     return NextResponse.json({
       success: true,
       status: "paid",
@@ -151,6 +166,8 @@ export async function POST(req: Request) {
       message: `Subscription activated! GST Invoice ${invoiceNumber} generated.`,
     });
   } catch {
+    await syncDbToS3();
+
     return NextResponse.json({ error: "Payment verification error." }, { status: 500 });
   }
 }

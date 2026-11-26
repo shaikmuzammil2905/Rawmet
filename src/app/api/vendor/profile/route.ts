@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
+  await syncDbFromS3(true);
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
@@ -42,6 +45,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
@@ -79,6 +83,8 @@ export async function PATCH(req: Request) {
       body.whatsapp_categories ? JSON.stringify(body.whatsapp_categories) : null,
       session.vendor.id
     );
+
+    await syncDbToS3();
 
     return NextResponse.json({ success: true, message: "Vendor profile & WhatsApp notification controls updated." });
   } catch {

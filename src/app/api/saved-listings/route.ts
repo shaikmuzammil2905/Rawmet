@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
+  await syncDbFromS3(true);
   const session = await getCurrentSession();
   if (!session) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
   const db = getDb();
   const items = db
     .prepare(
-      `SELECT l.*, v.business_name as vendor_name
+      `SELECT l.*, COALESCE(v.business_name, 'RAWMAT MART Verified Seller') as vendor_name
        FROM saved_listings sl
        JOIN listings l ON l.id = sl.listing_id
-       JOIN vendors v ON v.id = l.vendor_id
+       LEFT JOIN vendors v ON v.id = l.vendor_id
        WHERE sl.user_id = ?
        ORDER BY sl.id DESC`
     )
     .all(session.user.id);
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
+  await syncDbFromS3(true);
   const session = await getCurrentSession();
   if (!session) return NextResponse.json({ error: "Please login to save listings." }, { status: 401 });
 
@@ -33,10 +37,12 @@ export async function POST(req: Request) {
     session.user.id,
     listingId
   );
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(req: Request) {
+  await syncDbFromS3(true);
   const session = await getCurrentSession();
   if (!session) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
@@ -47,6 +53,7 @@ export async function DELETE(req: Request) {
     session.user.id,
     listingId
   );
+  await syncDbToS3();
   return NextResponse.json({ success: true });
 }
 

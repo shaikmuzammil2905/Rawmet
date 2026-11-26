@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 import { signPaymentOrderToken } from "@/lib/auth";
 import { createRazorpayOrder, isRazorpayConfigured } from "@/lib/razorpay";
@@ -13,6 +13,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as { planId?: number; paymentMethod?: string };
     const planId = Number(body.planId);
     if (!planId) {
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         `INSERT INTO payments (order_id, user_id, plan_id, amount_inr, gst_amount_inr, status, payment_method)
          VALUES (?, ?, ?, ?, ?, 'created', ?)`
       ).run(orderId, session.user.id, plan.id, amountInr, gstAmountInr, body.paymentMethod || "Razorpay / UPI / Card");
+      await syncDbToS3();
     }
 
     const orderToken = signPaymentOrderToken(orderId, session.user.id, plan.id, amountInr);

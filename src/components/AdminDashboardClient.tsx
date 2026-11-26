@@ -103,11 +103,14 @@ interface AdminOverviewData {
   enquiries: Array<{
     id: number;
     name: string;
+    business_name?: string;
     mobile: string;
+    email?: string;
     message: string;
     listing_title: string;
     vendor_name: string;
     status: string;
+    created_at?: string;
   }>;
   subscriptions: Array<{
     id: number;
@@ -311,6 +314,17 @@ export function AdminDashboardClient() {
   const [editImage, setEditImage] = useState("");
   const [editUploading, setEditUploading] = useState(false);
 
+  // Admin Requirement creation states
+  const [reqTitle, setReqTitle] = useState("");
+  const [reqCatType, setReqCatType] = useState<"product" | "machinery" | "service">("product");
+  const [reqCatSlug, setReqCatSlug] = useState("rubber");
+  const [reqQty, setReqQty] = useState("");
+  const [reqLocation, setReqLocation] = useState("Pan India");
+  const [reqDesc, setReqDesc] = useState("");
+  const [reqContactName, setReqContactName] = useState("RAWMAT MART Admin");
+  const [reqMobile, setReqMobile] = useState("7382177653");
+  const [postingReq, setPostingReq] = useState(false);
+
   // Filter and search states
   const [sellerSearch, setSellerSearch] = useState("");
   const [sellerStatusFilter, setSellerStatusFilter] = useState("all");
@@ -374,9 +388,14 @@ export function AdminDashboardClient() {
     loadOverview();
   }, []);
 
-  // Auto-sync when opening Sellers or Audit Logs, plus 15s live refresh
+  // Auto-sync when opening Sellers, Requirements, Enquiries, or Audit Logs, plus 15s live refresh
   useEffect(() => {
-    if (activeTab === "vendors" || activeTab === "audit_logs") {
+    if (
+      activeTab === "vendors" ||
+      activeTab === "requirements" ||
+      activeTab === "enquiries" ||
+      activeTab === "audit_logs"
+    ) {
       loadOverview(true);
       const timer = setInterval(() => loadOverview(true), 15000);
       return () => clearInterval(timer);
@@ -2348,55 +2367,272 @@ export function AdminDashboardClient() {
 
           {/* TAB 7: REQUIREMENTS */}
           {activeTab === "requirements" && (
-            <div className="space-y-3">
-              {data.requirements.map((r) => (
-                <div key={r.id} className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-2">
-                  <div className="flex items-start justify-between flex-wrap gap-2">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase rounded-full bg-blue-100 text-[#1652b8] px-2.5 py-0.5">
-                        {r.category_type} • {r.category_slug}
-                      </span>
-                      <h3 className="font-extrabold text-base text-[#0a2458] mt-1">{r.title}</h3>
-                      <p className="text-xs text-slate-600">
-                        {r.name} ({r.business_name || "Individual Buyer"}) • {r.location} • Qty: {r.quantity}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase px-2.5 py-0.5">
-                        {r.status}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl">{r.description}</p>
-                  <div className="pt-2">
-                    <button
-                      onClick={() =>
-                        runAction({ action: "requirement_dispatch_whatsapp", id: r.id })
-                      }
-                      className="rounded-full bg-[#25D366] hover:bg-[#20b858] text-white px-3.5 py-1.5 text-xs font-bold shadow flex items-center gap-1.5"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      <span>Dispatch WhatsApp Alert to Matching Sellers</span>
-                    </button>
-                  </div>
+            <div className="space-y-4">
+              {/* Admin Post Requirement Form (Syncs to Main Website /requirements) */}
+              <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
+                <h3 className="font-extrabold text-[#0a2458] text-base mb-1">
+                  Post Requirement (Directly Visible on Main Website)
+                </h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  Requirements added here are saved to AWS S3 &amp; immediately published on the Live Requirements portal.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                  <input
+                    value={reqTitle}
+                    onChange={(e) => setReqTitle(e.target.value)}
+                    placeholder="Requirement Title (e.g. Need 10 MT Natural Rubber) *"
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
+                  <select
+                    value={reqCatType}
+                    onChange={(e) => {
+                      const t = e.target.value as "product" | "machinery" | "service";
+                      setReqCatType(t);
+                      const first = data.categories.find((c) => c.type === t);
+                      if (first) setReqCatSlug(first.slug);
+                    }}
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8] bg-white"
+                  >
+                    <option value="product">Products</option>
+                    <option value="machinery">Industries / Machineries</option>
+                    <option value="service">Services</option>
+                  </select>
+                  <select
+                    value={reqCatSlug}
+                    onChange={(e) => setReqCatSlug(e.target.value)}
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8] bg-white"
+                  >
+                    {data.categories
+                      .filter((c) => c.type === reqCatType)
+                      .map((c) => (
+                        <option key={c.id} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    value={reqQty}
+                    onChange={(e) => setReqQty(e.target.value)}
+                    placeholder="Quantity (e.g. 500 Kg / 10 MT)"
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
+                  <input
+                    value={reqLocation}
+                    onChange={(e) => setReqLocation(e.target.value)}
+                    placeholder="Delivery Location"
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
+                  <input
+                    value={reqContactName}
+                    onChange={(e) => setReqContactName(e.target.value)}
+                    placeholder="Contact Name"
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
+                  <input
+                    value={reqMobile}
+                    onChange={(e) => setReqMobile(e.target.value)}
+                    placeholder="10-digit Mobile"
+                    className="rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
+                  <input
+                    value={reqDesc}
+                    onChange={(e) => setReqDesc(e.target.value)}
+                    placeholder="Specifications / Requirement Details"
+                    className="sm:col-span-2 rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-[#1652b8]"
+                  />
                 </div>
-              ))}
+                <div className="mt-3 flex justify-end">
+                  <button
+                    disabled={postingReq || !reqTitle.trim()}
+                    onClick={async () => {
+                      setPostingReq(true);
+                      try {
+                        await runAction({
+                          action: "requirement_create",
+                          title: reqTitle,
+                          categoryType: reqCatType,
+                          categorySlug: reqCatSlug,
+                          quantity: reqQty,
+                          location: reqLocation,
+                          name: reqContactName,
+                          mobile: reqMobile,
+                          description: reqDesc,
+                        });
+                        setReqTitle("");
+                        setReqQty("");
+                        setReqDesc("");
+                      } finally {
+                        setPostingReq(false);
+                      }
+                    }}
+                    className="rounded-xl bg-[#1652b8] hover:bg-[#0a2458] disabled:opacity-50 text-white px-4 py-2 text-xs font-bold shadow"
+                  >
+                    {postingReq ? "Publishing..." : "+ Publish Requirement to Website"}
+                  </button>
+                </div>
+              </div>
+
+              {data.requirements.length === 0 ? (
+                <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center text-xs text-slate-500">
+                  No buyer requirements submitted yet. Requirements submitted from the main website or above will appear here immediately.
+                </div>
+              ) : (
+                data.requirements.map((r) => (
+                  <div key={r.id} className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm space-y-2">
+                    <div className="flex items-start justify-between flex-wrap gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-extrabold uppercase rounded-full bg-blue-100 text-[#1652b8] px-2.5 py-0.5">
+                          {r.category_type} • {r.category_slug}
+                        </span>
+                        <h3 className="font-extrabold text-base text-[#0a2458] mt-1 break-words">{r.title}</h3>
+                        <p className="text-xs text-slate-600 break-words">
+                          {r.name} ({r.business_name || "Individual Buyer"}) • Mob: {r.mobile}
+                          {r.email ? ` • ${r.email}` : ""} • {r.location || "Pan India"} • Qty: {r.quantity || "N/A"}
+                        </p>
+                        {r.created_at && (
+                          <p className="text-[11px] text-slate-400 mt-0.5">Posted: {r.created_at}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`rounded-full text-[10px] font-extrabold uppercase px-2.5 py-0.5 ${
+                            r.status === "open"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : r.status === "matched"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </div>
+                    </div>
+                    {r.description && (
+                      <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl break-words">{r.description}</p>
+                    )}
+                    <div className="pt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => runAction({ action: "requirement_dispatch_whatsapp", id: r.id })}
+                        className="rounded-full bg-[#25D366] hover:bg-[#20b858] text-white px-3.5 py-1.5 text-xs font-bold shadow flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <span>Dispatch WhatsApp Alert</span>
+                      </button>
+                      {r.status !== "matched" && (
+                        <button
+                          onClick={() => runAction({ action: "requirement_status", id: r.id, status: "matched" })}
+                          className="rounded-full bg-blue-50 hover:bg-blue-100 text-[#1652b8] px-3 py-1.5 text-xs font-bold"
+                        >
+                          Mark Matched
+                        </button>
+                      )}
+                      {r.status !== "closed" && (
+                        <button
+                          onClick={() => runAction({ action: "requirement_status", id: r.id, status: "closed" })}
+                          className="rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 text-xs font-bold"
+                        >
+                          Close
+                        </button>
+                      )}
+                      <button
+                        onClick={() => runAction({ action: "requirement_delete", id: r.id })}
+                        className="rounded-full bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1.5 text-xs font-bold"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
           {/* TAB 8: ENQUIRIES */}
           {activeTab === "enquiries" && (
             <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 space-y-3 shadow-sm">
-              <h3 className="font-extrabold text-[#0a2458] text-base">Direct Customer Inquiries ({data.enquiries.length})</h3>
-              {data.enquiries.map((e) => (
-                <div key={e.id} className="rounded-xl border border-slate-100 p-3 bg-slate-50 text-xs space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-[#0a2458]">{e.name} ({e.mobile})</span>
-                    <span className="text-slate-500 text-[11px]">Listing: {e.listing_title}</span>
-                  </div>
-                  <p className="text-slate-700">{e.message}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h3 className="font-extrabold text-[#0a2458] text-base">
+                  Direct Customer Inquiries ({data.enquiries.length})
+                </h3>
+                <span className="text-[11px] text-slate-500">
+                  Synced with AWS S3 • All website listing enquiries appear here
+                </span>
+              </div>
+              {data.enquiries.length === 0 ? (
+                <div className="rounded-xl border border-slate-100 p-6 text-center text-xs text-slate-500 bg-slate-50">
+                  No customer enquiries received yet.
                 </div>
-              ))}
+              ) : (
+                data.enquiries.map((e) => (
+                  <div key={e.id} className="rounded-xl border border-slate-200 p-3.5 sm:p-4 bg-slate-50 text-xs space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-extrabold text-sm text-[#0a2458]">{e.name}</span>
+                          {e.business_name && (
+                            <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                              {e.business_name}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                              e.status === "new"
+                                ? "bg-amber-100 text-amber-800"
+                                : e.status === "contacted"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-emerald-100 text-emerald-800"
+                            }`}
+                          >
+                            {e.status || "new"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                          <a href={`tel:${e.mobile}`} className="font-bold text-[#1652b8] hover:underline">
+                            Mob: {e.mobile}
+                          </a>
+                          {e.email && (
+                            <a href={`mailto:${e.email}`} className="text-slate-600 hover:underline break-all">
+                              Email: {e.email}
+                            </a>
+                          )}
+                          {e.created_at && <span className="text-slate-400">Received: {e.created_at}</span>}
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-slate-600 sm:text-right space-y-0.5">
+                        <div>
+                          <span className="font-bold text-slate-700">Listing:</span>{" "}
+                          {e.listing_title || "General Platform Enquiry"}
+                        </div>
+                        <div>
+                          <span className="font-bold text-slate-700">Vendor:</span>{" "}
+                          {e.vendor_name || "Platform / RAWMAT MART Desk"}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-slate-800 bg-white border border-slate-100 rounded-lg p-2.5 break-words">
+                      {e.message}
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {e.status !== "contacted" && (
+                        <button
+                          onClick={() => runAction({ action: "enquiry_status", id: e.id, status: "contacted" })}
+                          className="rounded-lg bg-blue-100 hover:bg-blue-200 text-[#1652b8] px-2.5 py-1 text-[11px] font-bold"
+                        >
+                          Mark Contacted
+                        </button>
+                      )}
+                      {e.status !== "closed" && (
+                        <button
+                          onClick={() => runAction({ action: "enquiry_status", id: e.id, status: "closed" })}
+                          className="rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-2.5 py-1 text-[11px] font-bold"
+                        >
+                          Mark Closed
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 

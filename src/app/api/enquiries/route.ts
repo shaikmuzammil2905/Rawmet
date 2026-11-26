@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { getCurrentSession } from "@/lib/data";
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     const session = await getCurrentSession();
     const body = (await req.json()) as {
       listingId?: number;
@@ -49,12 +51,17 @@ export async function POST(req: Request) {
       message
     );
 
+    await syncDbToS3();
+    revalidatePath("/", "layout");
+
     return NextResponse.json(
       { success: true, message: "Your enquiry has been sent to the verified vendor & RAWMAT MART desk." },
       { status: 201 }
     );
-  } catch {
-    return NextResponse.json({ error: "Failed to send enquiry." }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("Enquiry POST error:", err);
+    const msg = err instanceof Error ? err.message : "Failed to send enquiry.";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

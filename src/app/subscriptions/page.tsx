@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sparkles, Tag } from "lucide-react";
 import { getCmsMap, getSubscriptionPlans } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { BusinessSupportCards } from "@/components/BusinessSupportCards";
 import { SubscriptionPlansGrid } from "@/components/SubscriptionPlansGrid";
 
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
     "Subscribe to RAWMAT MART Industrial Portal. Free Plan ₹0, 3-Months ₹500, 6-Months ₹600, Subscription Form ₹1,500, and Annual & Launching Offer Plans.",
 };
 
-export default function SubscriptionsPage() {
+export default async function SubscriptionsPage() {
+  await syncDbFromS3(true);
   const plans = getSubscriptionPlans();
   const { launchingOffer, businessSupport, contactSettings } = getCmsMap();
 

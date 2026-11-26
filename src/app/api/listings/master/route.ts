@@ -3,10 +3,11 @@ import { getDb, syncDbFromS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: Request) {
   try {
-    await syncDbFromS3();
+    await syncDbFromS3(true);
     ensureSeeded();
 
     const { searchParams } = new URL(req.url);
@@ -43,10 +44,17 @@ export async function GET(req: Request) {
 
     const products = db.prepare(query).all(...params);
 
-    return NextResponse.json({
-      success: true,
-      products,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        products,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (err: unknown) {
     console.error("Master listings error:", err);
     return NextResponse.json({ error: "Failed to fetch master products." }, { status: 500 });

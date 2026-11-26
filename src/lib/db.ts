@@ -23,6 +23,8 @@ declare global {
   var __rawmetRawDb: Database | undefined;
   // eslint-disable-next-line no-var
   var __rawmetSeeded: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __rawmetS3ETag: string | undefined;
 }
 
 function normalizeParams(params: unknown[]): SqlValue[] {
@@ -81,23 +83,34 @@ function wrapWasmDb(rawDb: Database): DbClient {
   };
 }
 
-import { downloadDbFromS3, uploadDbToS3 } from "./s3";
+import { downloadDbFromS3, headDbInS3, isS3Configured, uploadDbToS3 } from "./s3";
 
 let lastS3SyncMs = 0;
-let lastLocalWriteMs = 0;
 
 export function markLocalDbWrite(): void {
-  lastLocalWriteMs = Date.now();
+  globalThis.__rawmetS3ETag = undefined;
 }
 
 export async function syncDbFromS3(force = false): Promise<void> {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-  if (!isReadOnlyEnv) return;
-  // If recent write happened locally within 20s, do not overwrite with potentially stale S3 snapshot
-  if (Date.now() - lastLocalWriteMs < 20000 && !force) return;
-  if (!force && Date.now() - lastS3SyncMs < 3000) return;
+  if (!isReadOnlyEnv || !isS3Configured()) return;
+
+  const targetPath = resolveWritableDbPath();
   try {
-    const targetPath = resolveWritableDbPath();
+    const head = await Promise.race([
+      headDbInS3(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
+
+    if (
+      head?.etag &&
+      head.etag === globalThis.__rawmetS3ETag &&
+      fs.existsSync(targetPath) &&
+      (!force || Date.now() - lastS3SyncMs < 1500)
+    ) {
+      return;
+    }
+
     // Close open WASM DB handle before overwriting the file on disk
     if (globalThis.__rawmetRawDb) {
       try {
@@ -109,9 +122,10 @@ export async function syncDbFromS3(force = false): Promise<void> {
 
     const downloaded = await Promise.race([
       downloadDbFromS3(targetPath),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 4000)),
+      new Promise<{ ok: boolean; etag?: string }>((resolve) => setTimeout(() => resolve({ ok: false }), 5000)),
     ]);
-    if (downloaded) {
+    if (downloaded.ok) {
+      globalThis.__rawmetS3ETag = downloaded.etag || head?.etag || "";
       lastS3SyncMs = Date.now();
     }
   } catch (err) {
@@ -121,29 +135,38 @@ export async function syncDbFromS3(force = false): Promise<void> {
 
 export async function syncDbToS3(): Promise<void> {
   markLocalDbWrite();
-  try {
-    const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-    if (!isReadOnlyEnv) return;
-    const targetPath = resolveWritableDbPath();
-    // Close open WASM DB handle so Emscripten VFS flushes 100% of SQLite pages to disk before S3 upload
-    if (globalThis.__rawmetRawDb) {
-      try {
-        globalThis.__rawmetRawDb.close();
-      } catch {}
-      globalThis.__rawmetRawDb = undefined;
-    }
-    globalThis.__rawmetDb = undefined;
+  const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const targetPath = resolveWritableDbPath();
 
-    const uploaded = await Promise.race([
-      uploadDbToS3(targetPath),
-      new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("S3 sync timeout")), 6000)),
-    ]);
-    if (uploaded) {
-      lastS3SyncMs = Date.now();
-    }
-  } catch (err) {
-    console.error("syncDbToS3 error:", err);
+  // Close open WASM DB handle so Emscripten VFS flushes 100% of SQLite pages to disk before S3 upload
+  if (globalThis.__rawmetRawDb) {
+    try {
+      globalThis.__rawmetRawDb.close();
+    } catch {}
+    globalThis.__rawmetRawDb = undefined;
   }
+  globalThis.__rawmetDb = undefined;
+
+  if (!isReadOnlyEnv || !isS3Configured()) return;
+
+  const uploaded = await Promise.race([
+    uploadDbToS3(targetPath),
+    new Promise<{ ok: boolean; etag?: string }>((_, reject) =>
+      setTimeout(() => reject(new Error("AWS S3 upload timeout")), 10000)
+    ),
+  ]);
+  if (!uploaded.ok) {
+    throw new Error("Failed to persist database to AWS S3.");
+  }
+  globalThis.__rawmetS3ETag = uploaded.etag || "";
+  lastS3SyncMs = Date.now();
+}
+
+export async function withDbWrite<T>(fn: (db: DbClient) => T | Promise<T>): Promise<T> {
+  await syncDbFromS3(true);
+  const result = await fn(getDb());
+  await syncDbToS3();
+  return result;
 }
 
 function resolveWritableDbPath(): string {
@@ -479,6 +502,7 @@ function runSafeMigrations(db: DbClient): void {
       const colNames = cols.map((c) => c.name).join(", ");
       db.exec(`
         PRAGMA foreign_keys = OFF;
+        PRAGMA legacy_alter_table = ON;
         ALTER TABLE listings RENAME TO listings_old_fk_mig;
         CREATE TABLE listings (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -513,6 +537,64 @@ function runSafeMigrations(db: DbClient): void {
         );
         INSERT INTO listings (${colNames}) SELECT ${colNames} FROM listings_old_fk_mig;
         DROP TABLE listings_old_fk_mig;
+        PRAGMA legacy_alter_table = OFF;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+
+    // Repair enquiries / saved_listings if an earlier rename rewrote their FK to listings_old_fk_mig
+    const enqSql = (
+      db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='enquiries'`).get() as
+        | { sql?: string }
+        | undefined
+    )?.sql;
+    if (enqSql && enqSql.includes("listings_old_fk_mig")) {
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        PRAGMA legacy_alter_table = ON;
+        ALTER TABLE enquiries RENAME TO enquiries_fk_repair;
+        CREATE TABLE enquiries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          listing_id INTEGER REFERENCES listings(id) ON DELETE SET NULL,
+          vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          name TEXT NOT NULL,
+          business_name TEXT NOT NULL DEFAULT '',
+          mobile TEXT NOT NULL,
+          email TEXT NOT NULL DEFAULT '',
+          message TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('new','contacted','closed')) DEFAULT 'new',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO enquiries (id, listing_id, vendor_id, user_id, name, business_name, mobile, email, message, status, created_at)
+        SELECT id, listing_id, vendor_id, user_id, name, business_name, mobile, email, message, status, created_at FROM enquiries_fk_repair;
+        DROP TABLE enquiries_fk_repair;
+        PRAGMA legacy_alter_table = OFF;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+
+    const savedSql = (
+      db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='saved_listings'`).get() as
+        | { sql?: string }
+        | undefined
+    )?.sql;
+    if (savedSql && savedSql.includes("listings_old_fk_mig")) {
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        PRAGMA legacy_alter_table = ON;
+        ALTER TABLE saved_listings RENAME TO saved_listings_fk_repair;
+        CREATE TABLE saved_listings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(user_id, listing_id)
+        );
+        INSERT INTO saved_listings (id, user_id, listing_id, created_at)
+        SELECT id, user_id, listing_id, created_at FROM saved_listings_fk_repair;
+        DROP TABLE saved_listings_fk_repair;
+        PRAGMA legacy_alter_table = OFF;
         PRAGMA foreign_keys = ON;
       `);
     }

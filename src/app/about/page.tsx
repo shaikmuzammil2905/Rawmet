@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { getCmsMap } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { Reveal } from "@/components/Reveal";
 import { BusinessSupportCards } from "@/components/BusinessSupportCards";
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
     "Learn about RAWMAT MART operated by Sirrinidhi Enterprises — India's multi-vendor B2B industrial marketplace and real-time business portal.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  await syncDbFromS3(true);
   const { aboutContent, contactSettings, businessSupport } = getCmsMap();
 
   return (

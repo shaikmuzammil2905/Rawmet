@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import { getGalleryItems } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { GalleryClient } from "@/components/GalleryClient";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Industrial Gallery",
   description: "Explore industrial plants, raw materials, machineries, and service projects showcased on RAWMAT MART.",
 };
 
-export default function GalleryPage() {
+export default async function GalleryPage() {
+  await syncDbFromS3(true);
   const items = getGalleryItems();
 
   return (

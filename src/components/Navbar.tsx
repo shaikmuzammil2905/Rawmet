@@ -98,7 +98,7 @@ export function Navbar({ mobileNumber = "+91 7382177653" }: { mobileNumber?: str
 
   useEffect(() => {
     let active = true;
-    fetch("/api/categories")
+    fetch("/api/categories", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (!active || !Array.isArray(data?.categories)) return;

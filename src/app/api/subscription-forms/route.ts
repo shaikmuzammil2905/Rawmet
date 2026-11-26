@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["admin"]);
   if (!session) {
     return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -28,6 +31,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       user_id?: number;
       user_type?: "seller" | "buyer";
@@ -76,6 +80,7 @@ export async function POST(req: Request) {
       `New form submitted by ${name} (${mobile}) for ${body.plan_name || "₹1,500 Plan"}`
     );
 
+    await syncDbToS3();
     return NextResponse.json({
       success: true,
       id: Number(res.lastInsertRowid),
@@ -94,6 +99,7 @@ export async function PATCH(req: Request) {
   }
 
   try {
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       id: number;
       status?: "pending" | "approved" | "rejected" | "converted";
@@ -156,6 +162,7 @@ export async function PATCH(req: Request) {
       `Form #${body.id} status changed to ${body.status || "updated"} by Admin`
     );
 
+    await syncDbToS3();
     return NextResponse.json({ success: true, message: "Subscription form updated successfully." });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to update subscription form.";

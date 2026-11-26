@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getCategories, getRequirements } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { RequirementsClient } from "@/components/RequirementsClient";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
     "Find live industrial business requirements or post your requirement on RAWMAT MART to trigger automatic WhatsApp alerts to verified vendors.",
 };
 
-export default function RequirementsPage() {
+export default async function RequirementsPage() {
+  await syncDbFromS3(true);
   const requirements = getRequirements({ limit: 40 });
   const categories = getCategories();
 

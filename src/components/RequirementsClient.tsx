@@ -41,7 +41,8 @@ export function RequirementsClient({
     setLoadingList(true);
     try {
       const res = await fetch(
-        `/api/requirements?category=${encodeURIComponent(nextCat)}&q=${encodeURIComponent(nextQ)}`
+        `/api/requirements?category=${encodeURIComponent(nextCat)}&q=${encodeURIComponent(nextQ)}`,
+        { cache: "no-store" }
       );
       const data = await res.json();
       setItems(data.items || []);

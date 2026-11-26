@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -47,28 +47,41 @@ export async function uploadToS3(
   return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
 }
 
-export async function uploadDbToS3(dbFilePath: string): Promise<boolean> {
-  if (!isS3Configured()) return false;
+export async function headDbInS3(): Promise<{ etag: string; lastModified?: Date } | null> {
+  if (!isS3Configured()) return null;
   try {
-    if (!fs.existsSync(dbFilePath)) return false;
-    const buffer = fs.readFileSync(dbFilePath);
     const client = getS3Client();
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: "database/rawmet.db",
-      Body: buffer,
-      ContentType: "application/x-sqlite3",
-    });
-    await client.send(command);
-    return true;
-  } catch (err) {
-    console.error("Failed to upload database to S3:", err);
-    return false;
+    const res = await client.send(
+      new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: "database/rawmet.db",
+      })
+    );
+    return { etag: res.ETag || "", lastModified: res.LastModified };
+  } catch {
+    return null;
   }
 }
 
-export async function downloadDbFromS3(targetPath: string): Promise<boolean> {
-  if (!isS3Configured()) return false;
+export async function uploadDbToS3(dbFilePath: string): Promise<{ ok: boolean; etag?: string }> {
+  if (!isS3Configured()) return { ok: false };
+  if (!fs.existsSync(dbFilePath)) {
+    throw new Error(`Database file missing at ${dbFilePath}`);
+  }
+  const buffer = fs.readFileSync(dbFilePath);
+  const client = getS3Client();
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: "database/rawmet.db",
+    Body: buffer,
+    ContentType: "application/x-sqlite3",
+  });
+  const res = await client.send(command);
+  return { ok: true, etag: res.ETag };
+}
+
+export async function downloadDbFromS3(targetPath: string): Promise<{ ok: boolean; etag?: string }> {
+  if (!isS3Configured()) return { ok: false };
   try {
     const client = getS3Client();
     const command = new GetObjectCommand({
@@ -76,16 +89,16 @@ export async function downloadDbFromS3(targetPath: string): Promise<boolean> {
       Key: "database/rawmet.db",
     });
     const res = await client.send(command);
-    if (!res.Body) return false;
+    if (!res.Body) return { ok: false };
     const byteArray = await res.Body.transformToByteArray();
     const dir = path.dirname(targetPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(targetPath, Buffer.from(byteArray));
-    return true;
+    return { ok: true, etag: res.ETag };
   } catch (err) {
     console.error("Failed to download database from S3:", err);
-    return false;
+    return { ok: false };
   }
 }
