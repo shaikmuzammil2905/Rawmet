@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb, syncDbToS3 } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword, hashToken } from "@/lib/auth";
 
 export async function GET(req: Request) {
   try {
+    await syncDbFromS3(true);
     ensureSeeded();
     const { searchParams } = new URL(req.url);
     const token = (searchParams.get("token") || "").trim();
@@ -46,6 +47,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     ensureSeeded();
     const body = (await req.json()) as { token?: string; password?: string };
     const token = (body.token || "").trim();
@@ -89,7 +91,6 @@ export async function POST(req: Request) {
     // Hash new password using scrypt
     const newPasswordHash = hashPassword(password);
 
-    // Invalidate reset token immediately upon single use and revoke existing sessions
     db.prepare(
       `UPDATE users 
        SET password_hash = ?, 
@@ -99,6 +100,19 @@ export async function POST(req: Request) {
            last_login_at = datetime('now') 
        WHERE id = ?`
     ).run(newPasswordHash, user.id);
+
+    db.prepare(
+      `INSERT INTO audit_logs (
+         user_id, user_email, action, entity_type, entity_id,
+         target_user_id, previous_status, new_status, details
+       ) VALUES (?, ?, 'Password Changed via Reset Link', 'user', ?, ?, 'active', 'password_updated', ?)`
+    ).run(
+      user.id,
+      user.email,
+      user.id,
+      user.id,
+      `Password reset completed for ${user.email}; previous sessions revoked.`
+    );
 
     await syncDbToS3();
 

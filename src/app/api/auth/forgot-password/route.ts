@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { getDb, syncDbToS3 } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashToken } from "@/lib/auth";
 import { sendPasswordResetEmail } from "@/lib/email";
@@ -21,6 +21,7 @@ function checkIpRateLimit(ip: string): boolean {
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     ensureSeeded();
     const clientIp = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim();
     if (!checkIpRateLimit(clientIp)) {

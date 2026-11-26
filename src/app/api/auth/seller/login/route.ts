@@ -7,7 +7,7 @@ import { sendOtpEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
-    await syncDbFromS3();
+    await syncDbFromS3(true);
     ensureSeeded();
 
     const body = (await req.json()) as {
@@ -154,14 +154,14 @@ export async function POST(req: Request) {
       db.prepare(`UPDATE users SET otp_code = '', otp_expires_at = '' WHERE id = ?`).run(userId);
 
       const user = sanitizeUser(userRow);
-      await setSessionCookie(user.id, "vendor");
+      await setSessionCookie(user.id, user.role, Number(userRow.session_version || 1));
 
       return NextResponse.json({
         success: true,
         message: "Logged in successfully!",
         user,
         vendor: vendorRow,
-        redirect: "/vendor/dashboard",
+        redirect: "/seller",
       });
     }
 
@@ -185,38 +185,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // Admin Approval Check:
-    if (verificationStatus === "pending") {
-      return NextResponse.json(
-        {
-          error:
-            "Your seller registration is currently under admin verification. You will be able to access your seller dashboard once approved.",
-          status: "pending",
-          businessName: vendorRow?.business_name,
-        },
-        { status: 403 }
-      );
-    }
-
-    if (verificationStatus === "rejected") {
-      return NextResponse.json(
-        {
-          error: "Your seller registration was rejected by Admin. Please contact customer support.",
-          status: "rejected",
-        },
-        { status: 403 }
-      );
-    }
-
     const user = sanitizeUser(userRow);
-    await setSessionCookie(user.id, "vendor");
+    await setSessionCookie(user.id, user.role, Number(userRow.session_version || 1));
 
     return NextResponse.json({
       success: true,
       message: `Welcome back, ${vendorRow?.business_name || user.name}!`,
       user,
       vendor: vendorRow,
-      redirect: "/vendor/dashboard",
+      redirect: verificationStatus === "approved" ? "/vendor/dashboard" : "/seller",
     });
   } catch (err: unknown) {
     console.error("Seller login error:", err);

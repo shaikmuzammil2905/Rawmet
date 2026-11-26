@@ -19,10 +19,9 @@ export async function GET() {
 
   // Basic counts
   const totalUsers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`).get() as { c: number }).c;
-  const totalRegisteredSellers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'vendor'`).get() as { c: number }).c;
-  const totalRegisteredBuyers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'customer'`).get() as { c: number }).c;
-
   const totalVendors = (db.prepare(`SELECT COUNT(*) as c FROM vendors`).get() as { c: number }).c;
+  const totalRegisteredSellers = totalVendors;
+  const totalRegisteredBuyers = (db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'customer'`).get() as { c: number }).c;
   const activeVendors = (
     db.prepare(`SELECT COUNT(*) as c FROM vendors WHERE verification_status = 'approved'`).get() as { c: number }
   ).c;
