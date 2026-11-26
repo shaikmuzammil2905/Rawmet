@@ -48,6 +48,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
@@ -188,6 +189,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });
@@ -294,6 +296,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["vendor"]);
   if (!session || !session.vendor) {
     return NextResponse.json({ error: "Vendor authentication required." }, { status: 401 });

@@ -393,7 +393,10 @@ export function UnifiedSellerPageClient() {
       if (data.vendor) {
         setVendor(data.vendor);
       }
-      showToast(data.message || "Seller application submitted! Status: Pending Approval", "success");
+      showToast(
+        "Your seller application has been submitted successfully and is awaiting admin verification.",
+        "success"
+      );
       setResubmitMode(false);
       await loadData();
     } catch {

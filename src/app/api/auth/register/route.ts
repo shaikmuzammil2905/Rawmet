@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword, sanitizeUser, setSessionCookie } from "@/lib/auth";
 import { sendWelcomeRegistrationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     ensureSeeded();
     const body = (await req.json()) as {
       name?: string;
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
       .get(result.lastInsertRowid) as Record<string, unknown>;
 
     const user = sanitizeUser(userRow);
+    await syncDbToS3();
     await setSessionCookie(user.id, user.role);
 
     // Send real confirmation welcome email

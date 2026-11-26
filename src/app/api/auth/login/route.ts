@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncDbFromS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { sanitizeUser, setSessionCookie, verifyPassword } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
+    await syncDbFromS3(true);
     ensureSeeded();
     const body = (await req.json()) as {
       identifier?: string;

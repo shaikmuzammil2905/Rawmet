@@ -98,19 +98,21 @@ export async function syncDbFromS3(force = false): Promise<void> {
   if (!force && Date.now() - lastS3SyncMs < 3000) return;
   try {
     const targetPath = resolveWritableDbPath();
+    // Close open WASM DB handle before overwriting the file on disk
+    if (globalThis.__rawmetRawDb) {
+      try {
+        globalThis.__rawmetRawDb.close();
+      } catch {}
+      globalThis.__rawmetRawDb = undefined;
+    }
+    globalThis.__rawmetDb = undefined;
+
     const downloaded = await Promise.race([
       downloadDbFromS3(targetPath),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000)),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 4000)),
     ]);
     if (downloaded) {
       lastS3SyncMs = Date.now();
-      if (globalThis.__rawmetRawDb) {
-        try {
-          globalThis.__rawmetRawDb.close();
-        } catch {}
-        globalThis.__rawmetRawDb = undefined;
-      }
-      globalThis.__rawmetDb = undefined;
     }
   } catch (err) {
     console.error("syncDbFromS3 error:", err);
@@ -123,13 +125,15 @@ export async function syncDbToS3(): Promise<void> {
     const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
     if (!isReadOnlyEnv) return;
     const targetPath = resolveWritableDbPath();
-    // Flush any pending SQLite journal/cache before reading bytes for S3
+    // Close open WASM DB handle so Emscripten VFS flushes 100% of SQLite pages to disk before S3 upload
     if (globalThis.__rawmetRawDb) {
       try {
-        globalThis.__rawmetRawDb.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+        globalThis.__rawmetRawDb.close();
       } catch {}
+      globalThis.__rawmetRawDb = undefined;
     }
-    // MUST await so Vercel/Lambda does not freeze the container before S3 upload completes
+    globalThis.__rawmetDb = undefined;
+
     const uploaded = await Promise.race([
       uploadDbToS3(targetPath),
       new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("S3 sync timeout")), 6000)),

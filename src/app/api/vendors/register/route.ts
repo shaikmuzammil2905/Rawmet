@@ -7,7 +7,7 @@ import { sendSellerApplicationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
-    await syncDbFromS3();
+    await syncDbFromS3(true);
     ensureSeeded();
 
     const session = await getCurrentSession();
