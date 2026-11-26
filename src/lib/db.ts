@@ -168,9 +168,10 @@ export async function syncDbToS3(): Promise<void> {
 
   if (!isReadOnlyEnv) return;
   if (!isS3Configured()) {
-    throw new Error(
-      "AWS S3 is not configured (missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_S3_BUCKET_NAME)."
+    console.warn(
+      "syncDbToS3 skipped: AWS S3 credentials not configured in environment. Persisting in local container /tmp only."
     );
+    return;
   }
 
   const uploaded = await Promise.race([

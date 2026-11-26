@@ -574,6 +574,7 @@ export function AdminDashboardClient() {
     }
     const res = await fetch("/api/admin/listings", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type,
@@ -588,6 +589,7 @@ export function AdminDashboardClient() {
         status: "approved",
       }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast("Listing published directly live on main website!", "success");
       setNewTitle("");
@@ -595,9 +597,9 @@ export function AdminDashboardClient() {
       setNewFullDesc("");
       setNewImageUrl("/images/cat-products.png");
       setNewSubcat("");
-      loadOverview();
+      await loadOverview();
     } else {
-      showToast("Failed to publish listing.", "error");
+      showToast(out.error || "Failed to publish listing.", "error");
     }
   }
 
