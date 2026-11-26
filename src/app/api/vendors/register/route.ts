@@ -114,42 +114,10 @@ export async function POST(req: Request) {
 
     const businessName = (body.businessName || "").trim();
     const primaryCategory = (body.primaryCategory || body.businessCategory || "Products").trim();
-    const businessProofType = (body.businessProofType || body.idProofType || "GST Registration Certificate").trim();
+    const businessProofType = (body.businessProofType || body.idProofType || "Business Requirements").trim();
     const businessProofNumber = (body.businessProofNumber || body.gstNumber || "").trim().toUpperCase();
     const legalName = ((body as { legalName?: string }).legalName || businessName).trim();
-    const gstNumber = businessProofNumber; // Backward compatibility
-
-    // Format validation based on selected verification document type
-    if (businessProofType === "GST Registration Certificate") {
-      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(businessProofNumber)) {
-        return NextResponse.json(
-          {
-            error:
-              "Invalid GSTIN format. Indian GSTIN must be a 15-character alphanumeric identifier (e.g. 36AABCU9603R1ZM).",
-          },
-          { status: 400 }
-        );
-      }
-    } else if (businessProofType === "PAN Card") {
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(businessProofNumber)) {
-        return NextResponse.json(
-          { error: "Invalid PAN format. Indian PAN must be 10 characters (e.g. ABCDE1234F)." },
-          { status: 400 }
-        );
-      }
-    } else if (businessProofType === "Udyam / MSME Registration") {
-      if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(businessProofNumber)) {
-        return NextResponse.json(
-          { error: "Invalid Udyam Registration Number format (e.g. UDYAM-TS-02-0012345)." },
-          { status: 400 }
-        );
-      }
-    } else if (businessProofNumber.length < 4) {
-      return NextResponse.json(
-        { error: "Please enter a valid Document Identification Number (min 4 characters)." },
-        { status: 400 }
-      );
-    }
+    const gstNumber = businessProofNumber; // Optional backward compatibility
 
     const country = (body.country || "India").trim();
     const city = (body.city || "").trim();
@@ -168,11 +136,11 @@ export async function POST(req: Request) {
     const businessType = body.businessType || "Manufacturer & Bulk Supplier";
     const catSlug = (body.productServiceCategory || "rubber").trim();
 
-    if (!ownerName || !businessName || mobile.length !== 10 || !email || !businessProofNumber || (!fullAddress && !city)) {
+    if (!ownerName || !businessName || mobile.length !== 10 || !email || (!fullAddress && !city)) {
       return NextResponse.json(
         {
           error:
-            "Please fill all required fields: Business Name, Business Proof Number, City, and Address.",
+            "Please fill all required fields: Business Name, City, and Address.",
         },
         { status: 400 }
       );
