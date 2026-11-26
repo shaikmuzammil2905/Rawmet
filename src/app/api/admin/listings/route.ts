@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
@@ -26,13 +27,8 @@ export async function POST(req: Request) {
     };
 
     const db = getDb();
-    let vendorId = body.vendor_id;
-    if (!vendorId) {
-      const firstVendor = db.prepare(`SELECT id FROM vendors WHERE verification_status = 'approved' LIMIT 1`).get() as
-        | { id: number }
-        | undefined;
-      vendorId = firstVendor?.id || 1;
-    }
+    const vendorId = body.vendor_id ? Number(body.vendor_id) : null;
+    const isMaster = body.vendor_id ? 0 : 1;
 
     const slug = `${slugify(body.title)}-${Date.now().toString(36)}`;
     const res = db
@@ -40,8 +36,8 @@ export async function POST(req: Request) {
         `INSERT INTO listings (
           vendor_id, type, category_slug, subcategory_slug, title, slug,
           short_description, description, specifications, location,
-          price_display, availability, image_url, gallery_urls, status, featured, is_published
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+          price_display, availability, image_url, gallery_urls, status, featured, is_published, is_master
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`
       )
       .run(
         vendorId,
@@ -59,7 +55,8 @@ export async function POST(req: Request) {
         body.image_url || "/images/cat-products.png",
         JSON.stringify([body.image_url || "/images/cat-products.png"]),
         body.status || "approved",
-        body.featured ? 1 : 0
+        body.featured ? 1 : 0,
+        isMaster
       );
 
     db.prepare(`
@@ -72,7 +69,8 @@ export async function POST(req: Request) {
     );
 
     await syncDbToS3();
-    return NextResponse.json({ success: true, id: Number(res.lastInsertRowid) }, { status: 201 });
+    revalidatePath("/", "layout");
+    return NextResponse.json({ success: true, id: Number(res.lastInsertRowid), slug }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to add listing." }, { status: 500 });
   }
@@ -138,6 +136,7 @@ export async function PATCH(req: Request) {
   );
 
   await syncDbToS3();
+  revalidatePath("/", "layout");
   return NextResponse.json({ success: true });
 }
 
@@ -161,5 +160,6 @@ export async function DELETE(req: Request) {
   );
 
   await syncDbToS3();
+  revalidatePath("/", "layout");
   return NextResponse.json({ success: true });
 }

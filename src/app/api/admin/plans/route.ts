@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole } from "@/lib/data";
 
@@ -47,6 +48,7 @@ export async function PATCH(req: Request) {
     );
 
     await syncDbToS3();
+    revalidatePath("/", "layout");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to update subscription plan.";

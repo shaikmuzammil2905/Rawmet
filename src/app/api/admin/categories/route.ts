@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
@@ -7,7 +8,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(false);
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       kind?: "category" | "subcategory";
       type?: "product" | "machinery" | "service";
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       );
 
       await syncDbToS3();
+      revalidatePath("/", "layout");
       return NextResponse.json(
         {
           success: true,
@@ -127,6 +129,7 @@ export async function POST(req: Request) {
     );
 
     await syncDbToS3();
+    revalidatePath("/", "layout");
     return NextResponse.json(
       { success: true, id: Number(res.lastInsertRowid), name, slug, type },
       { status: 201 }
@@ -143,7 +146,7 @@ export async function PATCH(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(false);
+    await syncDbFromS3(true);
     const body = (await req.json()) as {
       kind?: "category" | "subcategory";
       id?: number;
@@ -162,6 +165,7 @@ export async function PATCH(req: Request) {
         body.id
       );
       await syncDbToS3();
+      revalidatePath("/", "layout");
       return NextResponse.json({ success: true });
     }
 
@@ -180,6 +184,7 @@ export async function PATCH(req: Request) {
       body.id
     );
     await syncDbToS3();
+    revalidatePath("/", "layout");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to update category.";
@@ -193,7 +198,7 @@ export async function DELETE(req: Request) {
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
   try {
-    await syncDbFromS3(false);
+    await syncDbFromS3(true);
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     const kind = searchParams.get("kind") || "category";
@@ -208,6 +213,7 @@ export async function DELETE(req: Request) {
       db.prepare(`DELETE FROM categories WHERE id = ?`).run(id);
     }
     await syncDbToS3();
+    revalidatePath("/", "layout");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to delete category.";

@@ -77,7 +77,7 @@ export function CatalogBrowser({
 
   useEffect(() => {
     let active = true;
-    fetch("/api/categories")
+    fetch("/api/categories", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (!active || !Array.isArray(data?.categories)) return;
@@ -115,7 +115,7 @@ export function CatalogBrowser({
         limit: String(limit),
         offset: String(nextOffset),
       });
-      const res = await fetch(`/api/listings?${params.toString()}`);
+      const res = await fetch(`/api/listings?${params.toString()}`, { cache: "no-store" });
       const data = await res.json();
       setItems((prev) => (append ? [...prev, ...(data.items || [])] : data.items || []));
       setTotal(data.total || 0);

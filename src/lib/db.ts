@@ -239,7 +239,7 @@ function initializeSchema(db: DbClient): void {
 
     CREATE TABLE IF NOT EXISTS listings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+      vendor_id INTEGER DEFAULT NULL REFERENCES vendors(id) ON DELETE SET NULL,
       type TEXT NOT NULL CHECK(type IN ('product','machinery','service')),
       category_slug TEXT NOT NULL,
       subcategory_slug TEXT NOT NULL DEFAULT '',
@@ -469,6 +469,55 @@ function runSafeMigrations(db: DbClient): void {
     } catch {
       // Column already present
     }
+  }
+
+  // Allow NULL vendor_id for Admin-created master listings on existing DBs
+  try {
+    const cols = db.prepare(`PRAGMA table_info(listings)`).all() as Array<{ name: string; notnull: number }>;
+    const vendorCol = cols.find((c) => c.name === "vendor_id");
+    if (vendorCol && vendorCol.notnull === 1) {
+      const colNames = cols.map((c) => c.name).join(", ");
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        ALTER TABLE listings RENAME TO listings_old_fk_mig;
+        CREATE TABLE listings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vendor_id INTEGER DEFAULT NULL REFERENCES vendors(id) ON DELETE SET NULL,
+          type TEXT NOT NULL CHECK(type IN ('product','machinery','service')),
+          category_slug TEXT NOT NULL,
+          subcategory_slug TEXT NOT NULL DEFAULT '',
+          title TEXT NOT NULL,
+          slug TEXT NOT NULL UNIQUE,
+          short_description TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          specifications TEXT NOT NULL DEFAULT '{}',
+          location TEXT NOT NULL DEFAULT '',
+          price_display TEXT NOT NULL DEFAULT 'Request Quote',
+          availability TEXT NOT NULL DEFAULT 'In Stock',
+          image_url TEXT NOT NULL DEFAULT '/images/cat-products.png',
+          gallery_urls TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL CHECK(status IN ('pending','approved','rejected')) DEFAULT 'pending',
+          featured INTEGER NOT NULL DEFAULT 0,
+          views_count INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          rejection_reason TEXT DEFAULT '',
+          is_published INTEGER NOT NULL DEFAULT 1,
+          master_product_id INTEGER DEFAULT NULL,
+          price_numeric REAL DEFAULT 0,
+          price_unit TEXT DEFAULT 'Kg',
+          min_order_qty TEXT DEFAULT '1',
+          supply_location TEXT DEFAULT '',
+          commercial_details TEXT DEFAULT '',
+          is_master INTEGER DEFAULT 0
+        );
+        INSERT INTO listings (${colNames}) SELECT ${colNames} FROM listings_old_fk_mig;
+        DROP TABLE listings_old_fk_mig;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+  } catch (err) {
+    console.error("Listings vendor_id nullable migration failed:", err);
   }
 }
 
