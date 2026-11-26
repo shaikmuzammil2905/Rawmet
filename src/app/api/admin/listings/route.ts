@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getDb, syncDbFromS3, syncDbToS3, withDbMutation } from "@/lib/db";
+import { syncDbFromS3, withDbMutation } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(req: Request) {
   await syncDbFromS3(true);
@@ -85,89 +88,106 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["admin"]);
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
-  await syncDbFromS3(true);
-  const body = (await req.json()) as {
-    id?: number;
-    status?: "approved" | "pending" | "rejected";
-    rejection_reason?: string;
-    is_published?: boolean;
-    featured?: boolean;
-    title?: string;
-    category_slug?: string;
-    subcategory_slug?: string;
-    short_description?: string;
-    description?: string;
-    price_display?: string;
-    location?: string;
-    availability?: string;
-    image_url?: string;
-  };
+  try {
+    const body = (await req.json()) as {
+      id?: number;
+      status?: "approved" | "pending" | "rejected";
+      rejection_reason?: string;
+      is_published?: boolean;
+      featured?: boolean;
+      title?: string;
+      category_slug?: string;
+      subcategory_slug?: string;
+      short_description?: string;
+      description?: string;
+      price_display?: string;
+      location?: string;
+      availability?: string;
+      image_url?: string;
+    };
 
-  if (!body.id) return NextResponse.json({ error: "Listing ID required." }, { status: 400 });
+    if (!body.id) return NextResponse.json({ error: "Listing ID required." }, { status: 400 });
 
-  const db = getDb();
-  db.prepare(
-    `UPDATE listings SET
-      status = COALESCE(?, status),
-      rejection_reason = COALESCE(?, rejection_reason),
-      is_published = COALESCE(?, is_published),
-      featured = COALESCE(?, featured),
-      title = COALESCE(?, title),
-      category_slug = COALESCE(?, category_slug),
-      subcategory_slug = COALESCE(?, subcategory_slug),
-      short_description = COALESCE(?, short_description),
-      description = COALESCE(?, description),
-      price_display = COALESCE(?, price_display),
-      location = COALESCE(?, location),
-      availability = COALESCE(?, availability),
-      image_url = COALESCE(?, image_url),
-      updated_at = datetime('now')
-    WHERE id = ?`
-  ).run(
-    body.status ?? null,
-    body.status === "rejected" ? (body.rejection_reason || "Requires specification revision.") : null,
-    typeof body.is_published === "boolean" ? (body.is_published ? 1 : 0) : null,
-    typeof body.featured === "boolean" ? (body.featured ? 1 : 0) : null,
-    body.title ?? null,
-    body.category_slug ?? null,
-    body.subcategory_slug ?? null,
-    body.short_description ?? null,
-    body.description ?? null,
-    body.price_display ?? null,
-    body.location ?? null,
-    body.availability ?? null,
-    body.image_url ?? null,
-    body.id
-  );
+    const updated = await withDbMutation((db) => {
+      db.prepare(
+        `UPDATE listings SET
+          status = COALESCE(?, status),
+          rejection_reason = COALESCE(?, rejection_reason),
+          is_published = COALESCE(?, is_published),
+          featured = COALESCE(?, featured),
+          title = COALESCE(?, title),
+          category_slug = COALESCE(?, category_slug),
+          subcategory_slug = COALESCE(?, subcategory_slug),
+          short_description = COALESCE(?, short_description),
+          description = COALESCE(?, description),
+          price_display = COALESCE(?, price_display),
+          location = COALESCE(?, location),
+          availability = COALESCE(?, availability),
+          image_url = COALESCE(?, image_url),
+          updated_at = datetime('now')
+        WHERE id = ?`
+      ).run(
+        body.status ?? null,
+        body.status === "rejected" ? (body.rejection_reason || "Requires specification revision.") : null,
+        typeof body.is_published === "boolean" ? (body.is_published ? 1 : 0) : null,
+        typeof body.featured === "boolean" ? (body.featured ? 1 : 0) : null,
+        body.title ?? null,
+        body.category_slug ?? null,
+        body.subcategory_slug ?? null,
+        body.short_description ?? null,
+        body.description ?? null,
+        body.price_display ?? null,
+        body.location ?? null,
+        body.availability ?? null,
+        body.image_url ?? null,
+        body.id
+      );
 
-  await syncDbToS3();
-  revalidatePath("/", "layout");
-  return NextResponse.json({ success: true });
+      return db.prepare(`SELECT * FROM listings WHERE id = ?`).get(body.id);
+    });
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
+    return NextResponse.json({ success: true, listing: updated });
+  } catch (err: unknown) {
+    console.error("Admin listings PATCH error:", err);
+    const msg = err instanceof Error ? err.message : "Failed to update listing.";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: Request) {
+  await syncDbFromS3(true);
   const session = await requireRole(["admin"]);
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
 
-  await syncDbFromS3(true);
-  const { searchParams } = new URL(req.url);
-  const id = Number(searchParams.get("id"));
-  const db = getDb();
-  db.prepare(`DELETE FROM listings WHERE id = ?`).run(id);
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Valid listing ID required." }, { status: 400 });
 
-  db.prepare(`
-    INSERT INTO audit_logs (user_id, user_email, action, details)
-    VALUES (?, ?, 'admin_deleted_listing', ?)
-  `).run(
-    session.user.id,
-    session.user.email,
-    `Listing #${id} deleted by Admin`
-  );
+    await withDbMutation((db) => {
+      db.prepare(`DELETE FROM listings WHERE id = ?`).run(id);
+      db.prepare(`
+        INSERT INTO audit_logs (user_id, user_email, action, details)
+        VALUES (?, ?, 'admin_deleted_listing', ?)
+      `).run(
+        session.user.id,
+        session.user.email,
+        `Listing #${id} deleted by Admin`
+      );
+    });
 
-  await syncDbToS3();
-  revalidatePath("/", "layout");
-  return NextResponse.json({ success: true });
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    console.error("Admin listings DELETE error:", err);
+    const msg = err instanceof Error ? err.message : "Failed to delete listing.";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
