@@ -554,9 +554,14 @@ export function AdminDashboardClient() {
   async function deleteListing(id: number) {
     if (!confirm("Are you sure you want to permanently delete this listing from the database and website?"))
       return;
-    await fetch(`/api/admin/listings?id=${id}`, { method: "DELETE" });
-    showToast("Listing deleted.", "info");
-    loadOverview();
+    const res = await fetch(`/api/admin/listings?id=${id}`, { method: "DELETE", cache: "no-store" });
+    const out = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showToast("Listing deleted.", "info");
+      await loadOverview();
+    } else {
+      showToast(out.error || "Failed to delete listing.", "error");
+    }
   }
 
   async function addAdminListing(type: "product" | "machinery" | "service", e: React.FormEvent) {

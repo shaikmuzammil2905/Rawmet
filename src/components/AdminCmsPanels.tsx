@@ -68,9 +68,11 @@ export function AdminCategoriesPanel({
     e.preventDefault();
     const res = await fetch("/api/admin/categories", {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind: "category", type, name, description: desc, imageUrl }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast("Category added live to website!", "success");
       setName("");
@@ -78,7 +80,7 @@ export function AdminCategoriesPanel({
       setImageUrl("/images/cat-products.png");
       onRefresh();
     } else {
-      showToast("Failed to add category.", "error");
+      showToast(out.error || "Failed to add category.", "error");
     }
   }
 
@@ -87,6 +89,7 @@ export function AdminCategoriesPanel({
     if (!editingCategory) return;
     const res = await fetch("/api/admin/categories", {
       method: "PATCH",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         kind: "category",
@@ -96,12 +99,13 @@ export function AdminCategoriesPanel({
         imageUrl: editImage,
       }),
     });
+    const out = await res.json().catch(() => ({}));
     if (res.ok) {
       showToast("Category updated live on website!", "success");
       setEditingCategory(null);
       onRefresh();
     } else {
-      showToast("Failed to update category.", "error");
+      showToast(out.error || "Failed to update category.", "error");
     }
   }
 

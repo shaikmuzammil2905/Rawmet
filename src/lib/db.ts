@@ -93,7 +93,12 @@ export function markLocalDbWrite(): void {
 
 export async function syncDbFromS3(force = false): Promise<void> {
   const isReadOnlyEnv = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-  if (!isReadOnlyEnv || !isS3Configured()) return;
+  if (!isReadOnlyEnv) return;
+  if (!isS3Configured()) {
+    throw new Error(
+      "AWS S3 is not configured (missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_S3_BUCKET_NAME)."
+    );
+  }
 
   const targetPath = resolveWritableDbPath();
   try {
@@ -147,7 +152,12 @@ export async function syncDbToS3(): Promise<void> {
   }
   globalThis.__rawmetDb = undefined;
 
-  if (!isReadOnlyEnv || !isS3Configured()) return;
+  if (!isReadOnlyEnv) return;
+  if (!isS3Configured()) {
+    throw new Error(
+      "AWS S3 is not configured (missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_S3_BUCKET_NAME)."
+    );
+  }
 
   const uploaded = await Promise.race([
     uploadDbToS3(targetPath),
@@ -162,11 +172,26 @@ export async function syncDbToS3(): Promise<void> {
   lastS3SyncMs = Date.now();
 }
 
-export async function withDbWrite<T>(fn: (db: DbClient) => T | Promise<T>): Promise<T> {
+export async function withDbMutation<T>(fn: (db: DbClient) => T | Promise<T>): Promise<T> {
   await syncDbFromS3(true);
-  const result = await fn(getDb());
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  let result: T;
+  try {
+    result = await fn(db);
+    db.exec("COMMIT");
+  } catch (err) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {}
+    throw err;
+  }
   await syncDbToS3();
   return result;
+}
+
+export async function withDbWrite<T>(fn: (db: DbClient) => T | Promise<T>): Promise<T> {
+  return withDbMutation(fn);
 }
 
 function resolveWritableDbPath(): string {

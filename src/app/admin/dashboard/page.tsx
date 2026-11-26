@@ -2,9 +2,11 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/data";
+import { syncDbFromS3 } from "@/lib/db";
 import { AdminDashboardClient } from "@/components/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Super Admin Dashboard | RAWMAT MART",
@@ -12,6 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
+  await syncDbFromS3(true);
   const session = await requireRole(["admin"]);
   if (!session) {
     redirect("/admin/login");
