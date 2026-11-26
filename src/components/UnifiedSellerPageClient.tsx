@@ -56,6 +56,7 @@ interface VendorInfo {
   whatsapp: string;
   email: string;
   business_type?: string;
+  primary_category?: string;
   business_category: string;
   product_service_category: string;
   gst_number: string;
@@ -66,6 +67,12 @@ interface VendorInfo {
   description: string;
   verification_status: "pending" | "approved" | "rejected" | "suspended";
   rejection_reason?: string;
+  selected_business_types?: string;
+  selected_categories?: string;
+  selected_subcategories?: string;
+  other_business_type?: string;
+  other_categories?: string;
+  other_subcategories?: string;
 }
 
 interface MasterProduct {
@@ -118,6 +125,13 @@ export function UnifiedSellerPageClient() {
 
   const [regBusinessName, setRegBusinessName] = useState("");
   const [regPrimaryCategory, setRegPrimaryCategory] = useState<"Products" | "Industries" | "Services">("Products");
+  const [regBusinessTypes, setRegBusinessTypes] = useState<string[]>(["Products"]);
+  const [regSelectedCategories, setRegSelectedCategories] = useState<string[]>([]);
+  const [regSelectedSubcategories, setRegSelectedSubcategories] = useState<string[]>([]);
+  const [regOtherBusinessType, setRegOtherBusinessType] = useState("");
+  const [regOtherCategoryEnabled, setRegOtherCategoryEnabled] = useState(false);
+  const [regOtherCategoryName, setRegOtherCategoryName] = useState("");
+  const [regOtherSubcatByCat, setRegOtherSubcatByCat] = useState<Record<string, { enabled: boolean; text: string }>>({});
   const [regBusinessType, setRegBusinessType] = useState("Manufacturer");
   const [regCustomBusinessType, setRegCustomBusinessType] = useState("");
   const [regBusinessProofType, setRegBusinessProofType] = useState("GST Registration Certificate");
@@ -158,6 +172,16 @@ export function UnifiedSellerPageClient() {
   const [sellerSpecs, setSellerSpecs] = useState("");
   const [sellerNotes, setSellerNotes] = useState("");
   const [publishing, setPublishing] = useState(false);
+
+  // Custom "Other" listing state (for sellers who selected Other during onboarding)
+  const [otherTitle, setOtherTitle] = useState("");
+  const [otherType, setOtherType] = useState<"product" | "machinery" | "service">("product");
+  const [otherPrice, setOtherPrice] = useState("");
+  const [otherUnit, setOtherUnit] = useState("Unit");
+  const [otherAvail, setOtherAvail] = useState("In Stock");
+  const [otherDesc, setOtherDesc] = useState("");
+  const [otherImage, setOtherImage] = useState("/images/cat-products.png");
+  const [publishingOther, setPublishingOther] = useState(false);
 
   // Editing existing listing state
   const [editingListingId, setEditingListingId] = useState<number | null>(null);
@@ -220,10 +244,86 @@ export function UnifiedSellerPageClient() {
     loadData();
   }, []);
 
-  // Filter subcategories by chosen category
-  const filteredSubcategories = subcategories.filter(
-    (s) => s.category_name?.toLowerCase() === stepCategory.toLowerCase() || (s as { category_slug?: string }).category_slug === stepCategory
+  // Seller-scoped categories & subcategories (Strict Business Type + Onboarding Selection Filtering)
+  const sellerSelectedBusinessTypes: string[] = (() => {
+    try {
+      const parsed = JSON.parse(vendor?.selected_business_types || "[]");
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+    return [vendor?.primary_category || vendor?.business_category || "Products"];
+  })();
+
+  const sellerSelectedCatSlugs: string[] = (() => {
+    try {
+      const parsed = JSON.parse(vendor?.selected_categories || "[]");
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  })();
+
+  const sellerSelectedSubSlugs: string[] = (() => {
+    try {
+      const parsed = JSON.parse(vendor?.selected_subcategories || "[]");
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  })();
+
+  const sellerOtherCats: string[] = (() => {
+    try {
+      const parsed = JSON.parse(vendor?.other_categories || "[]");
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  })();
+
+  const sellerOtherSubs: string[] = (() => {
+    try {
+      const parsed = JSON.parse(vendor?.other_subcategories || "[]");
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  })();
+
+  const allowedSellerTypes = new Set(
+    sellerSelectedBusinessTypes.flatMap((bt) => {
+      const l = bt.toLowerCase();
+      if (l.includes("product")) return ["product"];
+      if (l.includes("machinery") || l.includes("industr")) return ["machinery"];
+      if (l.includes("service")) return ["service"];
+      return [];
+    })
   );
+
+  const allowedCategories = categories.filter((c) => {
+    if (sellerSelectedCatSlugs.length > 0) {
+      return sellerSelectedCatSlugs.includes(c.slug);
+    }
+    if (allowedSellerTypes.size > 0) {
+      return allowedSellerTypes.has(c.type);
+    }
+    return true;
+  });
+
+  // Filter subcategories by chosen category AND seller's selected subcategories (if any)
+  const filteredSubcategories = subcategories.filter((s) => {
+    const matchesCat =
+      s.category_name?.toLowerCase() === stepCategory.toLowerCase() ||
+      (s as { category_slug?: string }).category_slug === stepCategory;
+    if (!matchesCat) return false;
+    if (sellerSelectedSubSlugs.length > 0) {
+      const subsInCat = subcategories.filter(
+        (sub) =>
+          sub.category_name?.toLowerCase() === stepCategory.toLowerCase() ||
+          (sub as { category_slug?: string }).category_slug === stepCategory
+      );
+      const sellerPickedInThisCat = subsInCat.some((sub) => sellerSelectedSubSlugs.includes(sub.slug));
+      if (sellerPickedInThisCat) {
+        return sellerSelectedSubSlugs.includes(s.slug);
+      }
+    }
+    return true;
+  });
 
   // Fetch master products whenever category or subcategory changes
   async function loadMasterProducts(catSlug: string, subcatSlug: string) {
@@ -292,6 +392,37 @@ export function UnifiedSellerPageClient() {
   async function handleRegisterSeller(e: React.FormEvent) {
     e.preventDefault();
 
+    if (regBusinessTypes.length === 0) {
+      showToast("Please select at least one option under 'What are you selling?'.", "error");
+      return;
+    }
+    if (regBusinessTypes.includes("Other") && !regOtherBusinessType.trim()) {
+      showToast("Please enter your custom business / product / service name.", "error");
+      return;
+    }
+    const hasNonOtherType = regBusinessTypes.some((t) => t !== "Other");
+    if (hasNonOtherType && regSelectedCategories.length === 0 && (!regOtherCategoryEnabled || !regOtherCategoryName.trim())) {
+      showToast("Please select at least one category (or Other) for your business.", "error");
+      return;
+    }
+    // Validate that every selected category with subcategories has >= 1 subcategory or Other selected
+    for (const cSlug of regSelectedCategories) {
+      const cat = categories.find((c) => c.slug === cSlug);
+      if (!cat) continue;
+      const catSubs = subcategories.filter(
+        (s) => s.category_id === cat.id || (s as { category_slug?: string }).category_slug === cSlug
+      );
+      if (catSubs.length > 0) {
+        const hasCheckedSub = catSubs.some((s) => regSelectedSubcategories.includes(s.slug));
+        const otherSub = regOtherSubcatByCat[cSlug];
+        const hasOtherSub = Boolean(otherSub?.enabled && otherSub.text.trim());
+        if (!hasCheckedSub && !hasOtherSub) {
+          showToast(`Please select at least one ${cat.name} subcategory or choose Other.`, "error");
+          return;
+        }
+      }
+    }
+
     if (!regBusinessName.trim()) {
       showToast("Please enter your registered business name.", "error");
       return;
@@ -340,8 +471,19 @@ export function UnifiedSellerPageClient() {
           password: regPassword,
           businessName: regBusinessName.trim(),
           businessType: effectiveBusinessType,
-          businessCategory: regPrimaryCategory,
-          primaryCategory: regPrimaryCategory,
+          businessCategory: regBusinessTypes[0] || regPrimaryCategory,
+          primaryCategory: regBusinessTypes[0] || regPrimaryCategory,
+          selectedBusinessTypes: regBusinessTypes,
+          selectedCategories: regSelectedCategories,
+          selectedSubcategories: regSelectedSubcategories,
+          otherBusinessType: regBusinessTypes.includes("Other") ? regOtherBusinessType.trim() : "",
+          otherCategories:
+            regOtherCategoryEnabled && regOtherCategoryName.trim()
+              ? regOtherCategoryName.split(",").map((s) => s.trim()).filter(Boolean)
+              : [],
+          otherSubcategories: Object.values(regOtherSubcatByCat)
+            .filter((v) => v.enabled && v.text.trim())
+            .map((v) => v.text.trim()),
           businessProofType: "Business Requirements",
           businessProofNumber: "",
           gstNumber: "",
@@ -370,7 +512,7 @@ export function UnifiedSellerPageClient() {
         setVendor(data.vendor);
       }
       showToast(
-        "Your seller application has been submitted successfully and is awaiting admin verification.",
+        data.message || "Your seller account is approved and active! Welcome to your Seller Dashboard.",
         "success"
       );
       setResubmitMode(false);
@@ -596,52 +738,258 @@ export function UnifiedSellerPageClient() {
             </div>
           </div>
 
-          {/* 2. Primary Category Selection (Products, Industries, Services) */}
-          <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">2</span>
-              <span>Primary Category *</span>
-            </h3>
-            <p className="text-xs text-slate-500 mb-3">
-              Select the primary business classification you supply or manufacture:
-            </p>
+          {/* 2. What are you selling? Dynamic Business Type -> Categories -> Subcategories -> Other */}
+          <div className="border-t border-slate-100 pt-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-[#0a2458] uppercase tracking-wider mb-1 flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-blue-100 text-[#0a2458] flex items-center justify-center text-xs font-bold">2</span>
+                <span>What are you selling? *</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Select what you sell, then pick your exact categories &amp; subcategories. Only your selected categories will appear in your Seller Dashboard.
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Step 2A: Business Type Multi-Select Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {[
-                { id: "Products", label: "Products", desc: "Rubber, Plastic, Metals, Polymers, Bio Chemicals" },
-                { id: "Industries", label: "Industries", desc: "Turnkey Plants, Machineries, Heavy Equipment" },
-                { id: "Services", label: "Services", desc: "AMC, Logistics, Loans, Maintenance, Business Reg" },
-              ].map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setRegPrimaryCategory(cat.id as any)}
-                  className={`p-4 rounded-2xl border text-left transition-all ${
-                    regPrimaryCategory === cat.id
-                      ? "bg-[#0a2458] text-white border-[#0a2458] shadow-md ring-2 ring-[#f97316]/40"
-                      : "bg-slate-50/70 hover:bg-slate-100 border-slate-200 text-slate-800"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm">{cat.label}</span>
-                    <span
-                      className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                        regPrimaryCategory === cat.id ? "border-white bg-[#f97316]" : "border-slate-300 bg-white"
-                      }`}
-                    >
-                      {regPrimaryCategory === cat.id && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[11px] mt-1 line-clamp-2 ${
-                      regPrimaryCategory === cat.id ? "text-blue-100" : "text-slate-500"
+                { id: "Products", label: "Products", desc: "Raw materials, Rubber, Plastic, Metals" },
+                { id: "Machinery", label: "Machinery", desc: "Industrial & CNC equipment" },
+                { id: "Industry", label: "Industry", desc: "Turnkey plants & industrial units" },
+                { id: "Services", label: "Services", desc: "AMC, Logistics, Fabrication, Loans" },
+                { id: "Other", label: "Other", desc: "Custom product or service" },
+              ].map((bt) => {
+                const checked = regBusinessTypes.includes(bt.id);
+                return (
+                  <button
+                    key={bt.id}
+                    type="button"
+                    onClick={() => {
+                      setRegBusinessTypes((prev) => {
+                        const next = prev.includes(bt.id)
+                          ? prev.filter((x) => x !== bt.id)
+                          : [...prev, bt.id];
+                        if (next[0] === "Products" || next[0] === "Industries" || next[0] === "Services") {
+                          setRegPrimaryCategory(next[0] as "Products" | "Industries" | "Services");
+                        } else if (next.includes("Machinery") || next.includes("Industry")) {
+                          setRegPrimaryCategory("Industries");
+                        } else if (next.includes("Services")) {
+                          setRegPrimaryCategory("Services");
+                        } else {
+                          setRegPrimaryCategory("Products");
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      checked
+                        ? "bg-[#0a2458] text-white border-[#0a2458] shadow-md ring-2 ring-[#f97316]/40"
+                        : "bg-slate-50/70 hover:bg-slate-100 border-slate-200 text-slate-800"
                     }`}
                   >
-                    {cat.desc}
-                  </p>
-                </button>
-              ))}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-extrabold text-xs sm:text-sm">{bt.label}</span>
+                      <span
+                        className={`h-4 w-4 rounded border flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          checked ? "border-white bg-[#f97316] text-white" : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        {checked ? "✓" : ""}
+                      </span>
+                    </div>
+                    <p className={`text-[10px] mt-1 line-clamp-2 ${checked ? "text-blue-100" : "text-slate-500"}`}>
+                      {bt.desc}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Custom Other Business Type input */}
+            {regBusinessTypes.includes("Other") && (
+              <div className="rounded-2xl border border-orange-200 bg-orange-50/50 p-4">
+                <label className="block text-xs font-bold text-[#0a2458] mb-1">
+                  Enter your custom product / service / business category name *
+                </label>
+                <input
+                  type="text"
+                  value={regOtherBusinessType}
+                  onChange={(e) => setRegOtherBusinessType(e.target.value)}
+                  placeholder="e.g. Custom Industrial Conveyor System"
+                  className="w-full rounded-xl border border-orange-200 bg-white px-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                />
+              </div>
+            )}
+
+            {/* Step 2B: Dynamic Main Categories based on selected Business Types */}
+            {(() => {
+              const targetTypes = new Set<string>();
+              if (regBusinessTypes.includes("Products")) targetTypes.add("product");
+              if (regBusinessTypes.includes("Machinery") || regBusinessTypes.includes("Industry")) {
+                targetTypes.add("machinery");
+              }
+              if (regBusinessTypes.includes("Services")) targetTypes.add("service");
+
+              const dynamicCats = categories.filter((c) => targetTypes.has(c.type));
+              if (targetTypes.size === 0) return null;
+
+              return (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0a2458]">
+                      Select the main categories you sell *
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Showing categories for: {regBusinessTypes.filter((t) => t !== "Other").join(", ")}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {dynamicCats.map((cat) => {
+                      const isCatChecked = regSelectedCategories.includes(cat.slug);
+                      return (
+                        <label
+                          key={cat.id}
+                          className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition-all text-xs font-bold ${
+                            isCatChecked
+                              ? "bg-blue-50 border-[#1652b8] text-[#0a2458] shadow-xs"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isCatChecked}
+                            onChange={() => {
+                              setRegSelectedCategories((prev) =>
+                                prev.includes(cat.slug) ? prev.filter((x) => x !== cat.slug) : [...prev, cat.slug]
+                              );
+                            }}
+                            className="h-4 w-4 accent-[#0a2458] rounded shrink-0"
+                          />
+                          <span className="truncate">{cat.name}</span>
+                          <span className="ml-auto text-[10px] uppercase text-slate-400 font-semibold">
+                            {cat.type === "machinery" ? "Industry" : cat.type}
+                          </span>
+                        </label>
+                      );
+                    })}
+
+                    {/* Other Category Checkbox */}
+                    <label
+                      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition-all text-xs font-bold ${
+                        regOtherCategoryEnabled
+                          ? "bg-orange-50 border-[#f97316] text-[#0a2458]"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={regOtherCategoryEnabled}
+                        onChange={(e) => setRegOtherCategoryEnabled(e.target.checked)}
+                        className="h-4 w-4 accent-[#f97316] rounded shrink-0"
+                      />
+                      <span>Other (Custom Category)</span>
+                    </label>
+                  </div>
+
+                  {regOtherCategoryEnabled && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Enter your product / service / category name *
+                      </label>
+                      <input
+                        type="text"
+                        value={regOtherCategoryName}
+                        onChange={(e) => setRegOtherCategoryName(e.target.value)}
+                        placeholder="e.g. Custom Industrial Conveyor System"
+                        className="w-full rounded-xl border border-orange-200 bg-white px-3.5 py-2 text-sm focus:border-[#0a2458] focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Step 2C: Dynamic Subcategories for each checked Main Category */}
+                  {regSelectedCategories.map((cSlug) => {
+                    const cat = dynamicCats.find((c) => c.slug === cSlug);
+                    if (!cat) return null;
+                    const catSubs = subcategories.filter(
+                      (s) => s.category_id === cat.id || (s as { category_slug?: string }).category_slug === cSlug
+                    );
+                    const otherState = regOtherSubcatByCat[cSlug] || { enabled: false, text: "" };
+
+                    return (
+                      <div key={cat.id} className="rounded-xl border border-blue-100 bg-white p-3.5 space-y-2.5">
+                        <div className="text-xs font-extrabold text-[#0a2458]">
+                          {cat.name} Subcategories
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {catSubs.map((sub) => {
+                            const isSubChecked = regSelectedSubcategories.includes(sub.slug);
+                            return (
+                              <label
+                                key={sub.id}
+                                className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 cursor-pointer text-xs font-semibold ${
+                                  isSubChecked
+                                    ? "bg-[#0a2458] text-white border-[#0a2458]"
+                                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSubChecked}
+                                  onChange={() => {
+                                    setRegSelectedSubcategories((prev) =>
+                                      prev.includes(sub.slug)
+                                        ? prev.filter((x) => x !== sub.slug)
+                                        : [...prev, sub.slug]
+                                    );
+                                  }}
+                                  className="h-3.5 w-3.5 accent-[#f97316]"
+                                />
+                                <span>{sub.name}</span>
+                              </label>
+                            );
+                          })}
+                          <label
+                            className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 cursor-pointer text-xs font-semibold ${
+                              otherState.enabled
+                                ? "bg-orange-500 text-white border-orange-500"
+                                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={otherState.enabled}
+                              onChange={(e) =>
+                                setRegOtherSubcatByCat((prev) => ({
+                                  ...prev,
+                                  [cSlug]: { enabled: e.target.checked, text: prev[cSlug]?.text || "" },
+                                }))
+                              }
+                              className="h-3.5 w-3.5 accent-white"
+                            />
+                            <span>Other</span>
+                          </label>
+                        </div>
+                        {otherState.enabled && (
+                          <input
+                            type="text"
+                            value={otherState.text}
+                            onChange={(e) =>
+                              setRegOtherSubcatByCat((prev) => ({
+                                ...prev,
+                                [cSlug]: { enabled: true, text: e.target.value },
+                              }))
+                            }
+                            placeholder={`Enter your custom ${cat.name} product / subcategory name...`}
+                            className="w-full rounded-lg border border-orange-200 bg-orange-50/40 px-3 py-2 text-xs focus:border-[#0a2458] focus:outline-none"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* 3. Business Name & Business Type */}
@@ -1086,6 +1434,65 @@ export function UnifiedSellerPageClient() {
             </div>
           </div>
 
+          {/* My Business & Selected Categories Card */}
+          <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/40 p-5 sm:p-6 shadow-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-extrabold text-[#0a2458]">
+                My Business &amp; Selected Categories
+              </h2>
+              <span className="rounded-full bg-blue-100 text-[#1652b8] px-3 py-0.5 text-[11px] font-extrabold uppercase">
+                {sellerSelectedBusinessTypes.join(" • ")}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="font-bold text-slate-400 uppercase block mb-1">My Categories</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {allowedCategories.length > 0 ? (
+                    allowedCategories.map((c) => (
+                      <span key={c.id} className="rounded-full bg-[#0a2458] text-white px-2.5 py-1 text-[11px] font-bold">
+                        {c.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-500">None selected</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span className="font-bold text-slate-400 uppercase block mb-1">My Subcategories</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {sellerSelectedSubSlugs.length > 0 ? (
+                    sellerSelectedSubSlugs.map((slug) => {
+                      const subObj = subcategories.find((s) => s.slug === slug);
+                      return (
+                        <span key={slug} className="rounded-full bg-orange-100 text-[#ea580c] px-2.5 py-1 text-[11px] font-bold">
+                          {subObj?.name || slug}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-slate-500">All subcategories under selected categories</span>
+                  )}
+                </div>
+              </div>
+              {(vendor.other_business_type || sellerOtherCats.length > 0 || sellerOtherSubs.length > 0) && (
+                <div>
+                  <span className="font-bold text-slate-400 uppercase block mb-1">Other Custom Products</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[vendor.other_business_type, ...sellerOtherCats, ...sellerOtherSubs]
+                      .filter(Boolean)
+                      .map((item, idx) => (
+                        <span key={idx} className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-[11px] font-bold">
+                          {item}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
             <h2 className="text-lg font-extrabold text-[#0a2458] mb-4">Quick Actions</h2>
             <div className="flex flex-wrap gap-3">
@@ -1145,10 +1552,10 @@ export function UnifiedSellerPageClient() {
                   onChange={(e) => handleSelectCategory(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#0a2458] focus:border-[#0a2458] focus:outline-none"
                 >
-                  <option value="">-- Choose Category --</option>
-                  {categories.map((c) => (
+                  <option value="">-- Choose From Your Selected Categories --</option>
+                  {allowedCategories.map((c) => (
                     <option key={c.id} value={c.slug}>
-                      {c.name} ({c.type})
+                      {c.name} ({c.type === "machinery" ? "Industry / Machinery" : c.type})
                     </option>
                   ))}
                 </select>
@@ -1341,6 +1748,130 @@ export function UnifiedSellerPageClient() {
               </div>
             )}
           </form>
+
+          {(sellerSelectedBusinessTypes.includes("Other") ||
+            sellerOtherCats.length > 0 ||
+            sellerOtherSubs.length > 0 ||
+            vendor.other_business_type) && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!otherTitle.trim() || !otherPrice || Number(otherPrice) <= 0) {
+                  showToast("Enter your custom product name and a valid selling price.", "error");
+                  return;
+                }
+                setPublishingOther(true);
+                try {
+                  const res = await fetch("/api/vendor/listings", {
+                    method: "POST",
+                    cache: "no-store",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      is_other_custom: true,
+                      type: otherType,
+                      category_slug: "other",
+                      subcategory_slug: "other",
+                      title: otherTitle.trim(),
+                      price_numeric: Number(otherPrice),
+                      price_unit: otherUnit,
+                      availability: otherAvail,
+                      location: vendor.city || "Pan India",
+                      description: otherDesc.trim() || otherTitle.trim(),
+                      image_url: otherImage,
+                    }),
+                  });
+                  const out = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    showToast(out.error || "Failed to publish custom product.", "error");
+                    return;
+                  }
+                  showToast(out.message || "Custom product published live!", "success");
+                  setOtherTitle("");
+                  setOtherPrice("");
+                  setOtherDesc("");
+                  await loadSellerDetails();
+                  setActiveTab("listings");
+                } finally {
+                  setPublishingOther(false);
+                }
+              }}
+              className="mt-8 pt-6 border-t border-slate-200 space-y-4"
+            >
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 text-[#f97316] px-3 py-1 text-[11px] font-extrabold uppercase">
+                  Other / Custom Products
+                </span>
+                <h3 className="text-base font-extrabold text-[#0a2458] mt-1">
+                  Publish Your Custom &ldquo;Other&rdquo; Product / Service
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Selected during onboarding: {[vendor.other_business_type, ...sellerOtherCats, ...sellerOtherSubs].filter(Boolean).join(", ") || "Other"}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <input
+                  value={otherTitle}
+                  onChange={(e) => setOtherTitle(e.target.value)}
+                  placeholder="Custom Product / Service Name *"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-[#0a2458]"
+                />
+                <select
+                  value={otherType}
+                  onChange={(e) => setOtherType(e.target.value as "product" | "machinery" | "service")}
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 bg-white outline-none focus:border-[#0a2458]"
+                >
+                  <option value="product">Product</option>
+                  <option value="machinery">Machinery / Industry</option>
+                  <option value="service">Service</option>
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={otherPrice}
+                  onChange={(e) => setOtherPrice(e.target.value)}
+                  placeholder="Selling Price (₹) *"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-[#0a2458]"
+                />
+                <select
+                  value={otherUnit}
+                  onChange={(e) => setOtherUnit(e.target.value)}
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 bg-white outline-none focus:border-[#0a2458]"
+                >
+                  <option value="Unit">Per Unit</option>
+                  <option value="Kg">Per Kg</option>
+                  <option value="Ton">Per Ton</option>
+                  <option value="Project">Per Project</option>
+                </select>
+                <select
+                  value={otherAvail}
+                  onChange={(e) => setOtherAvail(e.target.value)}
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 bg-white outline-none focus:border-[#0a2458]"
+                >
+                  <option value="In Stock">In Stock</option>
+                  <option value="Made to Order">Made to Order</option>
+                </select>
+                <input
+                  value={otherImage}
+                  onChange={(e) => setOtherImage(e.target.value)}
+                  placeholder="Image URL (optional)"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-[#0a2458]"
+                />
+                <input
+                  value={otherDesc}
+                  onChange={(e) => setOtherDesc(e.target.value)}
+                  placeholder="Description & specifications"
+                  className="sm:col-span-2 rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-[#0a2458]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={publishingOther}
+                className="rounded-full bg-[#0a2458] hover:bg-[#123983] text-white px-5 py-2.5 text-xs font-extrabold shadow"
+              >
+                {publishingOther ? "Publishing..." : "+ Publish Custom Product"}
+              </button>
+            </form>
+          )}
         </div>
       )}
 

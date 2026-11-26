@@ -48,6 +48,27 @@ export interface VendorRecord {
   legal_name?: string;
   whatsapp_opt_in: number;
   whatsapp_categories: string;
+  selected_business_types?: string;
+  selected_categories?: string;
+  selected_subcategories?: string;
+  other_business_type?: string;
+  other_categories?: string;
+  other_subcategories?: string;
+  created_at: string;
+}
+
+export interface VendorCatalogSelectionRecord {
+  id: number;
+  vendor_id: number;
+  business_type: string;
+  category_id: number | null;
+  category_slug: string;
+  category_name: string;
+  subcategory_id: number | null;
+  subcategory_slug: string;
+  subcategory_name: string;
+  is_other: number;
+  other_name: string;
   created_at: string;
 }
 

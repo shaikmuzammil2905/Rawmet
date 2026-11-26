@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
   await syncDbFromS3();
@@ -68,6 +72,7 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
       master_product_id?: number;
+      is_other_custom?: boolean;
       type?: "product" | "machinery" | "service";
       category_slug?: string;
       subcategory_slug?: string;
@@ -80,28 +85,73 @@ export async function POST(req: Request) {
       specifications?: Record<string, string> | string;
       location?: string;
       description?: string;
+      image_url?: string;
     };
 
     const masterId = Number(body.master_product_id || 0);
-    if (!masterId) {
+    const isOtherCustom = Boolean(body.is_other_custom);
+
+    if (!masterId && !isOtherCustom) {
       return NextResponse.json(
-        { error: "Please select an existing admin-approved product from the catalogue." },
+        { error: "Please select an existing admin-approved product or choose your Other custom product." },
         { status: 400 }
       );
     }
 
-    // Fetch the master product
-    const master = db
-      .prepare(
-        `SELECT * FROM listings WHERE id = ? AND (master_product_id IS NULL OR master_product_id = 0 OR is_master = 1)`
-      )
-      .get(masterId) as Record<string, unknown> | undefined;
+    let master: Record<string, unknown> | undefined;
+    if (!isOtherCustom) {
+      master = db
+        .prepare(
+          `SELECT * FROM listings WHERE id = ? AND (master_product_id IS NULL OR master_product_id = 0 OR is_master = 1)`
+        )
+        .get(masterId) as Record<string, unknown> | undefined;
 
-    if (!master) {
-      return NextResponse.json(
-        { error: "Selected product not found in the master catalogue." },
-        { status: 404 }
-      );
+      if (!master) {
+        return NextResponse.json(
+          { error: "Selected product not found in the master catalogue." },
+          { status: 404 }
+        );
+      }
+
+      // Enforce category scope if seller has selected_categories configured
+      try {
+        const selCats = JSON.parse(session.vendor.selected_categories || "[]") as string[];
+        if (selCats.length > 0 && !selCats.includes(String(master.category_slug))) {
+          return NextResponse.json(
+            { error: "This product is outside your registered seller categories." },
+            { status: 403 }
+          );
+        }
+      } catch {
+        // Legacy seller without selected_categories JSON
+      }
+    } else {
+      const customTitle = (body.title || "").trim();
+      if (!customTitle) {
+        return NextResponse.json(
+          { error: "Custom product / service name is required." },
+          { status: 400 }
+        );
+      }
+      const fallbackType = body.type || "product";
+      const fallbackImg =
+        body.image_url ||
+        (fallbackType === "machinery"
+          ? "/images/cat-machineries.png"
+          : fallbackType === "service"
+            ? "/images/cat-services.png"
+            : "/images/cat-products.png");
+      master = {
+        id: null,
+        type: fallbackType,
+        category_slug: (body.category_slug || "other").trim(),
+        subcategory_slug: (body.subcategory_slug || "other").trim(),
+        title: customTitle,
+        short_description: customTitle,
+        description: (body.description || customTitle).trim(),
+        image_url: fallbackImg,
+        gallery_urls: JSON.stringify([fallbackImg]),
+      };
     }
 
     const priceNumeric = Number(body.price_numeric || 0);
@@ -173,6 +223,7 @@ export async function POST(req: Request) {
     );
 
     await syncDbToS3();
+    revalidatePath("/", "layout");
 
     return NextResponse.json(
       {
@@ -287,6 +338,7 @@ export async function PATCH(req: Request) {
     );
 
     await syncDbToS3();
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ success: true, message: "Listing updated successfully." });
   } catch (err: unknown) {
@@ -318,6 +370,7 @@ export async function DELETE(req: Request) {
   const db = getDb();
   db.prepare(`DELETE FROM listings WHERE id = ? AND vendor_id = ?`).run(id, session.vendor.id);
   await syncDbToS3();
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ success: true, message: "Listing deleted successfully." });
 }

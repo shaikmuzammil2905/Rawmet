@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
@@ -39,12 +40,18 @@ export async function POST(req: Request) {
       description?: string;
       productDetails?: string;
       whatsappOptIn?: boolean;
+      selectedBusinessTypes?: string[];
+      selectedCategories?: string[];
+      selectedSubcategories?: string[];
+      otherBusinessType?: string;
+      otherCategories?: string[];
+      otherSubcategories?: string[];
     };
 
     const db = getDb();
 
     // If user is already logged in, use their existing account
-    let userId: number;
+    let userId: number = 0;
     let ownerName = (body.ownerName || "").trim();
     let email = (body.email || "").trim().toLowerCase();
     let mobile = (body.mobile || "").replace(/\D/g, "").slice(-10);
@@ -55,7 +62,6 @@ export async function POST(req: Request) {
       email = email || session.user.email;
       mobile = mobile || session.user.mobile;
 
-      // Check if this user already applied as a seller
       const existingVendor = db
         .prepare(`SELECT * FROM vendors WHERE user_id = ?`)
         .get(userId) as Record<string, unknown> | undefined;
@@ -70,7 +76,6 @@ export async function POST(req: Request) {
         );
       }
     } else {
-      // User is not logged in: validate password to create new common account
       const password = body.password || "";
       if (password.length < 6) {
         return NextResponse.json(
@@ -79,7 +84,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Check if user already exists
       const existingUser = db
         .prepare(`SELECT id FROM users WHERE LOWER(email) = ? OR mobile = ? LIMIT 1`)
         .get(email, mobile) as { id: number } | undefined;
@@ -93,27 +97,32 @@ export async function POST(req: Request) {
           { status: 409 }
         );
       }
-
-      // Create new common user (stays 'customer' until Admin approves seller application)
-      const userIns = db
-        .prepare(
-          `INSERT INTO users (name, email, mobile, whatsapp, password_hash, role, status)
-           VALUES (?, ?, ?, ?, ?, 'customer', 'active')`
-        )
-        .run(
-          ownerName,
-          email,
-          mobile,
-          body.whatsapp || `91${mobile}`,
-          hashPassword(password)
-        );
-
-      userId = Number(userIns.lastInsertRowid);
-      await setSessionCookie(userId, "customer", 1);
     }
 
     const businessName = (body.businessName || "").trim();
-    const primaryCategory = (body.primaryCategory || body.businessCategory || "Products").trim();
+    const selectedBusinessTypes = Array.isArray(body.selectedBusinessTypes)
+      ? body.selectedBusinessTypes.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const selectedCategories = Array.isArray(body.selectedCategories)
+      ? body.selectedCategories.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const selectedSubcategories = Array.isArray(body.selectedSubcategories)
+      ? body.selectedSubcategories.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const otherBusinessType = (body.otherBusinessType || "").trim();
+    const otherCategories = Array.isArray(body.otherCategories)
+      ? body.otherCategories.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const otherSubcategories = Array.isArray(body.otherSubcategories)
+      ? body.otherSubcategories.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+
+    const primaryCategory = (
+      selectedBusinessTypes[0] ||
+      body.primaryCategory ||
+      body.businessCategory ||
+      "Products"
+    ).trim();
     const businessProofType = (body.businessProofType || body.idProofType || "Business Requirements").trim();
     const businessProofNumber = (body.businessProofNumber || body.gstNumber || "").trim().toUpperCase();
     const legalName = ((body as { legalName?: string }).legalName || businessName).trim();
@@ -134,7 +143,7 @@ export async function POST(req: Request) {
 
     const whatsapp = (body.whatsapp || mobile).replace(/\D/g, "");
     const businessType = body.businessType || "Manufacturer & Bulk Supplier";
-    const catSlug = (body.productServiceCategory || "rubber").trim();
+    const catSlug = (selectedCategories[0] || body.productServiceCategory || "rubber").trim();
 
     if (!ownerName || !businessName || mobile.length !== 10 || !email || (!fullAddress && !city)) {
       return NextResponse.json(
@@ -146,7 +155,54 @@ export async function POST(req: Request) {
       );
     }
 
-    // Controlled resubmission if rejected; otherwise insert new vendor application as 'pending'
+    const effectiveBusinessTypes =
+      selectedBusinessTypes.length > 0 ? selectedBusinessTypes : [primaryCategory];
+
+    // Validate submitted category/subcategory slugs against master catalog
+    const allMasterCats = db
+      .prepare(`SELECT id, type, name, slug FROM categories WHERE is_active = 1`)
+      .all() as Array<{ id: number; type: string; name: string; slug: string }>;
+    const catBySlug = new Map(allMasterCats.map((c) => [c.slug, c]));
+
+    const validCatSlugs = selectedCategories.filter((slug) => catBySlug.has(slug));
+    const nonOtherSelected = effectiveBusinessTypes.some((bt) => bt.toLowerCase() !== "other");
+    if (
+      Array.isArray(body.selectedBusinessTypes) &&
+      nonOtherSelected &&
+      validCatSlugs.length === 0 &&
+      otherCategories.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "Please select at least one category (or Other) for your business." },
+        { status: 400 }
+      );
+    }
+
+    const allMasterSubs = db
+      .prepare(`SELECT id, category_id, name, slug FROM subcategories`)
+      .all() as Array<{ id: number; category_id: number; name: string; slug: string }>;
+    const subBySlug = new Map(allMasterSubs.map((s) => [s.slug, s]));
+    const validSubSlugs = selectedSubcategories.filter((slug) => subBySlug.has(slug));
+
+    // Create user account only AFTER all form & category validations succeed
+    if (!session) {
+      const userIns = db
+        .prepare(
+          `INSERT INTO users (name, email, mobile, whatsapp, password_hash, role, status)
+           VALUES (?, ?, ?, ?, ?, 'vendor', 'active')`
+        )
+        .run(
+          ownerName,
+          email,
+          mobile,
+          body.whatsapp || `91${mobile}`,
+          hashPassword(body.password || "")
+        );
+      userId = Number(userIns.lastInsertRowid);
+      await setSessionCookie(userId, "vendor", 1);
+    }
+
+    // Automatic approval & activation per onboarding flow!
     const existingRejected = db
       .prepare(`SELECT id FROM vendors WHERE user_id = ? AND verification_status = 'rejected' LIMIT 1`)
       .get(userId) as { id: number } | undefined;
@@ -158,10 +214,13 @@ export async function POST(req: Request) {
           business_name = ?, owner_name = ?, mobile = ?, whatsapp = ?, email = ?,
           business_category = ?, product_service_category = ?, gst_number = ?, id_proof_type = ?,
           id_proof_url = ?, logo_url = ?, address = ?, city = ?, state = ?, description = ?,
-          product_details = ?, verification_status = 'pending', rejection_reason = '',
+          product_details = ?, verification_status = 'approved', rejection_reason = '',
+          approved_at = datetime('now'),
           whatsapp_opt_in = ?, whatsapp_categories = ?, business_type = ?,
           country = ?, door_no = ?, address_line1 = ?, address_line2 = ?, pincode = ?,
           business_proof_type = ?, business_proof_number = ?, primary_category = ?, legal_name = ?,
+          selected_business_types = ?, selected_categories = ?, selected_subcategories = ?,
+          other_business_type = ?, other_categories = ?, other_subcategories = ?,
           updated_at = datetime('now')
          WHERE id = ?`
       ).run(
@@ -182,7 +241,7 @@ export async function POST(req: Request) {
         body.description || "",
         body.productDetails || "",
         body.whatsappOptIn === false ? 0 : 1,
-        JSON.stringify([catSlug]),
+        JSON.stringify(validCatSlugs.length > 0 ? validCatSlugs : [catSlug]),
         businessType,
         country,
         doorNo,
@@ -193,6 +252,12 @@ export async function POST(req: Request) {
         businessProofNumber,
         primaryCategory,
         legalName,
+        JSON.stringify(effectiveBusinessTypes),
+        JSON.stringify(validCatSlugs),
+        JSON.stringify(validSubSlugs),
+        otherBusinessType,
+        JSON.stringify(otherCategories),
+        JSON.stringify(otherSubcategories),
         existingRejected.id
       );
       vendorId = existingRejected.id;
@@ -203,10 +268,12 @@ export async function POST(req: Request) {
             user_id, business_name, owner_name, mobile, whatsapp, email,
             business_category, product_service_category, gst_number, id_proof_type,
             id_proof_url, logo_url, address, city, state, description, product_details,
-            verification_status, whatsapp_opt_in, whatsapp_categories, business_type,
+            verification_status, approved_at, whatsapp_opt_in, whatsapp_categories, business_type,
             country, door_no, address_line1, address_line2, pincode,
-            business_proof_type, business_proof_number, primary_category, legal_name, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+            business_proof_type, business_proof_number, primary_category, legal_name,
+            selected_business_types, selected_categories, selected_subcategories,
+            other_business_type, other_categories, other_subcategories, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
         )
         .run(
           userId,
@@ -227,7 +294,7 @@ export async function POST(req: Request) {
           body.description || "",
           body.productDetails || "",
           body.whatsappOptIn === false ? 0 : 1,
-          JSON.stringify([catSlug]),
+          JSON.stringify(validCatSlugs.length > 0 ? validCatSlugs : [catSlug]),
           businessType,
           country,
           doorNo,
@@ -237,9 +304,70 @@ export async function POST(req: Request) {
           businessProofType,
           businessProofNumber,
           primaryCategory,
-          legalName
+          legalName,
+          JSON.stringify(effectiveBusinessTypes),
+          JSON.stringify(validCatSlugs),
+          JSON.stringify(validSubSlugs),
+          otherBusinessType,
+          JSON.stringify(otherCategories),
+          JSON.stringify(otherSubcategories)
         );
       vendorId = Number(vendorIns.lastInsertRowid);
+    }
+
+    // Store structured relational selections in vendor_catalog_selections
+    db.prepare(`DELETE FROM vendor_catalog_selections WHERE vendor_id = ?`).run(vendorId);
+    const insSel = db.prepare(`
+      INSERT INTO vendor_catalog_selections (
+        vendor_id, business_type, category_id, category_slug, category_name,
+        subcategory_id, subcategory_slug, subcategory_name, is_other, other_name
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const cSlug of validCatSlugs) {
+      const cat = catBySlug.get(cSlug);
+      if (!cat) continue;
+      const bTypeLabel =
+        effectiveBusinessTypes.find((bt) => {
+          const l = bt.toLowerCase();
+          if (cat.type === "product") return l === "products" || l === "product" || l === "industrial products";
+          if (cat.type === "machinery") return l === "industry" || l === "industries" || l === "machinery";
+          return l === "services" || l === "service";
+        }) || primaryCategory;
+
+      const subsForCat = validSubSlugs
+        .map((s) => subBySlug.get(s))
+        .filter((s): s is { id: number; category_id: number; name: string; slug: string } => Boolean(s && s.category_id === cat.id));
+
+      if (subsForCat.length === 0) {
+        insSel.run(vendorId, bTypeLabel, cat.id, cat.slug, cat.name, null, "", "", 0, "");
+      } else {
+        for (const sub of subsForCat) {
+          insSel.run(vendorId, bTypeLabel, cat.id, cat.slug, cat.name, sub.id, sub.slug, sub.name, 0, "");
+        }
+      }
+    }
+
+    if (otherBusinessType) {
+      insSel.run(vendorId, "Other", null, "other", "Other", null, "", "", 1, otherBusinessType);
+    }
+    for (const oc of otherCategories) {
+      insSel.run(vendorId, primaryCategory, null, "other", oc, null, "", "", 1, oc);
+    }
+    for (const os of otherSubcategories) {
+      insSel.run(vendorId, primaryCategory, null, "other", "Other", null, "other", os, 1, os);
+    }
+
+    // Automatically activate seller role on user account (preserve admin role if admin)
+    const userRow = db
+      .prepare(`SELECT role, session_version FROM users WHERE id = ?`)
+      .get(userId) as { role: string; session_version?: number } | undefined;
+    const nextRole = userRow?.role === "admin" ? "admin" : "vendor";
+    if (userRow && userRow.role !== "admin" && userRow.role !== "vendor") {
+      db.prepare(`UPDATE users SET role = 'vendor', session_version = COALESCE(session_version, 1) + 1 WHERE id = ?`).run(userId);
+      await setSessionCookie(userId, "vendor", Number(userRow.session_version || 1) + 1);
+    } else if (!session && userRow) {
+      await setSessionCookie(userId, nextRole as "admin" | "vendor", Number(userRow.session_version || 1));
     }
 
     const savedVendor = db.prepare(`SELECT * FROM vendors WHERE id = ?`).get(vendorId);
@@ -247,31 +375,32 @@ export async function POST(req: Request) {
     db.prepare(
       `INSERT INTO audit_logs (
          user_id, user_email, action, entity_type, entity_id, target_user_id, previous_status, new_status, details
-       ) VALUES (?, ?, 'Seller Application Submitted', 'vendor', ?, ?, ?, 'pending', ?)`
+       ) VALUES (?, ?, 'Seller Auto-Approved & Activated', 'vendor', ?, ?, ?, 'approved', ?)`
     ).run(
       userId,
       email,
       vendorId,
       userId,
       existingRejected ? "rejected" : "none",
-      `Business: ${businessName} • Type: ${businessType} • Doc: ${businessProofType} (${businessProofNumber})`
+      `Business: ${businessName} • Selling: ${effectiveBusinessTypes.join(", ")} • Categories: ${validCatSlugs.join(", ") || "Other"}`
     );
 
     await syncDbToS3();
+    revalidatePath("/", "layout");
 
     // Send confirmation email via Nodemailer (best-effort)
-    sendSellerApplicationEmail(email, ownerName, businessName, "received").catch((e) =>
-      console.error("Failed to send seller application received email:", e)
+    sendSellerApplicationEmail(email, ownerName, businessName, "approved").catch((e) =>
+      console.error("Failed to send seller activation email:", e)
     );
 
     return NextResponse.json(
       {
         success: true,
         vendorId,
-        status: "pending",
+        status: "approved",
         vendor: savedVendor,
         message:
-          "Your seller application has been submitted successfully! It is now under admin verification.",
+          "Your seller account is approved and active! You can now set prices and publish products for your selected categories.",
       },
       { status: 201 }
     );

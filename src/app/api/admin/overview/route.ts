@@ -197,6 +197,7 @@ export async function GET() {
   const referrals = db.prepare(`SELECT * FROM referrals ORDER BY id DESC`).all();
   const subscriptionForms = db.prepare(`SELECT * FROM subscription_forms ORDER BY id DESC`).all();
   const auditLogs = db.prepare(`SELECT * FROM audit_logs ORDER BY id DESC LIMIT 150`).all();
+  const vendorSelections = db.prepare(`SELECT * FROM vendor_catalog_selections ORDER BY id DESC`).all();
   const plans = getSubscriptionPlans(true);
   const cms = getCmsMap();
 
@@ -205,6 +206,7 @@ export async function GET() {
         kpi,
         categoryBreakdown,
         vendors,
+        vendorSelections,
         users,
         listings,
         categories,

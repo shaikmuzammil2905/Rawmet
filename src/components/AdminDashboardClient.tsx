@@ -3534,6 +3534,62 @@ export function AdminDashboardClient() {
               <div><span className="text-slate-400 font-bold block">Business Email</span><span className="text-slate-800 break-all">{viewingVendor.email}</span></div>
               <div><span className="text-slate-400 font-bold block">Business Type</span><span className="text-slate-800">{viewingVendor.business_type || "Manufacturer & Bulk Supplier"}</span></div>
               <div><span className="text-slate-400 font-bold block">Primary Category</span><span className="font-bold text-blue-700">{viewingVendor.primary_category || viewingVendor.business_category}</span></div>
+              {(() => {
+                const parseArr = (raw?: string) => {
+                  try {
+                    const p = JSON.parse(raw || "[]");
+                    return Array.isArray(p) ? p : [];
+                  } catch {
+                    return [];
+                  }
+                };
+                const bTypes = parseArr(viewingVendor.selected_business_types);
+                const cats = parseArr(viewingVendor.selected_categories);
+                const subs = parseArr(viewingVendor.selected_subcategories);
+                const oCats = parseArr(viewingVendor.other_categories);
+                const oSubs = parseArr(viewingVendor.other_subcategories);
+                if (bTypes.length === 0 && cats.length === 0 && subs.length === 0 && oCats.length === 0 && !viewingVendor.other_business_type) {
+                  return null;
+                }
+                return (
+                  <div className="sm:col-span-2 rounded-xl bg-white border border-blue-100 p-3 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0a2458] block">
+                      What This Seller Sells (Onboarding Selections)
+                    </span>
+                    {bTypes.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-500">Business Types: </span>
+                        <span className="font-bold text-slate-800">{bTypes.join(", ")}</span>
+                      </div>
+                    )}
+                    {cats.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[11px] font-bold text-slate-500 mr-1">Categories:</span>
+                        {cats.map((c: string) => (
+                          <span key={c} className="rounded-full bg-blue-50 text-[#1652b8] px-2 py-0.5 text-[10px] font-bold">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {subs.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[11px] font-bold text-slate-500 mr-1">Subcategories:</span>
+                        {subs.map((s: string) => (
+                          <span key={s} className="rounded-full bg-orange-50 text-[#f97316] px-2 py-0.5 text-[10px] font-bold">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(viewingVendor.other_business_type || oCats.length > 0 || oSubs.length > 0) && (
+                      <div className="text-[11px] text-emerald-700 font-semibold">
+                        Other Custom: {[viewingVendor.other_business_type, ...oCats, ...oSubs].filter(Boolean).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <div><span className="text-slate-400 font-bold block">Proof ({viewingVendor.business_proof_type || "GST"})</span><span className="font-mono font-bold text-slate-900">{viewingVendor.business_proof_number || viewingVendor.gst_number || "-"}</span></div>
               <div className="sm:col-span-2">
                 <span className="text-slate-400 font-bold block">Address</span>

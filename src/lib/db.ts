@@ -282,6 +282,23 @@ function initializeSchema(db: DbClient): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS vendor_catalog_selections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+      business_type TEXT NOT NULL,
+      category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+      category_slug TEXT NOT NULL DEFAULT '',
+      category_name TEXT NOT NULL DEFAULT '',
+      subcategory_id INTEGER REFERENCES subcategories(id) ON DELETE CASCADE,
+      subcategory_slug TEXT NOT NULL DEFAULT '',
+      subcategory_name TEXT NOT NULL DEFAULT '',
+      is_other INTEGER NOT NULL DEFAULT 0,
+      other_name TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_vcs_vendor ON vendor_catalog_selections(vendor_id);
+    CREATE INDEX IF NOT EXISTS idx_vcs_cat ON vendor_catalog_selections(category_slug);
+
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL CHECK(type IN ('product','machinery','service')),
@@ -526,6 +543,12 @@ function runSafeMigrations(db: DbClient): void {
     "ALTER TABLE audit_logs ADD COLUMN admin_id INTEGER DEFAULT NULL",
     "ALTER TABLE audit_logs ADD COLUMN previous_status TEXT DEFAULT ''",
     "ALTER TABLE audit_logs ADD COLUMN new_status TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN selected_business_types TEXT DEFAULT '[]'",
+    "ALTER TABLE vendors ADD COLUMN selected_categories TEXT DEFAULT '[]'",
+    "ALTER TABLE vendors ADD COLUMN selected_subcategories TEXT DEFAULT '[]'",
+    "ALTER TABLE vendors ADD COLUMN other_business_type TEXT DEFAULT ''",
+    "ALTER TABLE vendors ADD COLUMN other_categories TEXT DEFAULT '[]'",
+    "ALTER TABLE vendors ADD COLUMN other_subcategories TEXT DEFAULT '[]'",
   ];
   for (const sql of migrations) {
     try {
