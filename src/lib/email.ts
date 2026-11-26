@@ -183,6 +183,7 @@ Online Real-time Business Portal`;
     `;
 
     try {
+      await transporter.verify();
       await transporter.sendMail({
         from: getSenderAddress(false),
         to: toEmail,
@@ -192,8 +193,9 @@ Online Real-time Business Portal`;
       });
       return { success: true };
     } catch (primaryErr) {
-      console.warn("Primary SMTP delivery failed, attempting verified fallback:", primaryErr);
+      console.warn("Primary SMTP delivery failed, attempting verified fallback:", primaryErr instanceof Error ? primaryErr.message : primaryErr);
       const fallbackTransporter = getSmtpTransporter(true);
+      await fallbackTransporter.verify();
       await fallbackTransporter.sendMail({
         from: getSenderAddress(true),
         to: toEmail,
@@ -211,26 +213,30 @@ Online Real-time Business Portal`;
 }
 
 /**
- * 2. REAL PASSWORD RESET EMAIL
- * Exact text & branded template per specification
+ * 2. REAL PASSWORD RESET EMAIL (Supports both 6-Digit OTP & Reset Link)
  */
 export async function sendPasswordResetEmail(
   toEmail: string,
-  resetLink: string
+  resetLink: string,
+  otpCode?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const transporter = getSmtpTransporter();
 
     const subject = "RAWMAT MART – Password Reset Request";
 
+    const otpTextBlock = otpCode
+      ? `\nYour 6-digit password reset OTP is: ${otpCode}\n`
+      : "";
+
     const textContent = `Hello,
 
 We received a request to reset your RAWMAT MART account password.
-
+${otpTextBlock}
 Click the link below to create a new password:
 ${resetLink}
 
-This link is valid for 30 minutes and can only be used once.
+This code and link are valid for 30 minutes and can only be used once.
 
 If you did not request this change, please ignore this email.
 
@@ -268,10 +274,23 @@ RAWMAT MART Team.`;
                     <p style="color: #0f172a; font-size: 15px; margin: 0 0 16px 0; font-weight: 600;">
                       Hello,
                     </p>
-                    <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0;">
+                    <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 20px 0;">
                       We received a request to reset your RAWMAT MART account password.<br /><br />
-                      Click the button below to create a new password.
+                      Click the button below to create a new password, or enter the 6-digit verification code on the reset page.
                     </p>
+
+                    ${
+                      otpCode
+                        ? `<div style="background-color: #f8fafc; border: 2px dashed #0a2458; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 22px;">
+                      <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">
+                        Your 6-Digit Reset OTP:
+                      </span>
+                      <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #0a2458; font-family: 'Courier New', Courier, monospace; display: block;">
+                        ${otpCode}
+                      </span>
+                    </div>`
+                        : ""
+                    }
 
                     <!-- CTA Button -->
                     <div style="text-align: center; margin: 28px 0;">
@@ -323,6 +342,7 @@ RAWMAT MART Team.`;
     `;
 
     try {
+      await transporter.verify();
       await transporter.sendMail({
         from: getSenderAddress(false),
         to: toEmail,
@@ -332,8 +352,9 @@ RAWMAT MART Team.`;
       });
       return { success: true };
     } catch (primaryErr) {
-      console.warn("Primary SMTP delivery failed for password reset, attempting verified fallback:", primaryErr);
+      console.warn("Primary SMTP delivery failed for password reset, attempting verified fallback:", primaryErr instanceof Error ? primaryErr.message : primaryErr);
       const fallbackTransporter = getSmtpTransporter(true);
+      await fallbackTransporter.verify();
       await fallbackTransporter.sendMail({
         from: getSenderAddress(true),
         to: toEmail,

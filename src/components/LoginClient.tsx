@@ -217,9 +217,13 @@ export function LoginClient() {
         body: JSON.stringify({ email: cleanEmail }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Unable to send password reset email.", "error");
+        return;
+      }
       setForgotSubmitted(true);
       showToast(
-        data.message || "If an account exists, a password reset link has been sent to your email.",
+        data.message || "If an account exists, a password reset link & 6-digit OTP have been sent to your email.",
         "success"
       );
     } catch {
@@ -502,18 +506,26 @@ export function LoginClient() {
                   <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 text-center space-y-3">
                     <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
                     <p className="text-xs text-slate-700 leading-relaxed">
-                      If an account exists with <strong>{forgotEmail}</strong>, a password reset link has been sent. Please check your inbox and spam folder.
+                      If an account exists with <strong>{forgotEmail}</strong>, a password reset link and 6-digit OTP (valid for 30 minutes) have been sent. Check your inbox and spam folder.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgot(false);
-                        setForgotSubmitted(false);
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-5 py-2 text-xs font-bold shadow"
-                    >
-                      <span>Return to Password Login</span>
-                    </button>
+                    <div className="flex flex-col gap-2 pt-1">
+                      <Link
+                        href={`/reset-password?email=${encodeURIComponent(forgotEmail.trim())}`}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#f97316] hover:bg-[#ea580c] text-white px-5 py-2 text-xs font-bold shadow"
+                      >
+                        <span>Enter 6-Digit Email OTP Instead</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgot(false);
+                          setForgotSubmitted(false);
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-5 py-2 text-xs font-bold shadow"
+                      >
+                        <span>Return to Password Login</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleForgotPassword} className="space-y-4">

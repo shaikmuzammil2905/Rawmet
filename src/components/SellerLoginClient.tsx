@@ -242,14 +242,13 @@ export function SellerLoginClient() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/seller/forgot-password", {
+      const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "reset_password",
           email: forgotEmail.trim(),
           otp: forgotOtp.trim(),
-          newPassword,
+          password: newPassword,
         }),
       });
 
@@ -303,7 +302,7 @@ export function SellerLoginClient() {
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
             {viewMode === "login"
               ? "Sign in to your registered seller account to manage your business."
-              : "Verify via email OTP to choose a new secure password."}
+              : "Enter your registered email to receive a password reset link and 6-digit OTP."}
           </p>
         </div>
 
@@ -585,7 +584,7 @@ export function SellerLoginClient() {
                     />
                   </div>
                   <p className="mt-1.5 text-xs text-slate-500">
-                    We will send a password reset verification code to this email.
+                    We will send a clickable password reset link and a 6-digit verification OTP to this email.
                   </p>
                 </div>
 
@@ -599,7 +598,7 @@ export function SellerLoginClient() {
                   ) : (
                     <>
                       <KeyRound className="h-4 w-4" />
-                      <span>Send Reset Link</span>
+                      <span>Send Reset Link & OTP</span>
                     </>
                   )}
                 </button>
@@ -619,19 +618,79 @@ export function SellerLoginClient() {
                 <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs text-emerald-900 space-y-2">
                   <div className="font-extrabold flex items-center gap-2 text-emerald-800">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Password Reset Link Sent!</span>
+                    <span>Password Reset Email Dispatched!</span>
                   </div>
                   <p className="leading-relaxed text-emerald-800">
-                    If an account exists for <strong>{forgotEmail}</strong>, a password reset link valid for 30 minutes has been sent to your email. Please open your inbox and click <strong>RESET MY PASSWORD</strong>.
+                    If an account exists for <strong>{forgotEmail}</strong>, we have sent an email valid for 30 minutes containing both a <strong>RESET MY PASSWORD</strong> link and a <strong>6-digit OTP</strong>. Click the link in your email or enter the 6-digit OTP below.
                   </p>
                 </div>
+
+                <form onSubmit={handleResetPassword} className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Email OTP *</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
+                      placeholder="123456"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base font-mono tracking-widest text-center text-[#0a2458] font-bold focus:border-[#0a2458] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">New Password (min 6 chars) *</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-10 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Confirm New Password *</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter new password"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3.5 py-2.5 text-sm focus:border-[#0a2458] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading || forgotOtp.length < 6 || newPassword.length < 6}
+                    className="w-full rounded-full bg-[#0a2458] hover:bg-[#1652b8] disabled:opacity-60 text-white py-3 text-sm font-extrabold transition-all"
+                  >
+                    {loading ? "Updating Password..." : "Verify OTP & Save New Password"}
+                  </button>
+                </form>
+
                 <button
                   type="button"
                   onClick={() => {
                     setForgotOtpSent(false);
                     setViewMode("login");
                   }}
-                  className="w-full rounded-full bg-[#0a2458] hover:bg-[#1652b8] text-white py-3 text-sm font-extrabold transition-all"
+                  className="w-full rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 text-xs font-bold transition-all"
                 >
                   Return to Sign In
                 </button>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
@@ -10,20 +10,23 @@ import {
   EyeOff,
   KeyRound,
   Lock,
+  Mail,
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
 import { useToast } from "./ToastProvider";
 
 export function ResetPasswordClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
+  const initialEmail = searchParams.get("email") || "";
   const { showToast } = useToast();
 
-  const [checking, setChecking] = useState(true);
-  const [tokenValid, setTokenValid] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const [checking, setChecking] = useState(Boolean(token));
+  const [verifiedMode, setVerifiedMode] = useState<"token" | "otp" | null>(null);
+  const [userEmail, setUserEmail] = useState(initialEmail);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const [password, setPassword] = useState("");
@@ -34,11 +37,16 @@ export function ResetPasswordClient() {
   const [submitting, setSubmitting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  // Validate token on mount
+  // Auto-validate token when opened via email link
   useEffect(() => {
-    if (!token || token.length !== 64) {
+    if (!token) {
       setChecking(false);
-      setTokenValid(false);
+      return;
+    }
+
+    if (token.length !== 64) {
+      setChecking(false);
+      setVerifiedMode(null);
       setErrorMessage("The password reset link is invalid or incomplete.");
       return;
     }
@@ -48,16 +56,16 @@ export function ResetPasswordClient() {
         const res = await fetch(`/api/auth/reset-password?token=${encodeURIComponent(token)}`);
         const data = await res.json();
         if (res.ok && data.valid) {
-          setTokenValid(true);
-          setUserEmail(data.email || "");
+          setVerifiedMode("token");
+          setUserEmail(data.email || initialEmail);
         } else {
-          setTokenValid(false);
+          setVerifiedMode(null);
           setErrorMessage(
             data.error || "This password reset link is invalid, has expired, or has already been used."
           );
         }
       } catch {
-        setTokenValid(false);
+        setVerifiedMode(null);
         setErrorMessage("Unable to verify reset link. Please check your network connection.");
       } finally {
         setChecking(false);
@@ -65,7 +73,36 @@ export function ResetPasswordClient() {
     }
 
     checkToken();
-  }, [token]);
+  }, [token, initialEmail]);
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanEmail = userEmail.trim().toLowerCase();
+    const cleanOtp = otpCode.trim();
+    if (!cleanEmail || !/^\d{6}$/.test(cleanOtp)) {
+      showToast("Please enter your registered email and 6-digit OTP.", "error");
+      return;
+    }
+    setVerifyingOtp(true);
+    setErrorMessage("");
+    try {
+      const res = await fetch(
+        `/api/auth/reset-password?email=${encodeURIComponent(cleanEmail)}&otp=${encodeURIComponent(cleanOtp)}`
+      );
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setVerifiedMode("otp");
+        showToast("OTP verified! Please enter your new password.", "success");
+      } else {
+        setErrorMessage(data.error || "Invalid or expired OTP.");
+        showToast(data.error || "Invalid or expired OTP.", "error");
+      }
+    } catch {
+      showToast("Network error verifying OTP.", "error");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
@@ -82,10 +119,15 @@ export function ResetPasswordClient() {
 
     setSubmitting(true);
     try {
+      const payload =
+        verifiedMode === "token"
+          ? { token, password }
+          : { email: userEmail.trim().toLowerCase(), otp: otpCode.trim(), password };
+
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -105,7 +147,6 @@ export function ResetPasswordClient() {
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:py-16">
       <div className="rounded-3xl bg-white border border-slate-200 p-6 sm:p-8 shadow-xl">
-        {/* Brand Header */}
         <div className="text-center mb-6">
           <Link href="/" className="inline-block">
             <img
@@ -124,25 +165,6 @@ export function ResetPasswordClient() {
           <div className="py-12 text-center space-y-3">
             <div className="h-8 w-8 rounded-full border-2 border-slate-300 border-t-[#f97316] animate-spin mx-auto" />
             <p className="text-xs font-semibold text-slate-600">Verifying reset authorization link...</p>
-          </div>
-        ) : !tokenValid ? (
-          <div className="rounded-2xl bg-rose-50 border border-rose-200 p-5 text-center space-y-3">
-            <div className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-rose-100 text-rose-600 mx-auto">
-              <ShieldAlert className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-rose-900">Reset Link Invalid</h3>
-              <p className="text-xs text-rose-700 mt-1">{errorMessage}</p>
-            </div>
-            <div className="pt-2">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-5 py-2.5 text-xs font-bold shadow hover:bg-[#06183d] transition-all"
-              >
-                <span>Return to Login</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
           </div>
         ) : resetSuccess ? (
           <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5 text-center space-y-4">
@@ -165,6 +187,75 @@ export function ResetPasswordClient() {
               </Link>
             </div>
           </div>
+        ) : token && !verifiedMode ? (
+          <div className="rounded-2xl bg-rose-50 border border-rose-200 p-5 text-center space-y-3">
+            <div className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-rose-100 text-rose-600 mx-auto">
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-rose-900">Reset Link Invalid</h3>
+              <p className="text-xs text-rose-700 mt-1">{errorMessage}</p>
+            </div>
+            <div className="pt-2">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0a2458] text-white px-5 py-2.5 text-xs font-bold shadow hover:bg-[#06183d] transition-all"
+              >
+                <span>Return to Login</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        ) : !verifiedMode ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Enter your registered email address and the 6-digit password reset OTP sent to your inbox:
+            </p>
+            {errorMessage && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-semibold">
+                {errorMessage}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Registered Email *</label>
+              <div className="relative">
+                <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:border-[#1652b8] focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Reset OTP *</label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-base font-mono tracking-widest text-center text-[#0a2458] font-bold focus:border-[#1652b8] focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={verifyingOtp || otpCode.length !== 6 || !userEmail.includes("@")}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a2458] hover:bg-[#06183d] disabled:opacity-50 text-white py-3 text-sm font-bold shadow transition-all"
+            >
+              <ShieldCheck className="h-4 w-4 text-[#f97316]" />
+              <span>{verifyingOtp ? "Verifying OTP..." : "Verify 6-Digit OTP"}</span>
+            </button>
+            <div className="text-center pt-2">
+              <Link href="/login" className="text-xs font-bold text-[#1652b8] hover:underline">
+                Back to Login
+              </Link>
+            </div>
+          </form>
         ) : (
           <form onSubmit={handleResetPassword} className="space-y-4">
             {userEmail && (

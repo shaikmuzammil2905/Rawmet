@@ -35,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
+import { ChangePasswordCard } from "@/components/ChangePasswordCard";
 import type { CategoryRecord, SubcategoryRecord, ListingRecord } from "@/lib/types";
 
 interface UserInfo {
@@ -1632,6 +1633,9 @@ export function UnifiedSellerPageClient() {
               <span className="text-slate-400 block mb-0.5">Business Address</span>
               <p className="text-slate-700">{vendor.address}, {vendor.city}, {vendor.state}</p>
             </div>
+          </div>
+          <div className="mt-6">
+            <ChangePasswordCard />
           </div>
         </div>
       )}

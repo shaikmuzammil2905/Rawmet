@@ -19,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { useToast } from "./ToastProvider";
+import { ChangePasswordCard } from "./ChangePasswordCard";
 
 interface DashboardPayload {
   user: { id: number; name: string; email: string; mobile: string; whatsapp: string; role: string };
@@ -375,6 +376,10 @@ export function CustomerDashboardClient() {
           )}
         </div>
       )}
+
+      <div className="mt-6">
+        <ChangePasswordCard />
+      </div>
 
       {invoicePayment && (
         <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" onClick={() => setInvoicePayment(null)}>

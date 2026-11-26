@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { ensureSeeded } from "@/lib/seed";
-import { hashToken } from "@/lib/auth";
+import { hashOtp, hashToken } from "@/lib/auth";
 import { sendPasswordResetEmail } from "@/lib/email";
 
 const ipResetHits = new Map<string, { count: number; resetAt: number }>();
@@ -68,26 +68,46 @@ export async function POST(req: Request) {
       }
     }
 
-    // Generate cryptographically secure random token (64 hex characters)
+    // Generate cryptographically secure random token (64 hex chars) + 6-digit OTP
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(rawToken);
+    const otpCode = String(crypto.randomInt(100000, 999999));
+    const otpHash = hashOtp(otpCode);
+
     // 30-minute expiration per specification
     const nowIso = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     db.prepare(
-      `UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ?, reset_requested_at = ? WHERE id = ?`
-    ).run(tokenHash, expiresAt, nowIso, user.id);
+      `UPDATE users
+       SET reset_token_hash = ?,
+           reset_token_expires_at = ?,
+           reset_requested_at = ?,
+           otp_code = ?,
+           otp_expires_at = ?,
+           otp_attempts = 0
+       WHERE id = ?`
+    ).run(tokenHash, expiresAt, nowIso, otpHash, expiresAt, user.id);
+
+    db.prepare(
+      `INSERT INTO audit_logs (
+         user_id, user_email, action, entity_type, entity_id,
+         target_user_id, previous_status, new_status, details
+       ) VALUES (?, ?, 'Password Reset Requested', 'user', ?, ?, 'active', 'reset_requested', ?)`
+    ).run(user.id, user.email, user.id, user.id, `Password reset link & OTP issued for ${user.email}.`);
 
     await syncDbToS3();
 
-    // Determine public site URL for reset link
+    // Determine public site URL for reset link (never emit localhost when host is a public domain)
     const hostHeader = req.headers.get("host") || "localhost:3000";
     const protoHeader = req.headers.get("x-forwarded-proto") || (hostHeader.includes("localhost") ? "http" : "https");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protoHeader}://${hostHeader}`;
-    const resetLink = `${siteUrl.replace(/\/$/, "")}/reset-password?token=${rawToken}`;
+    const envUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+    const isEnvLocal = envUrl.includes("localhost") || envUrl.includes("127.0.0.1");
+    const isHostPublic = !hostHeader.includes("localhost") && !hostHeader.includes("127.0.0.1");
+    const siteUrl = envUrl && !(isEnvLocal && isHostPublic) ? envUrl : `${protoHeader}://${hostHeader}`;
+    const resetLink = `${siteUrl.replace(/\/$/, "")}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
-    const emailRes = await sendPasswordResetEmail(user.email, resetLink);
+    const emailRes = await sendPasswordResetEmail(user.email, resetLink, otpCode);
     if (!emailRes.success) {
       console.error("sendPasswordResetEmail failed for", user.email, ":", emailRes.error);
       return NextResponse.json(
