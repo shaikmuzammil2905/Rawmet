@@ -85,7 +85,7 @@ function wrapWasmDb(rawDb: Database): DbClient {
   };
 }
 
-import { downloadDbFromS3, headDbInS3, isS3Configured, uploadDbToS3 } from "./s3";
+import { downloadDbFromS3, getMissingS3EnvVars, headDbInS3, isS3Configured, uploadDbToS3 } from "./s3";
 
 let lastS3SyncMs = 0;
 
@@ -168,8 +168,10 @@ export async function syncDbToS3(): Promise<void> {
 
   if (!isReadOnlyEnv) return;
   if (!isS3Configured()) {
+    const missing = getMissingS3EnvVars();
+    console.error("[S3 Config Missing] Cannot persist DB to AWS S3. Missing env vars:", missing);
     throw new Error(
-      "AWS S3 is not configured (missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_S3_BUCKET_NAME). Changes cannot persist across serverless containers."
+      `AWS S3 is not configured (missing: ${missing.join(", ")}). Add them in Vercel Project Settings -> Environment Variables and redeploy.`
     );
   }
 

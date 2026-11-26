@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { getDb, syncDbFromS3, syncDbToS3 } from "@/lib/db";
 import { requireRole, slugify } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(req: Request) {
   const session = await requireRole(["admin"]);
   if (!session) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -130,6 +133,7 @@ export async function POST(req: Request) {
 
     await syncDbToS3();
     revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
     return NextResponse.json(
       { success: true, id: Number(res.lastInsertRowid), name, slug, type },
       { status: 201 }
@@ -185,6 +189,7 @@ export async function PATCH(req: Request) {
     );
     await syncDbToS3();
     revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to update category.";
@@ -214,6 +219,7 @@ export async function DELETE(req: Request) {
     }
     await syncDbToS3();
     revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Failed to delete category.";
